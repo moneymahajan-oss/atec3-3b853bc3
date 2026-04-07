@@ -6,32 +6,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { courseCategories } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+const categories = ["AI & Emerging Tech", "Digital Skills & Marketing", "Full Stack & Networking", "Finance & Accounting", "Office & Productivity", "Student Courses"];
 
 export default function ContactSection() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    toast({ title: "Message sent!", description: "We'll get back to you within 24 hours." });
-    setTimeout(() => setSubmitted(false), 3000);
+    setLoading(true);
+    const form = new FormData(e.currentTarget);
+    const { error } = await supabase.from("contact_submissions").insert({
+      name: form.get("name") as string,
+      email: form.get("email") as string,
+      phone: form.get("phone") as string,
+      course_interest: form.get("course_interest") as string,
+      message: form.get("message") as string,
+    });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setSubmitted(true);
+      toast({ title: "Message sent!", description: "We'll get back to you within 24 hours." });
+      (e.target as HTMLFormElement).reset();
+      setTimeout(() => setSubmitted(false), 3000);
+    }
   };
 
   return (
     <section id="contact" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
-            <Sparkles className="w-3 h-3 mr-1" /> Contact
-          </Badge>
+          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> Contact</Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">Get in Touch</h2>
         </motion.div>
-
         <div className="grid lg:grid-cols-2 gap-12">
-          {/* Contact Info */}
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
             {[
               { icon: MapPin, title: "Visit Us", text: "E-Tech Avenue, Hardo Channi Road,\nGurdaspur, Punjab, India – 143521" },
@@ -49,37 +63,26 @@ export default function ContactSection() {
                 </div>
               </div>
             ))}
-
-            {/* Map embed */}
             <div className="rounded-2xl overflow-hidden h-48 glass">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1"
-                className="w-full h-full border-0" loading="lazy" allowFullScreen
-              />
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1" className="w-full h-full border-0" loading="lazy" allowFullScreen />
             </div>
           </motion.div>
-
-          {/* Contact Form */}
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
             <form onSubmit={handleSubmit} className="glass rounded-2xl p-6 md:p-8 space-y-4">
               <h3 className="font-heading font-bold text-xl text-foreground mb-2">Send us a message</h3>
               <div className="grid grid-cols-2 gap-4">
-                <Input placeholder="Your Name" required className="bg-background" />
-                <Input type="email" placeholder="Email Address" required className="bg-background" />
+                <Input name="name" placeholder="Your Name" required className="bg-background" />
+                <Input name="email" type="email" placeholder="Email Address" required className="bg-background" />
               </div>
-              <Input type="tel" placeholder="Phone Number" required className="bg-background" />
-              <Select>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Interested Course" />
-                </SelectTrigger>
+              <Input name="phone" type="tel" placeholder="Phone Number" required className="bg-background" />
+              <Select name="course_interest">
+                <SelectTrigger className="bg-background"><SelectValue placeholder="Interested Course" /></SelectTrigger>
                 <SelectContent>
-                  {courseCategories.filter((c) => c !== "All").map((cat) => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                  ))}
+                  {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <Textarea placeholder="Your message..." rows={4} className="bg-background" />
-              <Button type="submit" className="w-full gradient-accent text-accent-foreground border-0 font-semibold hover:opacity-90 transition-opacity" disabled={submitted}>
+              <Textarea name="message" placeholder="Your message..." rows={4} className="bg-background" />
+              <Button type="submit" className="w-full gradient-accent text-accent-foreground border-0 font-semibold hover:opacity-90 transition-opacity" disabled={submitted || loading}>
                 {submitted ? <><CheckCircle className="w-4 h-4 mr-2" /> Sent!</> : <><Send className="w-4 h-4 mr-2" /> Send Message</>}
               </Button>
             </form>
