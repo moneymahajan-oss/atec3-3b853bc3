@@ -14,16 +14,415 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          role: Database["public"]["Enums"]["admin_role"] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          role?: Database["public"]["Enums"]["admin_role"] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          role?: Database["public"]["Enums"]["admin_role"] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      announcements: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          title: string
+          type: Database["public"]["Enums"]["announcement_type"] | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          title: string
+          type?: Database["public"]["Enums"]["announcement_type"] | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          title?: string
+          type?: Database["public"]["Enums"]["announcement_type"] | null
+        }
+        Relationships: []
+      }
+      contact_submissions: {
+        Row: {
+          course_interest: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          course_interest?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          course_interest?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      courses: {
+        Row: {
+          badge_label: string | null
+          category: string
+          created_at: string
+          display_order: number | null
+          duration: string | null
+          fee: string | null
+          full_description: string | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          name: string
+          short_description: string | null
+          syllabus: Json | null
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge_label?: string | null
+          category: string
+          created_at?: string
+          display_order?: number | null
+          duration?: string | null
+          fee?: string | null
+          full_description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          name: string
+          short_description?: string | null
+          syllabus?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge_label?: string | null
+          category?: string
+          created_at?: string
+          display_order?: number | null
+          duration?: string | null
+          fee?: string | null
+          full_description?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          name?: string
+          short_description?: string | null
+          syllabus?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      downloads: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          display_order: number | null
+          file_url: string | null
+          icon_name: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          file_url?: string | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          file_url?: string | null
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
+        }
+        Relationships: []
+      }
+      gallery_items: {
+        Row: {
+          caption: string | null
+          category: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          image_url: string
+          is_active: boolean | null
+        }
+        Insert: {
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url: string
+          is_active?: boolean | null
+        }
+        Update: {
+          caption?: string | null
+          category?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          image_url?: string
+          is_active?: boolean | null
+        }
+        Relationships: []
+      }
+      hero_slides: {
+        Row: {
+          badge_text: string | null
+          created_at: string
+          cta_link: string | null
+          cta_text: string | null
+          display_order: number | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge_text?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          subtitle?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge_text?: string | null
+          created_at?: string
+          cta_link?: string | null
+          cta_text?: string | null
+          display_order?: number | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      site_settings: {
+        Row: {
+          id: string
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          id?: string
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
+      stats: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          icon_name: string | null
+          id: string
+          label: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          label: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          icon_name?: string | null
+          id?: string
+          label?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      team_members: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          linkedin_url: string | null
+          name: string
+          photo_url: string | null
+          role: string | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          linkedin_url?: string | null
+          name: string
+          photo_url?: string | null
+          role?: string | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          linkedin_url?: string | null
+          name?: string
+          photo_url?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
+      testimonials: {
+        Row: {
+          batch_year: string | null
+          course_name: string | null
+          created_at: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          photo_url: string | null
+          rating: number | null
+          review_text: string | null
+          student_name: string
+        }
+        Insert: {
+          batch_year?: string | null
+          course_name?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          photo_url?: string | null
+          rating?: number | null
+          review_text?: string | null
+          student_name: string
+        }
+        Update: {
+          batch_year?: string | null
+          course_name?: string | null
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          photo_url?: string | null
+          rating?: number | null
+          review_text?: string | null
+          student_name?: string
+        }
+        Relationships: []
+      }
+      youtube_videos: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          thumbnail_url: string | null
+          title: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          thumbnail_url?: string | null
+          title: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          thumbnail_url?: string | null
+          title?: string
+          video_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      admin_role: "super_admin" | "editor"
+      announcement_type: "badge" | "news" | "urgent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +549,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      admin_role: ["super_admin", "editor"],
+      announcement_type: ["badge", "news", "urgent"],
+    },
   },
 } as const
