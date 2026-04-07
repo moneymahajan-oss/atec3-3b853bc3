@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { GraduationCap, Users, BookOpen, Award } from "lucide-react";
-import { stats } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 const iconMap: Record<string, React.ElementType> = { GraduationCap, Users, BookOpen, Award };
 
@@ -33,32 +33,29 @@ function Counter({ target }: { target: number }) {
 }
 
 export default function StatsStrip() {
+  const [stats, setStats] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from("stats").select("*").order("display_order").then(({ data }) => {
+      if (data) setStats(data);
+    });
+  }, []);
+
+  if (stats.length === 0) return null;
+
   return (
     <section className="relative z-20 -mt-12">
       <div className="container mx-auto px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {stats.map((stat, i) => {
             const Icon = iconMap[stat.icon_name] || Award;
             return (
-              <motion.div
-                key={stat.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="glass rounded-xl p-5 text-center hover:shadow-xl transition-shadow"
-              >
+              <motion.div key={stat.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                className="glass rounded-xl p-5 text-center hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl gradient-primary flex items-center justify-center">
                   <Icon className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <div className="text-2xl md:text-3xl font-heading font-bold text-foreground">
-                  <Counter target={stat.value} />
-                </div>
+                <div className="text-2xl md:text-3xl font-heading font-bold text-foreground"><Counter target={stat.value} /></div>
                 <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
               </motion.div>
             );

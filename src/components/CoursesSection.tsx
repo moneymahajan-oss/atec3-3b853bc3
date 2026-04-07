@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { courses, courseCategories, Course } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
 
 const categoryIcons: Record<string, React.ElementType> = {
   "AI & Emerging Tech": Brain,
@@ -15,9 +15,18 @@ const categoryIcons: Record<string, React.ElementType> = {
   "Student Courses": GraduationCap,
 };
 
+const categories = ["All", "AI & Emerging Tech", "Digital Skills & Marketing", "Full Stack & Networking", "Finance & Accounting", "Office & Productivity", "Student Courses"];
+
 export default function CoursesSection() {
   const [active, setActive] = useState("All");
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+
+  useEffect(() => {
+    supabase.from("courses").select("*").order("display_order").then(({ data }) => {
+      if (data) setCourses(data);
+    });
+  }, []);
 
   const filtered = active === "All" ? courses : courses.filter((c) => c.category === active);
 
@@ -28,26 +37,16 @@ export default function CoursesSection() {
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
             <Sparkles className="w-3 h-3 mr-1" /> Our Programs
           </Badge>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4">
-            Explore Our Courses
-          </h2>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4">Explore Our Courses</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">Industry-aligned curriculum designed to give you practical, job-ready skills</p>
         </motion.div>
 
-        {/* Category tabs */}
         <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {courseCategories.map((cat) => {
+          {categories.map((cat) => {
             const Icon = categoryIcons[cat];
             return (
-              <button
-                key={cat}
-                onClick={() => setActive(cat)}
-                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  active === cat
-                    ? "gradient-primary text-primary-foreground shadow-md"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
+              <button key={cat} onClick={() => setActive(cat)}
+                className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${active === cat ? "gradient-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
                 {Icon && <Icon className="w-4 h-4" />}
                 {cat}
               </button>
@@ -55,26 +54,16 @@ export default function CoursesSection() {
           })}
         </div>
 
-        {/* Course grid */}
         <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
             {filtered.map((course) => (
-              <motion.div
-                key={course.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                className="glass rounded-2xl overflow-hidden group hover:shadow-xl transition-shadow"
-              >
+              <motion.div key={course.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.3 }}
+                className="glass rounded-2xl overflow-hidden group hover:shadow-xl transition-shadow">
                 <div className="relative h-48 overflow-hidden">
                   <img src={course.thumbnail_url} alt={course.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 left-3 flex gap-2">
                     <Badge className="bg-primary/90 text-primary-foreground text-xs">{course.category}</Badge>
-                    {course.badge_label && (
-                      <Badge className="gradient-accent text-accent-foreground text-xs border-0">{course.badge_label}</Badge>
-                    )}
+                    {course.badge_label && <Badge className="gradient-accent text-accent-foreground text-xs border-0">{course.badge_label}</Badge>}
                   </div>
                 </div>
                 <div className="p-5">
@@ -99,7 +88,6 @@ export default function CoursesSection() {
         </motion.div>
       </div>
 
-      {/* Syllabus Modal */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           {selectedCourse && (
@@ -113,7 +101,7 @@ export default function CoursesSection() {
               </div>
               <p className="text-sm text-muted-foreground mb-4">{selectedCourse.full_description}</p>
               <ol className="space-y-2">
-                {selectedCourse.syllabus.map((topic, i) => (
+                {(Array.isArray(selectedCourse.syllabus) ? selectedCourse.syllabus : []).map((topic: string, i: number) => (
                   <li key={i} className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
                     <span className="w-6 h-6 rounded-full gradient-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 font-bold">{i + 1}</span>
                     <span className="text-sm text-foreground">{topic}</span>
