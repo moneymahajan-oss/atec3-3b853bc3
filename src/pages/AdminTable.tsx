@@ -336,7 +336,16 @@ export default function AdminTable() {
                       ))}
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => { setEditItem({ ...row, syllabus: row.syllabus ? JSON.stringify(row.syllabus) : "[]" }); setIsNew(false); }}>
+                          <Button size="sm" variant="ghost" onClick={() => {
+                            const item = { ...row };
+                            config.fields.forEach(f => {
+                              if (f.type === "json" && item[f.key] !== undefined) {
+                                item[f.key] = JSON.stringify(item[f.key] ?? []);
+                              }
+                            });
+                            setEditItem(item);
+                            setIsNew(false);
+                          }}>
                             <Pencil className="w-4 h-4" />
                           </Button>
                           {config.canDelete && (
