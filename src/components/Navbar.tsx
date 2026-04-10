@@ -65,8 +65,8 @@ export default function Navbar() {
               <GraduationCap className="w-5 h-5 text-accent-foreground" />
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-heading font-bold text-lg text-foreground">E-Tech</span>
-              <span className="text-[10px] text-muted-foreground tracking-wider">AVENUE TO EXCELLENT CAREERS</span>
+              <span className="font-bold text-lg text-foreground font-sans">ATEC - Avenue To Excellent Careers</span>
+              <span className="text-[10px] text-muted-foreground tracking-wider">{"\n"}</span>
             </div>
           </a>
 
