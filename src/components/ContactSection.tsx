@@ -48,9 +48,9 @@ export default function ContactSection() {
         <div className="grid lg:grid-cols-2 gap-12">
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
             {[
-              { icon: MapPin, title: "Visit Us", text: "E-Tech Avenue, Hardo Channi Road,\nGurdaspur, Punjab, India – 143521" },
-              { icon: Phone, title: "Call Us", text: "+91 98765 43210\n+91 98765 43211" },
-              { icon: Mail, title: "Email Us", text: "info@etech.edu.in\nadmissions@etech.edu.in" },
+              { icon: MapPin, title: "Visit Us", text: "ATEC Avenue, Hardo Channi Road,\nGurdaspur, Punjab, India – 143521" },
+              { icon: Phone, title: "Call Us", text: "+91 7009933289\n+91 9815122441" },
+              { icon: Mail, title: "Email Us", text: "iinfo@atecedu.com\natecgsp@gmail.com" },
               { icon: Clock, title: "Working Hours", text: "Mon–Sat: 9:00 AM – 7:00 PM\nSunday: Closed" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4 glass rounded-xl p-5">

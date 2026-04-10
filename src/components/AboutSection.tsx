@@ -34,14 +34,14 @@ export default function AboutSection() {
               <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=400&q=80" alt="Group" className="rounded-2xl h-48 object-cover w-full mt-8" />
             </div>
             <div className="absolute -bottom-4 -right-4 glass rounded-xl p-4 shadow-xl">
-              <div className="text-2xl font-heading font-bold text-accent">12+</div>
+              <div className="text-2xl font-heading font-bold text-accent">25+</div>
               <div className="text-xs text-muted-foreground">Years of Excellence</div>
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
             <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> About Us</Badge>
             <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">Avenue to Excellent Careers</h2>
-            <p className="text-muted-foreground mb-6 leading-relaxed">Founded in 2013, E-Tech has been Gurdaspur's premier computer education institute, empowering over 5,000 students with industry-ready skills. We blend cutting-edge technology with practical, hands-on training to prepare students for the careers of tomorrow.</p>
+            <p className="text-muted-foreground mb-6 leading-relaxed">Founded in 2000, ATEC has been Gurdaspur's premier computer education institute, empowering over 20,000+ students with industry-ready skills. We blend cutting-edge technology with practical, hands-on training to prepare students for the careers of tomorrow.</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="glass rounded-xl p-4">
                 <div className="font-heading font-bold text-foreground">Our Mission</div>
@@ -56,7 +56,7 @@ export default function AboutSection() {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-20">
-          <h3 className="text-2xl md:text-3xl font-heading font-bold text-foreground text-center mb-10">Why Choose E-Tech?</h3>
+          <h3 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-10 font-sans">Why Choose ATEC?</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {highlights.map((h, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
