@@ -37,7 +37,7 @@ export default function CoursesSection() {
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
             <Sparkles className="w-3 h-3 mr-1" /> Our Programs
           </Badge>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-foreground mb-4">Explore Our Courses</h2>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-sans">Explore Our Courses</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">Industry-aligned curriculum designed to give you practical, job-ready skills</p>
         </motion.div>
 
