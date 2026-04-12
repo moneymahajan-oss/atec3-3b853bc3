@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, MapPin, Phone, Mail, Clock, Send, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
