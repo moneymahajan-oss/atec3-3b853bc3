@@ -15,18 +15,20 @@ export default function ContactSection() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mapUrl, setMapUrl] = useState("https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1");
+  const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const fetchMapUrl = async () => {
+    const fetchSettings = async () => {
       const { data } = await supabase
         .from("site_settings")
-        .select("value")
-        .eq("key", "google_maps_embed_url")
-        .maybeSingle();
-      if (data?.value) setMapUrl(data.value);
+        .select("key, value");
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((row) => { if (row.value) map[row.key] = row.value; });
+        setSettings(map);
+      }
     };
-    fetchMapUrl();
+    fetchSettings();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -61,10 +63,10 @@ export default function ContactSection() {
         <div className="grid lg:grid-cols-2 gap-12">
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6">
             {[
-              { icon: MapPin, title: "Visit Us", text: "ATEC Avenue, Hardo Channi Road,\nGurdaspur, Punjab, India – 143521" },
-              { icon: Phone, title: "Call Us", text: "+91 7009933289\n+91 9815122441" },
-              { icon: Mail, title: "Email Us", text: "iinfo@atecedu.com\natecgsp@gmail.com" },
-              { icon: Clock, title: "Working Hours", text: "Mon–Sat: 9:00 AM – 7:00 PM\nSunday: Closed" },
+              { icon: MapPin, title: "Visit Us", text: settings.address || "ATEC Avenue, Hardo Channi Road,\nGurdaspur, Punjab, India – 143521" },
+              { icon: Phone, title: "Call Us", text: [settings.phone_primary, settings.phone_secondary].filter(Boolean).join("\n") || "+91 7009933289\n+91 9815122441" },
+              { icon: Mail, title: "Email Us", text: [settings.email_primary, settings.email_secondary].filter(Boolean).join("\n") || "atecgsp@gmail.com" },
+              { icon: Clock, title: "Working Hours", text: settings.working_hours || "Mon–Sat: 9:00 AM – 7:00 PM\nSunday: Closed" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4 glass rounded-xl p-5">
                 <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
@@ -77,7 +79,7 @@ export default function ContactSection() {
               </div>
             ))}
             <div className="rounded-2xl overflow-hidden h-48 glass">
-              <iframe src={mapUrl} className="w-full h-full border-0" loading="lazy" allowFullScreen />
+              <iframe src={settings.google_maps_embed_url || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1"} className="w-full h-full border-0" loading="lazy" allowFullScreen />
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
