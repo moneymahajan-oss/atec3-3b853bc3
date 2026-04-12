@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, MapPin, Phone, Mail, Clock, Send, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,19 @@ export default function ContactSection() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mapUrl, setMapUrl] = useState("https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1");
+
+  useEffect(() => {
+    const fetchMapUrl = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "google_maps_embed_url")
+        .maybeSingle();
+      if (data?.value) setMapUrl(data.value);
+    };
+    fetchMapUrl();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,7 +77,7 @@ export default function ContactSection() {
               </div>
             ))}
             <div className="rounded-2xl overflow-hidden h-48 glass">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1" className="w-full h-full border-0" loading="lazy" allowFullScreen />
+              <iframe src={mapUrl} className="w-full h-full border-0" loading="lazy" allowFullScreen />
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
