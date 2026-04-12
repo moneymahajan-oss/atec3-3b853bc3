@@ -15,6 +15,19 @@ export default function ContactSection() {
   const { toast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mapUrl, setMapUrl] = useState("https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3380.0!2d75.4!3d32.04!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sGurdaspur!5e0!3m2!1sen!2sin!4v1");
+
+  useEffect(() => {
+    const fetchMapUrl = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "google_maps_embed_url")
+        .maybeSingle();
+      if (data?.value) setMapUrl(data.value);
+    };
+    fetchMapUrl();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
