@@ -25,7 +25,7 @@ export default function HeroSection() {
   const slide = slides[current];
 
   return (
-    <section id="home" className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden">
+    <section id="home" className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-gray-900">
       <AnimatePresence mode="wait">
         <motion.div key={slide.id} initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }} className="absolute inset-0">
           <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
