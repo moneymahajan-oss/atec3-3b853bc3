@@ -26,7 +26,7 @@ export default function HeroSection() {
 
   return (
     <section id="home" className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-gray-900">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
         <motion.div key={slide.id} initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }} className="absolute inset-0">
           <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/30" />
