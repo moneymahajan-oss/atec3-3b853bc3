@@ -113,20 +113,23 @@ export default function AdminDashboard() {
 
         <h2 className="font-heading font-bold text-xl text-foreground mb-4">Manage Sections</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {sections.map((s) => (
-            <Link
-              key={s.key}
-              to={`/admin/${s.key}`}
-              className="glass rounded-xl p-5 hover:shadow-lg transition-all group"
-            >
-              <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                <s.icon className="w-5 h-5 text-white" />
-              </div>
-              <div className="font-heading font-semibold text-foreground">{s.label}</div>
-              <div className="text-sm text-muted-foreground">{counts[s.key] ?? "..."} items</div>
-              <Pencil className="w-4 h-4 text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-          ))}
+          {sections.map((s) => {
+            const isCustom = (s as any).custom;
+            return (
+              <Link
+                key={s.key}
+                to={isCustom ? `/admin/site-content` : `/admin/${s.key}`}
+                className="glass rounded-xl p-5 hover:shadow-lg transition-all group"
+              >
+                <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                  <s.icon className="w-5 h-5 text-white" />
+                </div>
+                <div className="font-heading font-semibold text-foreground">{s.label}</div>
+                <div className="text-sm text-muted-foreground">{isCustom ? "Edit text content" : `${counts[s.key] ?? "..."} items`}</div>
+                <Pencil className="w-4 h-4 text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
