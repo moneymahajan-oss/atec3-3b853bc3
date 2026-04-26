@@ -48,7 +48,7 @@ export default function AIUseCasesSection() {
   );
 
   return (
-    <section id="ai-careers" className="py-12 bg-[#f0f4ff]">
+    <section id="ai-careers" className="py-12 bg-white">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
