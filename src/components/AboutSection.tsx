@@ -56,7 +56,7 @@ export default function AboutSection() {
 
         {/* 4 YouTube videos */}
         {aboutVideos.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             {aboutVideos.map((v, i) => {
               const id = getYouTubeId(v.video_id || v.youtube_url || "");
               return (
