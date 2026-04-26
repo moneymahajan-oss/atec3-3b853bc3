@@ -45,8 +45,12 @@ export default function MockTestSection() {
       .eq("is_active", true)
       .then(({ data }) => {
         if (data) {
-          setTests(data as Test[]);
-          if (data.length > 0) setSelectedCourse((data[0] as Test).course);
+          const parsed = (data as any[]).map((t) => ({
+            ...t,
+            questions: Array.isArray(t.questions) ? t.questions : [],
+          })) as Test[];
+          setTests(parsed);
+          if (parsed.length > 0) setSelectedCourse(parsed[0].course);
         }
       });
   }, []);
