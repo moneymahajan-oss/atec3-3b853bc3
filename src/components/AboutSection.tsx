@@ -42,9 +42,9 @@ export default function AboutSection() {
   }, []);
 
   return (
-    <section id="about" className="py-20 bg-muted/30">
+    <section id="about" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> About Us</Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
             {settings.about_section_heading || "About ATEC"}
@@ -91,7 +91,7 @@ export default function AboutSection() {
           </div>
         )}
 
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-20">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-12">
           <h3 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-10 font-sans">Why Choose ATEC?</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {highlights.map((h, i) => (

@@ -19,9 +19,9 @@ export default function DownloadsSection() {
   if (downloads.length === 0) return null;
 
   return (
-    <section id="downloads" className="py-20 bg-muted/30">
+    <section id="downloads" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> Resources</Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">Downloads</h2>
         </motion.div>
