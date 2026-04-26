@@ -71,18 +71,15 @@ export default function MockTestSection() {
   const courseTests = tests.filter((t) => t.course === selectedCourse);
 
   const startRegister = (course?: string) => {
-    if (course) setSelectedCourse(course);
     const target = course || selectedCourse;
-    const tests = target ? this_filter(tests_state(), target) : courseTests;
-    if (tests.length === 0) {
+    if (course) setSelectedCourse(course);
+    const targetTests = tests.filter((t) => t.course === target);
+    if (targetTests.length === 0) {
       toast({ title: "No tests available", description: "Tests for this course are coming soon." });
       return;
     }
     setStage("register");
   };
-  // helpers below referenced names — keep simple inline alternative
-  function tests_state() { return tests; }
-  function this_filter(all: Test[], course: string) { return all.filter((t) => t.course === course); }
 
   const startTest = () => {
     if (!studentName || !whatsappNo) {
