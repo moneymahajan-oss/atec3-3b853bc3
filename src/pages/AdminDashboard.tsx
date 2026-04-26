@@ -10,18 +10,25 @@ import {
 } from "lucide-react";
 
 const sections = [
+  { key: "site_content", label: "Site Content", icon: Settings, color: "bg-slate-700", custom: true },
   { key: "hero_slides", label: "Hero Slides", icon: Sliders, color: "bg-blue-500" },
+  { key: "offer_belt", label: "Offer Belt", icon: Megaphone, color: "bg-amber-500" },
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
   { key: "gallery_items", label: "Gallery", icon: Image, color: "bg-green-500" },
   { key: "testimonials", label: "Testimonials", icon: MessageSquare, color: "bg-purple-500" },
+  { key: "youtube_videos", label: "Videos (About/Testimonial)", icon: Video, color: "bg-red-500" },
+  { key: "ai_use_cases", label: "AI Use Cases", icon: TrendingUp, color: "bg-fuchsia-500" },
+  { key: "mock_tests", label: "Mock Tests", icon: BookOpen, color: "bg-teal-500" },
+  { key: "mock_test_results", label: "Test Results", icon: BarChart3, color: "bg-cyan-500" },
+  { key: "whatsapp_templates", label: "WhatsApp Templates", icon: MessageSquare, color: "bg-green-600" },
+  { key: "leads", label: "Leads", icon: Mail, color: "bg-emerald-500" },
   { key: "team_members", label: "Team", icon: Users, color: "bg-pink-500" },
-  { key: "stats", label: "Stats", icon: BarChart3, color: "bg-cyan-500" },
-  { key: "youtube_videos", label: "Videos", icon: Video, color: "bg-red-500" },
+  { key: "stats", label: "Stats", icon: BarChart3, color: "bg-cyan-600" },
   { key: "announcements", label: "Announcements", icon: Megaphone, color: "bg-yellow-500" },
   { key: "downloads", label: "Downloads", icon: Download, color: "bg-indigo-500" },
-  { key: "contact_submissions", label: "Inquiries", icon: Mail, color: "bg-emerald-500" },
-  { key: "site_settings", label: "Settings", icon: Settings, color: "bg-slate-500" },
-];
+  { key: "contact_submissions", label: "Old Inquiries", icon: Mail, color: "bg-emerald-700" },
+  { key: "site_settings", label: "Settings (raw)", icon: Settings, color: "bg-slate-500" },
+] as const;
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading, signOut } = useAuth();
