@@ -13,10 +13,12 @@ import VideosSection from "@/components/VideosSection";
 import DownloadsSection from "@/components/DownloadsSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
+import { SEO } from "@/components/SEO";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEO />
       <OfferBelt />
       <Navbar />
       <HeroSection />

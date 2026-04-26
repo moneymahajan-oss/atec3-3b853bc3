@@ -10,18 +10,25 @@ import {
 } from "lucide-react";
 
 const sections = [
+  { key: "site_content", label: "Site Content", icon: Settings, color: "bg-slate-700", custom: true },
   { key: "hero_slides", label: "Hero Slides", icon: Sliders, color: "bg-blue-500" },
+  { key: "offer_belt", label: "Offer Belt", icon: Megaphone, color: "bg-amber-500" },
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
   { key: "gallery_items", label: "Gallery", icon: Image, color: "bg-green-500" },
   { key: "testimonials", label: "Testimonials", icon: MessageSquare, color: "bg-purple-500" },
+  { key: "youtube_videos", label: "Videos (About/Testimonial)", icon: Video, color: "bg-red-500" },
+  { key: "ai_use_cases", label: "AI Use Cases", icon: TrendingUp, color: "bg-fuchsia-500" },
+  { key: "mock_tests", label: "Mock Tests", icon: BookOpen, color: "bg-teal-500" },
+  { key: "mock_test_results", label: "Test Results", icon: BarChart3, color: "bg-cyan-500" },
+  { key: "whatsapp_templates", label: "WhatsApp Templates", icon: MessageSquare, color: "bg-green-600" },
+  { key: "leads", label: "Leads", icon: Mail, color: "bg-emerald-500" },
   { key: "team_members", label: "Team", icon: Users, color: "bg-pink-500" },
-  { key: "stats", label: "Stats", icon: BarChart3, color: "bg-cyan-500" },
-  { key: "youtube_videos", label: "Videos", icon: Video, color: "bg-red-500" },
+  { key: "stats", label: "Stats", icon: BarChart3, color: "bg-cyan-600" },
   { key: "announcements", label: "Announcements", icon: Megaphone, color: "bg-yellow-500" },
   { key: "downloads", label: "Downloads", icon: Download, color: "bg-indigo-500" },
-  { key: "contact_submissions", label: "Inquiries", icon: Mail, color: "bg-emerald-500" },
-  { key: "site_settings", label: "Settings", icon: Settings, color: "bg-slate-500" },
-];
+  { key: "contact_submissions", label: "Old Inquiries", icon: Mail, color: "bg-emerald-700" },
+  { key: "site_settings", label: "Settings (raw)", icon: Settings, color: "bg-slate-500" },
+] as const;
 
 export default function AdminDashboard() {
   const { user, isAdmin, loading, signOut } = useAuth();
@@ -40,6 +47,7 @@ export default function AdminDashboard() {
     const fetchCounts = async () => {
       const results: Record<string, number> = {};
       for (const s of sections) {
+        if ((s as any).custom) continue;
         const { count } = await supabase.from(s.key as any).select("*", { count: "exact", head: true });
         results[s.key] = count || 0;
       }
@@ -105,20 +113,23 @@ export default function AdminDashboard() {
 
         <h2 className="font-heading font-bold text-xl text-foreground mb-4">Manage Sections</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {sections.map((s) => (
-            <Link
-              key={s.key}
-              to={`/admin/${s.key}`}
-              className="glass rounded-xl p-5 hover:shadow-lg transition-all group"
-            >
-              <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-                <s.icon className="w-5 h-5 text-white" />
-              </div>
-              <div className="font-heading font-semibold text-foreground">{s.label}</div>
-              <div className="text-sm text-muted-foreground">{counts[s.key] ?? "..."} items</div>
-              <Pencil className="w-4 h-4 text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Link>
-          ))}
+          {sections.map((s) => {
+            const isCustom = (s as any).custom;
+            return (
+              <Link
+                key={s.key}
+                to={isCustom ? `/admin/site-content` : `/admin/${s.key}`}
+                className="glass rounded-xl p-5 hover:shadow-lg transition-all group"
+              >
+                <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                  <s.icon className="w-5 h-5 text-white" />
+                </div>
+                <div className="font-heading font-semibold text-foreground">{s.label}</div>
+                <div className="text-sm text-muted-foreground">{isCustom ? "Edit text content" : `${counts[s.key] ?? "..."} items`}</div>
+                <Pencil className="w-4 h-4 text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
