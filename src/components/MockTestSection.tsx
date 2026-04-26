@@ -138,7 +138,7 @@ export default function MockTestSection() {
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
-    <section id="mock-test" className="py-12 bg-[#f0f4ff] border-y border-primary/10">
+    <section id="mock-test" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
