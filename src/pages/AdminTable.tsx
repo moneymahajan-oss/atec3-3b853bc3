@@ -112,6 +112,7 @@ const tableConfig: Record<string, {
       { key: "video_id", label: "YouTube Video ID", type: "text", required: true },
       { key: "title", label: "Title", type: "text", required: true },
       { key: "description", label: "Description", type: "textarea" },
+      { key: "section", label: "Section", type: "select", options: ["about", "testimonial", "general"] },
       { key: "thumbnail_url", label: "Thumbnail URL", type: "text" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "display_order", label: "Order", type: "number" },
