@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Clock, CheckCircle2, XCircle, MessageCircle } from "lucide-react";
+import { Sparkles, Clock, CheckCircle2, XCircle, MessageCircle, BookOpen, Trophy, Zap, Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,8 +70,11 @@ export default function MockTestSection() {
   const courses = Array.from(new Set(tests.map((t) => t.course)));
   const courseTests = tests.filter((t) => t.course === selectedCourse);
 
-  const startRegister = () => {
-    if (courseTests.length === 0) {
+  const startRegister = (course?: string) => {
+    const target = course || selectedCourse;
+    if (course) setSelectedCourse(course);
+    const targetTests = tests.filter((t) => t.course === target);
+    if (targetTests.length === 0) {
       toast({ title: "No tests available", description: "Tests for this course are coming soon." });
       return;
     }
@@ -135,65 +138,94 @@ export default function MockTestSection() {
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
-    <section id="mock-test" className="py-20 bg-muted/30">
+    <section id="mock-test" className="py-12 bg-[#f0f4ff] border-y border-primary/10">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
-          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
-            <Sparkles className="w-3 h-3 mr-1" /> Mock Test
+          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/10">
+            <Trophy className="w-3 h-3 mr-1" /> Free Mock Tests
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-5xl font-heading font-bold text-foreground mb-3">
             {settings.mocktest_section_heading || "Test Your Knowledge"}
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            {settings.mocktest_section_subheading || "Take a free mock test and see where you stand"}
+          <p className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg">
+            {settings.mocktest_section_subheading || "Pick a course, take a 30-minute test, and get your result instantly on WhatsApp."}
           </p>
         </motion.div>
 
-        <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8">
-          {stage === "intro" && (
-            <div>
-              {courses.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Mock tests will be added soon. Stay tuned!
-                </p>
-              ) : (
-                <>
-                  <div className="flex flex-wrap gap-2 justify-center mb-6">
-                    {courses.map((c) => (
-                      <button
+        {stage === "intro" && (
+          <div className="max-w-5xl mx-auto">
+            {courses.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                Mock tests will be added soon. Stay tuned!
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {(() => {
+                  const cards = courses.map((c) => {
+                    const test = tests.find((t) => t.course === c);
+                    const qCount = test?.questions.length || 0;
+                    const difficulty = qCount >= 20 ? "Hard" : qCount >= 10 ? "Medium" : "Easy";
+                    const diffColor = difficulty === "Hard" ? "bg-destructive/10 text-destructive border-destructive/30" : difficulty === "Medium" ? "bg-accent/10 text-accent border-accent/30" : "bg-green-100 text-green-700 border-green-300";
+                    const icons = [BookOpen, Brain, Zap, Trophy];
+                    const Icon = icons[Math.abs(c.charCodeAt(0)) % icons.length];
+                    return { c, qCount, difficulty, diffColor, Icon };
+                  });
+                  // ensure even count
+                  const padded = cards.length % 2 === 1 ? [...cards, null] : cards;
+                  return padded.map((card, idx) => {
+                    if (!card) {
+                      return (
+                        <div key={`pad-${idx}`} className="rounded-2xl border-2 border-dashed border-primary/20 p-6 flex flex-col items-center justify-center text-center text-muted-foreground bg-white/50">
+                          <Sparkles className="w-8 h-8 mb-2 opacity-50" />
+                          <p className="text-sm font-medium">More tests coming soon</p>
+                        </div>
+                      );
+                    }
+                    const { c, qCount, difficulty, diffColor, Icon } = card;
+                    return (
+                      <motion.div
                         key={c}
-                        onClick={() => setSelectedCourse(c)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                          selectedCourse === c
-                            ? "gradient-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
-                        }`}
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="rounded-2xl bg-white border border-primary/10 p-6 hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col"
                       >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-center">
-                    <p className="text-muted-foreground mb-4">
-                      ⏱ 30 minutes • {courseTests[0]?.questions.length || 0} questions • 60% to pass
-                    </p>
-                    <Button
-                      size="lg"
-                      onClick={startRegister}
-                      className="gradient-accent text-accent-foreground border-0"
-                    >
-                      Start Free Test
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
+                            <Icon className="w-6 h-6 text-primary-foreground" />
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${diffColor}`}>{difficulty}</span>
+                        </div>
+                        <h3 className="font-heading font-bold text-lg text-foreground mb-1">{c}</h3>
+                        <p className="text-sm text-muted-foreground mb-4 flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{qCount} questions</span>
+                          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />30 min</span>
+                        </p>
+                        <Button
+                          size="sm"
+                          onClick={() => startRegister(c)}
+                          className="mt-auto w-full gradient-accent text-accent-foreground border-0 font-semibold"
+                        >
+                          Start Test
+                        </Button>
+                      </motion.div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {stage !== "intro" && (
+        <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white">
+          {false && null}
 
           {stage === "register" && (
             <div className="space-y-4 max-w-md mx-auto">
@@ -322,6 +354,7 @@ export default function MockTestSection() {
             </div>
           )}
         </div>
+        )}
       </div>
     </section>
   );

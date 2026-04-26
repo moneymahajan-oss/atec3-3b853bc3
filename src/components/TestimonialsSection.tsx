@@ -27,9 +27,9 @@ export default function TestimonialsSection() {
   const textTestimonials = testimonials.filter((t) => !getYouTubeId(t.youtube_url));
 
   return (
-    <section id="testimonials" className="py-20 bg-muted/30">
+    <section id="testimonials" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> Testimonials</Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
             {settings.testimonials_section_heading || "What Our Students Say"}

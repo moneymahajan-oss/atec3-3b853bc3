@@ -81,9 +81,9 @@ export default function CoursesSection() {
   };
 
   return (
-    <section id="courses" className="py-20 bg-background">
+    <section id="courses" className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
             <Sparkles className="w-3 h-3 mr-1" /> Our Programs
           </Badge>
