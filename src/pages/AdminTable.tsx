@@ -14,7 +14,7 @@ import {
   LogOut, Eye, ChevronDown, ChevronUp, Search
 } from "lucide-react";
 
-type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "downloads" | "contact_submissions" | "site_settings";
+type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "downloads" | "contact_submissions" | "site_settings" | "offer_belt" | "ai_use_cases" | "whatsapp_templates" | "mock_tests" | "mock_test_results" | "leads";
 
 const tableConfig: Record<string, {
   label: string;
