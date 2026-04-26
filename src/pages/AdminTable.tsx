@@ -154,11 +154,77 @@ const tableConfig: Record<string, {
     ],
   },
   site_settings: {
-    label: "Site Settings",
+    label: "Site Settings (raw)",
     canCreate: true, canDelete: true,
     fields: [
       { key: "key", label: "Key", type: "text", required: true },
       { key: "value", label: "Value", type: "textarea" },
+    ],
+  },
+  offer_belt: {
+    label: "Offer Belt",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "message", label: "Message", type: "text", required: true },
+      { key: "bg_color", label: "Background Color (hex)", type: "text" },
+      { key: "is_active", label: "Active", type: "boolean" },
+      { key: "sort_order", label: "Order", type: "number" },
+    ],
+  },
+  ai_use_cases: {
+    label: "AI Use Cases",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "title", label: "Title", type: "text", required: true },
+      { key: "description", label: "Description", type: "textarea" },
+      { key: "earning_potential", label: "Earning Potential", type: "text" },
+      { key: "icon", label: "Icon (emoji or lucide name)", type: "text" },
+      { key: "is_active", label: "Active", type: "boolean" },
+      { key: "sort_order", label: "Order", type: "number" },
+    ],
+  },
+  whatsapp_templates: {
+    label: "WhatsApp Templates",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "template_key", label: "Template Key", type: "text", required: true },
+      { key: "message_body", label: "Message (vars: {course_name} {student_name} {phone} {syllabus_pdf_url} {brochure_pdf_url} {score} {total} {percentage} {pass_fail} {message})", type: "textarea", required: true },
+      { key: "is_active", label: "Active", type: "boolean" },
+    ],
+  },
+  mock_tests: {
+    label: "Mock Tests",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "course", label: "Course", type: "text", required: true },
+      { key: "title", label: "Title", type: "text", required: true },
+      { key: "questions", label: "Questions JSON: [{question, options:[a,b,c,d], correct:0}]", type: "json" },
+      { key: "is_active", label: "Active", type: "boolean" },
+    ],
+  },
+  mock_test_results: {
+    label: "Mock Test Results",
+    canCreate: false, canDelete: true,
+    fields: [
+      { key: "student_name", label: "Student Name", type: "text" },
+      { key: "whatsapp_no", label: "WhatsApp No", type: "text" },
+      { key: "course", label: "Course", type: "text" },
+      { key: "score", label: "Score", type: "number" },
+      { key: "total", label: "Total", type: "number" },
+    ],
+  },
+  leads: {
+    label: "Leads / Inquiries",
+    canCreate: false, canDelete: true,
+    fields: [
+      { key: "student_name", label: "Name", type: "text" },
+      { key: "phone", label: "Phone", type: "text" },
+      { key: "email", label: "Email", type: "text" },
+      { key: "course_name", label: "Course", type: "text" },
+      { key: "source", label: "Source", type: "text" },
+      { key: "message", label: "Message", type: "textarea" },
+      { key: "is_read", label: "Read", type: "boolean" },
     ],
   },
 };
