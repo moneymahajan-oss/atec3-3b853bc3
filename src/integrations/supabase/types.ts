@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_use_cases: {
+        Row: {
+          created_at: string
+          description: string | null
+          earning_potential: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          sort_order: number | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          earning_potential?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          earning_potential?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string | null
@@ -101,6 +134,7 @@ export type Database = {
       courses: {
         Row: {
           badge_label: string | null
+          brochure_pdf_url: string | null
           category: string
           created_at: string
           display_order: number | null
@@ -113,11 +147,14 @@ export type Database = {
           name: string
           short_description: string | null
           syllabus: Json | null
+          syllabus_pdf_url: string | null
           thumbnail_url: string | null
           updated_at: string
+          whatsapp_template_key: string | null
         }
         Insert: {
           badge_label?: string | null
+          brochure_pdf_url?: string | null
           category: string
           created_at?: string
           display_order?: number | null
@@ -130,11 +167,14 @@ export type Database = {
           name: string
           short_description?: string | null
           syllabus?: Json | null
+          syllabus_pdf_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          whatsapp_template_key?: string | null
         }
         Update: {
           badge_label?: string | null
+          brochure_pdf_url?: string | null
           category?: string
           created_at?: string
           display_order?: number | null
@@ -147,8 +187,10 @@ export type Database = {
           name?: string
           short_description?: string | null
           syllabus?: Json | null
+          syllabus_pdf_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          whatsapp_template_key?: string | null
         }
         Relationships: []
       }
@@ -260,6 +302,129 @@ export type Database = {
         }
         Relationships: []
       }
+      leads: {
+        Row: {
+          course_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_read: boolean | null
+          message: string | null
+          phone: string | null
+          source: string
+          student_name: string | null
+        }
+        Insert: {
+          course_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          phone?: string | null
+          source?: string
+          student_name?: string | null
+        }
+        Update: {
+          course_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string | null
+          phone?: string | null
+          source?: string
+          student_name?: string | null
+        }
+        Relationships: []
+      }
+      mock_test_results: {
+        Row: {
+          answers: Json | null
+          course: string
+          id: string
+          score: number | null
+          student_name: string
+          taken_at: string
+          total: number | null
+          whatsapp_no: string
+        }
+        Insert: {
+          answers?: Json | null
+          course: string
+          id?: string
+          score?: number | null
+          student_name: string
+          taken_at?: string
+          total?: number | null
+          whatsapp_no: string
+        }
+        Update: {
+          answers?: Json | null
+          course?: string
+          id?: string
+          score?: number | null
+          student_name?: string
+          taken_at?: string
+          total?: number | null
+          whatsapp_no?: string
+        }
+        Relationships: []
+      }
+      mock_tests: {
+        Row: {
+          course: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          questions: Json
+          title: string
+        }
+        Insert: {
+          course: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          questions?: Json
+          title: string
+        }
+        Update: {
+          course?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          questions?: Json
+          title?: string
+        }
+        Relationships: []
+      }
+      offer_belt: {
+        Row: {
+          bg_color: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          message: string
+          sort_order: number | null
+        }
+        Insert: {
+          bg_color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message: string
+          sort_order?: number | null
+        }
+        Update: {
+          bg_color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       site_settings: {
         Row: {
           id: string
@@ -353,6 +518,7 @@ export type Database = {
           rating: number | null
           review_text: string | null
           student_name: string
+          youtube_url: string | null
         }
         Insert: {
           batch_year?: string | null
@@ -365,6 +531,7 @@ export type Database = {
           rating?: number | null
           review_text?: string | null
           student_name: string
+          youtube_url?: string | null
         }
         Update: {
           batch_year?: string | null
@@ -377,6 +544,37 @@ export type Database = {
           rating?: number | null
           review_text?: string | null
           student_name?: string
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_templates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          message_body: string
+          name: string
+          template_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message_body: string
+          name: string
+          template_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message_body?: string
+          name?: string
+          template_key?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -387,6 +585,7 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          section: string | null
           thumbnail_url: string | null
           title: string
           video_id: string
@@ -397,6 +596,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          section?: string | null
           thumbnail_url?: string | null
           title: string
           video_id: string
@@ -407,6 +607,7 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          section?: string | null
           thumbnail_url?: string | null
           title?: string
           video_id?: string
