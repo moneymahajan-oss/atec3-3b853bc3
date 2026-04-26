@@ -47,6 +47,7 @@ export default function AdminDashboard() {
     const fetchCounts = async () => {
       const results: Record<string, number> = {};
       for (const s of sections) {
+        if ((s as any).custom) continue;
         const { count } = await supabase.from(s.key as any).select("*", { count: "exact", head: true });
         results[s.key] = count || 0;
       }
