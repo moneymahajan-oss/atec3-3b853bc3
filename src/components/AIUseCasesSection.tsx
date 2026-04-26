@@ -15,6 +15,15 @@ interface UseCase {
   icon: string;
 }
 
+const IMAGES: Record<string, string> = {
+  "AI Content Creator": "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=600&h=400&fit=crop",
+  "AI Video Editor": "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=600&h=400&fit=crop",
+  "AI Data Analyst": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
+  "AI Chatbot Builder": "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?w=600&h=400&fit=crop",
+  "Prompt Engineer": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&h=400&fit=crop",
+  "AI Tutor / Trainer": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=600&h=400&fit=crop",
+};
+
 export default function AIUseCasesSection() {
   const [items, setItems] = useState<UseCase[]>([]);
   const settings = useSiteSettings();
@@ -39,13 +48,13 @@ export default function AIUseCasesSection() {
   );
 
   return (
-    <section id="ai-careers" className="py-20 bg-background">
+    <section id="ai-careers" className="py-12 bg-background">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-10"
         >
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
             <Sparkles className="w-3 h-3 mr-1" /> AI Careers
@@ -58,7 +67,7 @@ export default function AIUseCasesSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {items.map((uc, i) => (
             <motion.div
               key={uc.id}
@@ -66,14 +75,25 @@ export default function AIUseCasesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="glass rounded-2xl p-6 hover:shadow-xl transition-all hover:-translate-y-1"
+              className="glass rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1"
             >
-              <div className="text-4xl mb-3">{uc.icon}</div>
-              <h3 className="font-heading font-bold text-lg text-foreground mb-2">{uc.title}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{uc.description}</p>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
-                <IndianRupee className="w-3 h-3" />
-                {uc.earning_potential}
+              <div className="relative h-40 overflow-hidden">
+                <img
+                  src={IMAGES[uc.title] || "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop"}
+                  alt={uc.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-2 right-2 text-2xl bg-white/90 rounded-full w-9 h-9 flex items-center justify-center shadow">
+                  {uc.icon}
+                </div>
+              </div>
+              <div className="p-5">
+                <h3 className="font-heading font-bold text-lg text-foreground mb-2">{uc.title}</h3>
+                <p className="text-sm text-muted-foreground mb-3">{uc.description}</p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
+                  <IndianRupee className="w-3 h-3" />
+                  {uc.earning_potential}
+                </div>
               </div>
             </motion.div>
           ))}
