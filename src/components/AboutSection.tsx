@@ -57,9 +57,9 @@ export default function AboutSection() {
           </p>
         </motion.div>
 
-        {/* 4 YouTube videos */}
+        {/* YouTube videos - compact gallery-style grid */}
         {aboutVideos.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
             {aboutVideos.map((v, i) => {
               const id = getYouTubeId(v.video_id || v.youtube_url || "");
               return (
@@ -69,23 +69,32 @@ export default function AboutSection() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08 }}
-                  className="glass rounded-2xl overflow-hidden"
+                  className="relative rounded-2xl overflow-hidden aspect-square bg-black"
                 >
-                  <div className="aspect-video bg-black">
-                    {id && (
-                      <iframe
-                        src={`https://www.youtube.com/embed/${id}`}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={v.title}
-                      />
-                    )}
-                  </div>
+                  {id && (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${id}`}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={v.title}
+                    />
+                  )}
                   {v.title && (
-                    <div className="p-4">
-                      <div className="font-heading font-semibold text-foreground">{v.title}</div>
-                      {v.description && <p className="text-sm text-muted-foreground mt-1">{v.description}</p>}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                      <div
+                        className="absolute bg-black/70 text-white font-bold text-xs px-8 py-1.5 shadow-lg whitespace-nowrap"
+                        style={{
+                          bottom: "20%",
+                          left: "-25%",
+                          transform: "rotate(-20deg)",
+                          transformOrigin: "center",
+                          width: "150%",
+                          textAlign: "center",
+                        }}
+                      >
+                        {v.title}
+                      </div>
                     </div>
                   )}
                 </motion.div>
