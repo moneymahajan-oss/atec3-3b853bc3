@@ -14,9 +14,12 @@ const highlights = [
   { icon: ShieldCheck, title: "Certified Courses", desc: "Industry-recognized certifications included" },
 ];
 
-function getYouTubeId(url: string): string | null {
-  if (!url) return null;
-  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([^&\?\/]+)/);
+function getYouTubeId(input: string): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  // If it's already a bare YouTube ID (no slashes, no spaces, ~11 chars)
+  if (/^[A-Za-z0-9_-]{6,15}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
   return match ? match[1] : null;
 }
 
