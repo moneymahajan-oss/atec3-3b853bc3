@@ -530,6 +530,95 @@ export type Database = {
           },
         ]
       }
+      crm_expense_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          display_order: number
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
+      crm_expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          category_name_snapshot: string | null
+          created_at: string
+          description: string
+          id: string
+          mode: Database["public"]["Enums"]["crm_payment_mode"]
+          notes: string | null
+          receipt_url: string | null
+          recorded_by: string | null
+          recorded_by_name: string | null
+          reference: string | null
+          spent_on: string
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          category_name_snapshot?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          mode?: Database["public"]["Enums"]["crm_payment_mode"]
+          notes?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          recorded_by_name?: string | null
+          reference?: string | null
+          spent_on?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          category_name_snapshot?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          mode?: Database["public"]["Enums"]["crm_payment_mode"]
+          notes?: string | null
+          receipt_url?: string | null
+          recorded_by?: string | null
+          recorded_by_name?: string | null
+          reference?: string | null
+          spent_on?: string
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_fee_plans: {
         Row: {
           amount: number

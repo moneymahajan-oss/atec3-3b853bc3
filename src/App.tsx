@@ -28,6 +28,9 @@ import CrmBatches from "./crm/pages/CrmBatches.tsx";
 import CrmFees from "./crm/pages/CrmFees.tsx";
 import CrmStudentFees from "./crm/pages/CrmStudentFees.tsx";
 import CrmAttendance from "./crm/pages/CrmAttendance.tsx";
+import CrmExpenses from "./crm/pages/CrmExpenses.tsx";
+import CrmReports from "./crm/pages/CrmReports.tsx";
+import CrmImportExport from "./crm/pages/CrmImportExport.tsx";
 
 const queryClient = new QueryClient();
 
@@ -64,9 +67,9 @@ const App = () => (
                   <Route path="batches" element={<CrmBatches />} />
                   <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmStub title="Certificates" />} />
-                  <Route path="expenses" element={<CrmStub title="Expenses" />} />
-                  <Route path="reports" element={<CrmStub title="Reports" />} />
-                  <Route path="import-export" element={<CrmStub title="Import / Export" />} />
+                  <Route path="expenses" element={<CrmExpenses />} />
+                  <Route path="reports" element={<CrmReports />} />
+                  <Route path="import-export" element={<CrmImportExport />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

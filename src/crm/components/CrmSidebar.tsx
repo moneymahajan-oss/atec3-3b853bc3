@@ -31,13 +31,13 @@ const ops: NavItem[] = [
   { title: "Batches", url: "/crm/batches", icon: CalendarDays },
   { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck },
   { title: "Certificates", url: "/crm/certificates", icon: Award, badge: "Soon" },
-  { title: "Expenses", url: "/crm/expenses", icon: Receipt, badge: "Soon", adminOnly: true },
+  { title: "Expenses", url: "/crm/expenses", icon: Receipt, adminOnly: true },
 ];
 
 const tools: NavItem[] = [
   { title: "WhatsApp Templates", url: "/crm/whatsapp", icon: MessageSquare },
-  { title: "Reports", url: "/crm/reports", icon: BarChart3, badge: "Soon" },
-  { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet, badge: "Soon" },
+  { title: "Reports", url: "/crm/reports", icon: BarChart3 },
+  { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
   { title: "Settings", url: "/crm/settings", icon: Settings, adminOnly: true },
 ];
 
