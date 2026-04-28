@@ -27,9 +27,9 @@ const main: NavItem[] = [
 ];
 
 const ops: NavItem[] = [
-  { title: "Fees", url: "/crm/fees", icon: Wallet, badge: "Soon" },
-  { title: "Batches", url: "/crm/batches", icon: CalendarDays, badge: "Soon" },
-  { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck, badge: "Soon" },
+  { title: "Fees", url: "/crm/fees", icon: Wallet },
+  { title: "Batches", url: "/crm/batches", icon: CalendarDays },
+  { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck },
   { title: "Certificates", url: "/crm/certificates", icon: Award, badge: "Soon" },
   { title: "Expenses", url: "/crm/expenses", icon: Receipt, badge: "Soon", adminOnly: true },
 ];

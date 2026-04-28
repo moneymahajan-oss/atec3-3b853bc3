@@ -26,6 +26,7 @@ const empty = {
   gender: "",
   address: "",
   course_id: "",
+  batch_id: "",
   enrolment_date: new Date().toISOString().slice(0, 10),
   status: "active",
   total_fee: 0,
@@ -44,6 +45,7 @@ export default function CrmStudentForm() {
   const { user, isAdmin } = useCrmAuth();
   const [form, setForm] = useState<typeof empty & { enrolment_no?: string | null; course_name_snapshot?: string | null }>(empty);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [batches, setBatches] = useState<{ id: string; name: string; course_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"photo" | "id" | null>(null);
   const [loading, setLoading] = useState(!isNew);
@@ -51,6 +53,8 @@ export default function CrmStudentForm() {
   useEffect(() => {
     supabase.from("crm_courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
+    supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
+      .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
   useEffect(() => {
@@ -84,6 +88,7 @@ export default function CrmStudentForm() {
         gender: data.gender ?? "",
         address: data.address ?? "",
         course_id: data.course_id ?? "",
+        batch_id: data.batch_id ?? "",
         enrolment_date: data.enrolment_date ?? "",
         status: data.status ?? "active",
         total_fee: data.total_fee ?? 0,
@@ -140,6 +145,7 @@ export default function CrmStudentForm() {
       gender: (form.gender || null) as never,
       address: form.address || null,
       course_id: form.course_id || null,
+      batch_id: form.batch_id || null,
       course_name_snapshot: courseRow?.name ?? form.course_name_snapshot ?? null,
       enrolment_date: form.enrolment_date,
       status: form.status as never,
@@ -253,6 +259,18 @@ export default function CrmStudentForm() {
                   <SelectContent>
                     <SelectItem value="none">— None —</SelectItem>
                     {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Batch</Label>
+                <Select value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Unassigned —</SelectItem>
+                    {batches
+                      .filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
+                      .map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
