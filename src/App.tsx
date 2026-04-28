@@ -20,6 +20,10 @@ import CrmCourseForm from "./crm/pages/CrmCourseForm.tsx";
 import CrmWhatsAppTemplates from "./crm/pages/CrmWhatsAppTemplates.tsx";
 import CrmSettings from "./crm/pages/CrmSettings.tsx";
 import CrmStub from "./crm/pages/CrmStub.tsx";
+import CrmEnquiries from "./crm/pages/CrmEnquiries.tsx";
+import CrmEnquiryForm from "./crm/pages/CrmEnquiryForm.tsx";
+import CrmStudents from "./crm/pages/CrmStudents.tsx";
+import CrmStudentForm from "./crm/pages/CrmStudentForm.tsx";
 
 const queryClient = new QueryClient();
 
@@ -47,8 +51,10 @@ const App = () => (
                   <Route path="courses/:id" element={<CrmCourseForm />} />
                   <Route path="whatsapp" element={<CrmWhatsAppTemplates />} />
                   <Route path="settings" element={<CrmSettings />} />
-                  <Route path="enquiries" element={<CrmStub title="Enquiries" />} />
-                  <Route path="students" element={<CrmStub title="Students" />} />
+                  <Route path="enquiries" element={<CrmEnquiries />} />
+                  <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
+                  <Route path="students" element={<CrmStudents />} />
+                  <Route path="students/:id" element={<CrmStudentForm />} />
                   <Route path="fees" element={<CrmStub title="Fees" />} />
                   <Route path="batches" element={<CrmStub title="Batches" />} />
                   <Route path="attendance" element={<CrmStub title="Attendance" />} />

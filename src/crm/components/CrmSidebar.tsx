@@ -22,8 +22,8 @@ type NavItem = {
 const main: NavItem[] = [
   { title: "Dashboard", url: "/crm", icon: LayoutDashboard, exact: true },
   { title: "Courses", url: "/crm/courses", icon: BookOpen },
-  { title: "Enquiries", url: "/crm/enquiries", icon: Users, badge: "Soon" },
-  { title: "Students", url: "/crm/students", icon: GraduationCap, badge: "Soon" },
+  { title: "Enquiries", url: "/crm/enquiries", icon: Users },
+  { title: "Students", url: "/crm/students", icon: GraduationCap },
 ];
 
 const ops: NavItem[] = [
