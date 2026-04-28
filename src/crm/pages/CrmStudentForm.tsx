@@ -45,6 +45,7 @@ export default function CrmStudentForm() {
   const { user, isAdmin } = useCrmAuth();
   const [form, setForm] = useState<typeof empty & { enrolment_no?: string | null; course_name_snapshot?: string | null }>(empty);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [batches, setBatches] = useState<{ id: string; name: string; course_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<"photo" | "id" | null>(null);
   const [loading, setLoading] = useState(!isNew);
@@ -52,6 +53,8 @@ export default function CrmStudentForm() {
   useEffect(() => {
     supabase.from("crm_courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
+    supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
+      .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
   useEffect(() => {
