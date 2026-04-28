@@ -194,6 +194,54 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_attendance: {
+        Row: {
+          attended_on: string
+          batch_id: string
+          created_at: string
+          id: string
+          marked_by: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["crm_attendance_status"]
+          student_id: string
+        }
+        Insert: {
+          attended_on: string
+          batch_id: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["crm_attendance_status"]
+          student_id: string
+        }
+        Update: {
+          attended_on?: string
+          batch_id?: string
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["crm_attendance_status"]
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_attendance_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "crm_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "crm_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_audit_logs: {
         Row: {
           action: string
@@ -223,6 +271,68 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      crm_batches: {
+        Row: {
+          capacity: number
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          faculty_name: string | null
+          id: string
+          name: string
+          notes: string | null
+          schedule: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["crm_batch_status"]
+          timing: string | null
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          faculty_name?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          schedule?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["crm_batch_status"]
+          timing?: string | null
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          faculty_name?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          schedule?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["crm_batch_status"]
+          timing?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_batches_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "crm_courses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_courses: {
         Row: {
@@ -420,6 +530,56 @@ export type Database = {
           },
         ]
       }
+      crm_fee_plans: {
+        Row: {
+          amount: number
+          amount_paid: number
+          created_at: string
+          due_date: string | null
+          id: string
+          installment_no: number
+          label: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["crm_fee_status"]
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          amount_paid?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          installment_no?: number
+          label?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["crm_fee_status"]
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          amount_paid?: number
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          installment_no?: number
+          label?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["crm_fee_status"]
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_fee_plans_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "crm_students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_institute_settings: {
         Row: {
           address: string | null
@@ -494,6 +654,69 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Relationships: []
+      }
+      crm_payments: {
+        Row: {
+          amount: number
+          collected_by: string | null
+          collected_by_name: string | null
+          created_at: string
+          fee_plan_id: string | null
+          id: string
+          mode: Database["public"]["Enums"]["crm_payment_mode"]
+          notes: string | null
+          paid_on: string
+          receipt_no: string | null
+          receipt_pdf_url: string | null
+          reference: string | null
+          student_id: string
+        }
+        Insert: {
+          amount: number
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          fee_plan_id?: string | null
+          id?: string
+          mode?: Database["public"]["Enums"]["crm_payment_mode"]
+          notes?: string | null
+          paid_on?: string
+          receipt_no?: string | null
+          receipt_pdf_url?: string | null
+          reference?: string | null
+          student_id: string
+        }
+        Update: {
+          amount?: number
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          fee_plan_id?: string | null
+          id?: string
+          mode?: Database["public"]["Enums"]["crm_payment_mode"]
+          notes?: string | null
+          paid_on?: string
+          receipt_no?: string | null
+          receipt_pdf_url?: string | null
+          reference?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_payments_fee_plan_id_fkey"
+            columns: ["fee_plan_id"]
+            isOneToOne: false
+            referencedRelation: "crm_fee_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_payments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "crm_students"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_students: {
         Row: {
@@ -572,6 +795,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_students_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "crm_batches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_students_course_id_fkey"
             columns: ["course_id"]
@@ -1131,6 +1361,8 @@ export type Database = {
     Enums: {
       admin_role: "super_admin" | "editor"
       announcement_type: "badge" | "news" | "urgent"
+      crm_attendance_status: "present" | "absent" | "late" | "excused"
+      crm_batch_status: "planned" | "running" | "completed" | "cancelled"
       crm_course_category: "finance" | "computer"
       crm_course_mode: "offline" | "online" | "hybrid"
       crm_enquiry_priority: "low" | "medium" | "high"
@@ -1150,6 +1382,14 @@ export type Database = {
         | "converted"
         | "lost"
         | "junk"
+      crm_fee_status: "pending" | "partial" | "paid" | "overdue" | "waived"
+      crm_payment_mode:
+        | "cash"
+        | "upi"
+        | "bank_transfer"
+        | "card"
+        | "cheque"
+        | "other"
       crm_role: "admin" | "counsellor"
       crm_student_gender: "male" | "female" | "other"
       crm_student_status: "active" | "completed" | "dropped" | "on_hold"
@@ -1283,6 +1523,8 @@ export const Constants = {
     Enums: {
       admin_role: ["super_admin", "editor"],
       announcement_type: ["badge", "news", "urgent"],
+      crm_attendance_status: ["present", "absent", "late", "excused"],
+      crm_batch_status: ["planned", "running", "completed", "cancelled"],
       crm_course_category: ["finance", "computer"],
       crm_course_mode: ["offline", "online", "hybrid"],
       crm_enquiry_priority: ["low", "medium", "high"],
@@ -1303,6 +1545,15 @@ export const Constants = {
         "converted",
         "lost",
         "junk",
+      ],
+      crm_fee_status: ["pending", "partial", "paid", "overdue", "waived"],
+      crm_payment_mode: [
+        "cash",
+        "upi",
+        "bank_transfer",
+        "card",
+        "cheque",
+        "other",
       ],
       crm_role: ["admin", "counsellor"],
       crm_student_gender: ["male", "female", "other"],
