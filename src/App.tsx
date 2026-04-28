@@ -20,6 +20,10 @@ import CrmCourseForm from "./crm/pages/CrmCourseForm.tsx";
 import CrmWhatsAppTemplates from "./crm/pages/CrmWhatsAppTemplates.tsx";
 import CrmSettings from "./crm/pages/CrmSettings.tsx";
 import CrmStub from "./crm/pages/CrmStub.tsx";
+import CrmEnquiries from "./crm/pages/CrmEnquiries.tsx";
+import CrmEnquiryForm from "./crm/pages/CrmEnquiryForm.tsx";
+import CrmStudents from "./crm/pages/CrmStudents.tsx";
+import CrmStudentForm from "./crm/pages/CrmStudentForm.tsx";
 
 const queryClient = new QueryClient();
 
