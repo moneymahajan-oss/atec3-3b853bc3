@@ -11,6 +11,15 @@ import AdminLogin from "./pages/AdminLogin.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AdminTable from "./pages/AdminTable.tsx";
 import AdminSiteContent from "./pages/AdminSiteContent.tsx";
+import { CrmAuthProvider } from "./crm/hooks/useCrmAuth.tsx";
+import { CrmLayout } from "./crm/components/CrmLayout.tsx";
+import CrmLogin from "./crm/pages/CrmLogin.tsx";
+import CrmDashboard from "./crm/pages/CrmDashboard.tsx";
+import CrmCourses from "./crm/pages/CrmCourses.tsx";
+import CrmCourseForm from "./crm/pages/CrmCourseForm.tsx";
+import CrmWhatsAppTemplates from "./crm/pages/CrmWhatsAppTemplates.tsx";
+import CrmSettings from "./crm/pages/CrmSettings.tsx";
+import CrmStub from "./crm/pages/CrmStub.tsx";
 
 const queryClient = new QueryClient();
 
@@ -22,14 +31,36 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/site-content" element={<AdminSiteContent />} />
-              <Route path="/admin/:table" element={<AdminTable />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <CrmAuthProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/site-content" element={<AdminSiteContent />} />
+                <Route path="/admin/:table" element={<AdminTable />} />
+
+                <Route path="/crm/login" element={<CrmLogin />} />
+                <Route path="/crm" element={<CrmLayout />}>
+                  <Route index element={<CrmDashboard />} />
+                  <Route path="courses" element={<CrmCourses />} />
+                  <Route path="courses/new" element={<CrmCourseForm />} />
+                  <Route path="courses/:id" element={<CrmCourseForm />} />
+                  <Route path="whatsapp" element={<CrmWhatsAppTemplates />} />
+                  <Route path="settings" element={<CrmSettings />} />
+                  <Route path="enquiries" element={<CrmStub title="Enquiries" />} />
+                  <Route path="students" element={<CrmStub title="Students" />} />
+                  <Route path="fees" element={<CrmStub title="Fees" />} />
+                  <Route path="batches" element={<CrmStub title="Batches" />} />
+                  <Route path="attendance" element={<CrmStub title="Attendance" />} />
+                  <Route path="certificates" element={<CrmStub title="Certificates" />} />
+                  <Route path="expenses" element={<CrmStub title="Expenses" />} />
+                  <Route path="reports" element={<CrmStub title="Reports" />} />
+                  <Route path="import-export" element={<CrmStub title="Import / Export" />} />
+                </Route>
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </CrmAuthProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
