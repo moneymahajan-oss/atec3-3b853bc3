@@ -142,6 +142,7 @@ export default function CrmStudentForm() {
       gender: (form.gender || null) as never,
       address: form.address || null,
       course_id: form.course_id || null,
+      batch_id: form.batch_id || null,
       course_name_snapshot: courseRow?.name ?? form.course_name_snapshot ?? null,
       enrolment_date: form.enrolment_date,
       status: form.status as never,
