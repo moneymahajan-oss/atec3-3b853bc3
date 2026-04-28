@@ -334,6 +334,147 @@ export type Database = {
           },
         ]
       }
+      crm_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          contact_name: string | null
+          contact_number: string
+          created_at: string
+          id: string
+          message_snapshot: string | null
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          contact_name?: string | null
+          contact_number: string
+          created_at?: string
+          id?: string
+          message_snapshot?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          contact_name?: string | null
+          contact_number?: string
+          created_at?: string
+          id?: string
+          message_snapshot?: string | null
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      crm_campaigns: {
+        Row: {
+          audience: Database["public"]["Enums"]["crm_campaign_audience"]
+          audience_filter: Json | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          message_body: string
+          name: string
+          scheduled_at: string | null
+          sent_count: number
+          status: Database["public"]["Enums"]["crm_campaign_status"]
+          template_key: string | null
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          audience?: Database["public"]["Enums"]["crm_campaign_audience"]
+          audience_filter?: Json | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          message_body: string
+          name: string
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: Database["public"]["Enums"]["crm_campaign_status"]
+          template_key?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          audience?: Database["public"]["Enums"]["crm_campaign_audience"]
+          audience_filter?: Json | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          message_body?: string
+          name?: string
+          scheduled_at?: string | null
+          sent_count?: number
+          status?: Database["public"]["Enums"]["crm_campaign_status"]
+          template_key?: string | null
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_certificates: {
+        Row: {
+          certificate_no: string | null
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          enrolment_no_snapshot: string | null
+          grade: string | null
+          id: string
+          issued_by: string | null
+          issued_by_name: string | null
+          issued_on: string
+          notes: string | null
+          pdf_url: string | null
+          student_id: string
+          student_name_snapshot: string | null
+          template_kind: string
+          updated_at: string
+        }
+        Insert: {
+          certificate_no?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          enrolment_no_snapshot?: string | null
+          grade?: string | null
+          id?: string
+          issued_by?: string | null
+          issued_by_name?: string | null
+          issued_on?: string
+          notes?: string | null
+          pdf_url?: string | null
+          student_id: string
+          student_name_snapshot?: string | null
+          template_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          certificate_no?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          enrolment_no_snapshot?: string | null
+          grade?: string | null
+          id?: string
+          issued_by?: string | null
+          issued_by_name?: string | null
+          issued_on?: string
+          notes?: string | null
+          pdf_url?: string | null
+          student_id?: string
+          student_name_snapshot?: string | null
+          template_kind?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_courses: {
         Row: {
           brochure_url: string | null
@@ -806,6 +947,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_seo_meta: {
+        Row: {
+          canonical_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          json_ld: Json | null
+          keywords: string | null
+          og_image_url: string | null
+          page_path: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          canonical_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          json_ld?: Json | null
+          keywords?: string | null
+          og_image_url?: string | null
+          page_path: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          canonical_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          json_ld?: Json | null
+          keywords?: string | null
+          og_image_url?: string | null
+          page_path?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       crm_students: {
         Row: {
@@ -1452,6 +1635,19 @@ export type Database = {
       announcement_type: "badge" | "news" | "urgent"
       crm_attendance_status: "present" | "absent" | "late" | "excused"
       crm_batch_status: "planned" | "running" | "completed" | "cancelled"
+      crm_campaign_audience:
+        | "all_enquiries"
+        | "enquiries_by_status"
+        | "all_students"
+        | "students_by_course"
+        | "students_by_batch"
+        | "custom"
+      crm_campaign_status:
+        | "draft"
+        | "scheduled"
+        | "sending"
+        | "completed"
+        | "cancelled"
       crm_course_category: "finance" | "computer"
       crm_course_mode: "offline" | "online" | "hybrid"
       crm_enquiry_priority: "low" | "medium" | "high"
@@ -1614,6 +1810,21 @@ export const Constants = {
       announcement_type: ["badge", "news", "urgent"],
       crm_attendance_status: ["present", "absent", "late", "excused"],
       crm_batch_status: ["planned", "running", "completed", "cancelled"],
+      crm_campaign_audience: [
+        "all_enquiries",
+        "enquiries_by_status",
+        "all_students",
+        "students_by_course",
+        "students_by_batch",
+        "custom",
+      ],
+      crm_campaign_status: [
+        "draft",
+        "scheduled",
+        "sending",
+        "completed",
+        "cancelled",
+      ],
       crm_course_category: ["finance", "computer"],
       crm_course_mode: ["offline", "online", "hybrid"],
       crm_enquiry_priority: ["low", "medium", "high"],
