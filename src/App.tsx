@@ -59,9 +59,10 @@ const App = () => (
                   <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
                   <Route path="students" element={<CrmStudents />} />
                   <Route path="students/:id" element={<CrmStudentForm />} />
-                  <Route path="fees" element={<CrmStub title="Fees" />} />
-                  <Route path="batches" element={<CrmStub title="Batches" />} />
-                  <Route path="attendance" element={<CrmStub title="Attendance" />} />
+                  <Route path="fees" element={<CrmFees />} />
+                  <Route path="fees/:studentId" element={<CrmStudentFees />} />
+                  <Route path="batches" element={<CrmBatches />} />
+                  <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmStub title="Certificates" />} />
                   <Route path="expenses" element={<CrmStub title="Expenses" />} />
                   <Route path="reports" element={<CrmStub title="Reports" />} />
