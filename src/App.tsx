@@ -31,6 +31,9 @@ import CrmAttendance from "./crm/pages/CrmAttendance.tsx";
 import CrmExpenses from "./crm/pages/CrmExpenses.tsx";
 import CrmReports from "./crm/pages/CrmReports.tsx";
 import CrmImportExport from "./crm/pages/CrmImportExport.tsx";
+import CrmCertificates from "./crm/pages/CrmCertificates.tsx";
+import CrmSeo from "./crm/pages/CrmSeo.tsx";
+import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
 
 const queryClient = new QueryClient();
 
@@ -66,10 +69,12 @@ const App = () => (
                   <Route path="fees/:studentId" element={<CrmStudentFees />} />
                   <Route path="batches" element={<CrmBatches />} />
                   <Route path="attendance" element={<CrmAttendance />} />
-                  <Route path="certificates" element={<CrmStub title="Certificates" />} />
+                  <Route path="certificates" element={<CrmCertificates />} />
                   <Route path="expenses" element={<CrmExpenses />} />
                   <Route path="reports" element={<CrmReports />} />
                   <Route path="import-export" element={<CrmImportExport />} />
+                  <Route path="seo" element={<CrmSeo />} />
+                  <Route path="campaigns" element={<CrmCampaigns />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

@@ -2,7 +2,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
-  Settings, GraduationCap as GradIcon,
+  Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -30,14 +30,16 @@ const ops: NavItem[] = [
   { title: "Fees", url: "/crm/fees", icon: Wallet },
   { title: "Batches", url: "/crm/batches", icon: CalendarDays },
   { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck },
-  { title: "Certificates", url: "/crm/certificates", icon: Award, badge: "Soon" },
+  { title: "Certificates", url: "/crm/certificates", icon: Award },
   { title: "Expenses", url: "/crm/expenses", icon: Receipt, adminOnly: true },
 ];
 
 const tools: NavItem[] = [
   { title: "WhatsApp Templates", url: "/crm/whatsapp", icon: MessageSquare },
+  { title: "Campaigns", url: "/crm/campaigns", icon: Megaphone },
   { title: "Reports", url: "/crm/reports", icon: BarChart3 },
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
+  { title: "SEO Meta", url: "/crm/seo", icon: SearchIcon, adminOnly: true },
   { title: "Settings", url: "/crm/settings", icon: Settings, adminOnly: true },
 ];
 
