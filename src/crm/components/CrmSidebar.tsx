@@ -10,14 +10,23 @@ import {
 } from "@/components/ui/sidebar";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 
-const main = [
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  badge?: string;
+  adminOnly?: boolean;
+};
+
+const main: NavItem[] = [
   { title: "Dashboard", url: "/crm", icon: LayoutDashboard, exact: true },
   { title: "Courses", url: "/crm/courses", icon: BookOpen },
   { title: "Enquiries", url: "/crm/enquiries", icon: Users, badge: "Soon" },
   { title: "Students", url: "/crm/students", icon: GraduationCap, badge: "Soon" },
 ];
 
-const ops = [
+const ops: NavItem[] = [
   { title: "Fees", url: "/crm/fees", icon: Wallet, badge: "Soon" },
   { title: "Batches", url: "/crm/batches", icon: CalendarDays, badge: "Soon" },
   { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck, badge: "Soon" },
@@ -25,7 +34,7 @@ const ops = [
   { title: "Expenses", url: "/crm/expenses", icon: Receipt, badge: "Soon", adminOnly: true },
 ];
 
-const tools = [
+const tools: NavItem[] = [
   { title: "WhatsApp Templates", url: "/crm/whatsapp", icon: MessageSquare },
   { title: "Reports", url: "/crm/reports", icon: BarChart3, badge: "Soon" },
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet, badge: "Soon" },
