@@ -26,6 +26,7 @@ const empty = {
   gender: "",
   address: "",
   course_id: "",
+  batch_id: "",
   enrolment_date: new Date().toISOString().slice(0, 10),
   status: "active",
   total_fee: 0,
