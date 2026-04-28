@@ -20,6 +20,7 @@ interface Course {
   total_fee: number;
   brochure_url: string | null;
   youtube_url: string | null;
+  video_url: string | null;
   is_active: boolean;
   display_order: number;
   concise_syllabus: string | null;
