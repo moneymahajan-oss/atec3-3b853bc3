@@ -1,0 +1,357 @@
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, Plus, Receipt, Trash2, Printer, MessageSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { PageHeader } from "../components/PageHeader";
+import { useCrmAuth } from "../hooks/useCrmAuth";
+import { logAudit } from "../lib/audit";
+import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
+import { toast } from "sonner";
+
+type Student = {
+  id: string; full_name: string; enrolment_no: string | null; phone: string;
+  course_name_snapshot: string | null; total_fee: number;
+};
+type Plan = {
+  id: string; installment_no: number; label: string | null;
+  due_date: string | null; amount: number; amount_paid: number; status: string;
+};
+type Payment = {
+  id: string; receipt_no: string | null; amount: number; mode: string;
+  paid_on: string; reference: string | null; fee_plan_id: string | null;
+  collected_by_name: string | null;
+};
+
+const feeStatusColors: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground",
+  partial: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  paid: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  overdue: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  waived: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+};
+
+export default function CrmStudentFees() {
+  const { studentId } = useParams();
+  const { user, isAdmin } = useCrmAuth();
+  const [student, setStudent] = useState<Student | null>(null);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0, status: "pending" });
+  const [payOpen, setPayOpen] = useState(false);
+  const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string });
+
+  const load = async () => {
+    setLoading(true);
+    const [{ data: s }, { data: p }, { data: pay }] = await Promise.all([
+      supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee").eq("id", studentId!).maybeSingle(),
+      supabase.from("crm_fee_plans").select("*").eq("student_id", studentId!).order("installment_no"),
+      supabase.from("crm_payments").select("*").eq("student_id", studentId!).order("paid_on", { ascending: false }),
+    ]);
+    setStudent(s as Student);
+    setPlans((p ?? []) as Plan[]);
+    setPayments((pay ?? []) as Payment[]);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [studentId]);
+
+  const totalPaid = payments.reduce((a, p) => a + (p.amount || 0), 0);
+  const totalBilled = student?.total_fee ?? 0;
+  const due = totalBilled - totalPaid;
+
+  const savePlan = async () => {
+    if (!editingPlan.amount || editingPlan.amount <= 0) { toast.error("Amount required"); return; }
+    const payload = {
+      student_id: studentId!,
+      installment_no: Number(editingPlan.installment_no || 1),
+      label: editingPlan.label || null,
+      due_date: editingPlan.due_date || null,
+      amount: Number(editingPlan.amount),
+      status: (editingPlan.status || "pending") as never,
+    };
+    if (editingPlan.id) {
+      const { error } = await supabase.from("crm_fee_plans").update(payload).eq("id", editingPlan.id);
+      if (error) { toast.error(error.message); return; }
+      await logAudit("crm_fee_plans", "update", editingPlan.id, payload);
+    } else {
+      const { data, error } = await supabase.from("crm_fee_plans").insert(payload).select("id").maybeSingle();
+      if (error) { toast.error(error.message); return; }
+      await logAudit("crm_fee_plans", "create", data?.id, payload);
+    }
+    toast.success("Saved");
+    setPlanOpen(false);
+    setEditingPlan({ installment_no: plans.length + 2, amount: 0, status: "pending" });
+    load();
+  };
+
+  const removePlan = async (p: Plan) => {
+    if (!confirm(`Delete installment #${p.installment_no}?`)) return;
+    const { error } = await supabase.from("crm_fee_plans").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    await logAudit("crm_fee_plans", "delete", p.id);
+    load();
+  };
+
+  const savePayment = async () => {
+    if (!pay.amount || pay.amount <= 0) { toast.error("Amount required"); return; }
+    const payload = {
+      student_id: studentId!,
+      fee_plan_id: pay.fee_plan_id || null,
+      amount: Number(pay.amount),
+      mode: pay.mode as never,
+      reference: pay.reference || null,
+      paid_on: pay.paid_on,
+      notes: pay.notes || null,
+      collected_by: user?.id,
+      collected_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { data, error } = await supabase.from("crm_payments").insert(payload).select("id,receipt_no").maybeSingle();
+    if (error) { toast.error(error.message); return; }
+    await logAudit("crm_payments", "create", data?.id, payload);
+    toast.success(`Receipt ${data?.receipt_no} recorded`);
+    setPayOpen(false);
+    setPay({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" });
+    load();
+  };
+
+  const removePayment = async (p: Payment) => {
+    if (!confirm(`Delete receipt ${p.receipt_no}? This will affect fee balance.`)) return;
+    const { error } = await supabase.from("crm_payments").delete().eq("id", p.id);
+    if (error) { toast.error(error.message); return; }
+    await logAudit("crm_payments", "delete", p.id);
+    load();
+  };
+
+  const sendReceiptOnWa = async (p: Payment) => {
+    if (!student) return;
+    const body = `Hi ${student.full_name},\n\nWe've received your payment of ₹${p.amount.toLocaleString("en-IN")} via ${p.mode.toUpperCase()} on ${p.paid_on}.\n\nReceipt №: ${p.receipt_no}\nCourse: ${student.course_name_snapshot ?? ""}\n\nThank you!\n— ATEC Education`;
+    await logWaSend({
+      template_key: "payment_receipt", contact_number: student.phone, contact_name: student.full_name,
+      message_snapshot: body, entity_type: "payment", entity_id: p.id,
+    });
+    window.open(buildWaLink(student.phone, body), "_blank");
+  };
+
+  const sendReminderOnWa = async (pl: Plan) => {
+    if (!student) return;
+    const remaining = pl.amount - pl.amount_paid;
+    const body = fillTemplate(
+      `Hi {name},\n\nThis is a friendly reminder for your fee installment #{n} of ₹{amt} due on {date}.\nCourse: {course}\n\nKindly pay at your earliest convenience.\n— ATEC Education`,
+      { name: student.full_name, n: pl.installment_no, amt: remaining.toLocaleString("en-IN"), date: pl.due_date ?? "—", course: student.course_name_snapshot ?? "" }
+    );
+    await logWaSend({
+      template_key: "fee_reminder", contact_number: student.phone, contact_name: student.full_name,
+      message_snapshot: body, entity_type: "fee_plan", entity_id: pl.id,
+    });
+    window.open(buildWaLink(student.phone, body), "_blank");
+  };
+
+  if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
+  if (!student) return <div className="p-8">Student not found.</div>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={`Fees · ${student.full_name}`}
+        description={`${student.enrolment_no ?? student.phone} — ${student.course_name_snapshot ?? "No course"}`}
+        actions={
+          <div className="flex gap-2">
+            <Button asChild variant="outline"><Link to="/crm/fees"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Link></Button>
+            <Button onClick={() => setPayOpen(true)}><Receipt className="w-4 h-4 mr-2" /> Record Payment</Button>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <SmallStat label="Total billed" value={`₹${totalBilled.toLocaleString("en-IN")}`} />
+        <SmallStat label="Paid" value={`₹${totalPaid.toLocaleString("en-IN")}`} accent="success" />
+        <SmallStat label="Due" value={`₹${due.toLocaleString("en-IN")}`} accent={due > 0 ? "warning" : undefined} />
+        <SmallStat label="Receipts" value={String(payments.length)} />
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Installment plan</CardTitle>
+          <Button size="sm" onClick={() => { setEditingPlan({ installment_no: plans.length + 1, amount: 0, status: "pending" }); setPlanOpen(true); }}>
+            <Plus className="w-4 h-4 mr-1" /> Add installment
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>#</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Due</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {plans.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
+              ) : plans.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-mono">{p.installment_no}</TableCell>
+                  <TableCell className="text-sm">{p.label || "—"}</TableCell>
+                  <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
+                  <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
+                  <TableCell><Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex gap-1">
+                      {p.status !== "paid" && (
+                        <Button size="icon" variant="ghost" title="Send reminder" onClick={() => sendReminderOnWa(p)}>
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
+                        <Plus className="w-4 h-4 rotate-45" />
+                      </Button>
+                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePlan(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Payment history</CardTitle></CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Receipt №</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Mode</TableHead>
+                <TableHead>Reference</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Collected by</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No payments yet.</TableCell></TableRow>
+              ) : payments.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-mono text-xs">{p.receipt_no}</TableCell>
+                  <TableCell>{p.paid_on}</TableCell>
+                  <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
+                  <TableCell className="text-sm">{p.reference || "—"}</TableCell>
+                  <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-sm">{p.collected_by_name || "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex gap-1">
+                      <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
+                        <MessageSquare className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
+                        <Printer className="w-4 h-4" />
+                      </Button>
+                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePayment(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Installment dialog */}
+      <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editingPlan.id ? "Edit installment" : "Add installment"}</DialogTitle></DialogHeader>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div><Label>#</Label><Input type="number" value={editingPlan.installment_no ?? 1} onChange={(e) => setEditingPlan((p) => ({ ...p, installment_no: Number(e.target.value) }))} /></div>
+            <div><Label>Status</Label>
+              <Select value={editingPlan.status ?? "pending"} onValueChange={(v) => setEditingPlan((p) => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["pending","partial","paid","overdue","waived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><Label>Label</Label><Input value={editingPlan.label ?? ""} onChange={(e) => setEditingPlan((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. Registration / Month 1" /></div>
+            <div><Label>Due date</Label><Input type="date" value={editingPlan.due_date ?? ""} onChange={(e) => setEditingPlan((p) => ({ ...p, due_date: e.target.value }))} /></div>
+            <div><Label>Amount (₹)</Label><Input type="number" value={editingPlan.amount ?? 0} onChange={(e) => setEditingPlan((p) => ({ ...p, amount: Number(e.target.value) }))} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancel</Button>
+            <Button onClick={savePlan}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div><Label>Amount (₹) *</Label><Input type="number" value={pay.amount} onChange={(e) => setPay((p) => ({ ...p, amount: Number(e.target.value) }))} /></div>
+            <div><Label>Mode</Label>
+              <Select value={pay.mode} onValueChange={(v) => setPay((p) => ({ ...p, mode: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["cash","upi","bank_transfer","card","cheque","other"].map((s) => <SelectItem key={s} value={s}>{s.replace("_"," ")}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Reference / UTR</Label><Input value={pay.reference} onChange={(e) => setPay((p) => ({ ...p, reference: e.target.value }))} /></div>
+            <div><Label>Paid on</Label><Input type="date" value={pay.paid_on} onChange={(e) => setPay((p) => ({ ...p, paid_on: e.target.value }))} /></div>
+            <div className="sm:col-span-2">
+              <Label>Apply to installment</Label>
+              <Select value={pay.fee_plan_id || "none"} onValueChange={(v) => setPay((p) => ({ ...p, fee_plan_id: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Standalone —</SelectItem>
+                  {plans.filter((p) => p.status !== "paid").map((p) =>
+                    <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><Label>Notes</Label><Textarea rows={2} value={pay.notes} onChange={(e) => setPay((p) => ({ ...p, notes: e.target.value }))} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+            <Button onClick={savePayment}>Save & generate receipt</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SmallStat({ label, value, accent }: { label: string; value: string; accent?: "success" | "warning" }) {
+  const cls = accent === "success" ? "text-emerald-700 dark:text-emerald-400"
+    : accent === "warning" ? "text-amber-700 dark:text-amber-400" : "";
+  return (
+    <Card><CardContent className="pt-5">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-xl font-bold mt-1 ${cls}`}>{value}</div>
+    </CardContent></Card>
+  );
+}
