@@ -305,6 +305,121 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_enquiries: {
+        Row: {
+          alt_phone: string | null
+          assigned_to: string | null
+          assigned_to_name: string | null
+          converted_student_id: string | null
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          email: string | null
+          follow_up_date: string | null
+          id: string
+          lost_reason: string | null
+          name: string
+          notes: string | null
+          phone: string
+          priority: Database["public"]["Enums"]["crm_enquiry_priority"]
+          source: Database["public"]["Enums"]["crm_enquiry_source"]
+          status: Database["public"]["Enums"]["crm_enquiry_status"]
+          updated_at: string
+        }
+        Insert: {
+          alt_phone?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          converted_student_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          email?: string | null
+          follow_up_date?: string | null
+          id?: string
+          lost_reason?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          priority?: Database["public"]["Enums"]["crm_enquiry_priority"]
+          source?: Database["public"]["Enums"]["crm_enquiry_source"]
+          status?: Database["public"]["Enums"]["crm_enquiry_status"]
+          updated_at?: string
+        }
+        Update: {
+          alt_phone?: string | null
+          assigned_to?: string | null
+          assigned_to_name?: string | null
+          converted_student_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          email?: string | null
+          follow_up_date?: string | null
+          id?: string
+          lost_reason?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          priority?: Database["public"]["Enums"]["crm_enquiry_priority"]
+          source?: Database["public"]["Enums"]["crm_enquiry_source"]
+          status?: Database["public"]["Enums"]["crm_enquiry_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_enquiries_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "crm_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_enquiry_notes: {
+        Row: {
+          body: string
+          created_at: string
+          enquiry_id: string
+          id: string
+          note_type: string
+          staff_id: string | null
+          staff_name: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          enquiry_id: string
+          id?: string
+          note_type?: string
+          staff_id?: string | null
+          staff_name?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          enquiry_id?: string
+          id?: string
+          note_type?: string
+          staff_id?: string | null
+          staff_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_enquiry_notes_enquiry_id_fkey"
+            columns: ["enquiry_id"]
+            isOneToOne: false
+            referencedRelation: "crm_enquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_institute_settings: {
         Row: {
           address: string | null
@@ -379,6 +494,99 @@ export type Database = {
           whatsapp_number?: string | null
         }
         Relationships: []
+      }
+      crm_students: {
+        Row: {
+          address: string | null
+          alt_phone: string | null
+          batch_id: string | null
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          dob: string | null
+          email: string | null
+          enrolment_date: string
+          enrolment_no: string | null
+          full_name: string
+          gender: Database["public"]["Enums"]["crm_student_gender"] | null
+          id: string
+          id_proof_url: string | null
+          notes: string | null
+          phone: string
+          photo_url: string | null
+          registration_fee_paid: number
+          source_enquiry_id: string | null
+          status: Database["public"]["Enums"]["crm_student_status"]
+          total_fee: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          alt_phone?: string | null
+          batch_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          email?: string | null
+          enrolment_date?: string
+          enrolment_no?: string | null
+          full_name: string
+          gender?: Database["public"]["Enums"]["crm_student_gender"] | null
+          id?: string
+          id_proof_url?: string | null
+          notes?: string | null
+          phone: string
+          photo_url?: string | null
+          registration_fee_paid?: number
+          source_enquiry_id?: string | null
+          status?: Database["public"]["Enums"]["crm_student_status"]
+          total_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          alt_phone?: string | null
+          batch_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          dob?: string | null
+          email?: string | null
+          enrolment_date?: string
+          enrolment_no?: string | null
+          full_name?: string
+          gender?: Database["public"]["Enums"]["crm_student_gender"] | null
+          id?: string
+          id_proof_url?: string | null
+          notes?: string | null
+          phone?: string
+          photo_url?: string | null
+          registration_fee_paid?: number
+          source_enquiry_id?: string | null
+          status?: Database["public"]["Enums"]["crm_student_status"]
+          total_fee?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_students_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "crm_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_students_source_enquiry_id_fkey"
+            columns: ["source_enquiry_id"]
+            isOneToOne: false
+            referencedRelation: "crm_enquiries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_user_roles: {
         Row: {
@@ -925,7 +1133,26 @@ export type Database = {
       announcement_type: "badge" | "news" | "urgent"
       crm_course_category: "finance" | "computer"
       crm_course_mode: "offline" | "online" | "hybrid"
+      crm_enquiry_priority: "low" | "medium" | "high"
+      crm_enquiry_source:
+        | "walk_in"
+        | "phone"
+        | "whatsapp"
+        | "website"
+        | "instagram"
+        | "facebook"
+        | "referral"
+        | "other"
+      crm_enquiry_status:
+        | "new"
+        | "contacted"
+        | "follow_up"
+        | "converted"
+        | "lost"
+        | "junk"
       crm_role: "admin" | "counsellor"
+      crm_student_gender: "male" | "female" | "other"
+      crm_student_status: "active" | "completed" | "dropped" | "on_hold"
       crm_wa_log_status: "link_generated" | "marked_sent"
     }
     CompositeTypes: {
@@ -1058,7 +1285,28 @@ export const Constants = {
       announcement_type: ["badge", "news", "urgent"],
       crm_course_category: ["finance", "computer"],
       crm_course_mode: ["offline", "online", "hybrid"],
+      crm_enquiry_priority: ["low", "medium", "high"],
+      crm_enquiry_source: [
+        "walk_in",
+        "phone",
+        "whatsapp",
+        "website",
+        "instagram",
+        "facebook",
+        "referral",
+        "other",
+      ],
+      crm_enquiry_status: [
+        "new",
+        "contacted",
+        "follow_up",
+        "converted",
+        "lost",
+        "junk",
+      ],
       crm_role: ["admin", "counsellor"],
+      crm_student_gender: ["male", "female", "other"],
+      crm_student_status: ["active", "completed", "dropped", "on_hold"],
       crm_wa_log_status: ["link_generated", "marked_sent"],
     },
   },
