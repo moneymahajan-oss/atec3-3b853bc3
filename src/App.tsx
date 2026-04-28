@@ -24,6 +24,10 @@ import CrmEnquiries from "./crm/pages/CrmEnquiries.tsx";
 import CrmEnquiryForm from "./crm/pages/CrmEnquiryForm.tsx";
 import CrmStudents from "./crm/pages/CrmStudents.tsx";
 import CrmStudentForm from "./crm/pages/CrmStudentForm.tsx";
+import CrmBatches from "./crm/pages/CrmBatches.tsx";
+import CrmFees from "./crm/pages/CrmFees.tsx";
+import CrmStudentFees from "./crm/pages/CrmStudentFees.tsx";
+import CrmAttendance from "./crm/pages/CrmAttendance.tsx";
 
 const queryClient = new QueryClient();
 
