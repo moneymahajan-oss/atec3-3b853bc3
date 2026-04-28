@@ -50,7 +50,7 @@ export function CrmSidebar() {
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
 
-  const renderItem = (item: typeof main[number] & { badge?: string; adminOnly?: boolean }) => {
+  const renderItem = (item: NavItem) => {
     if (item.adminOnly && !isAdmin) return null;
     return (
       <SidebarMenuItem key={item.url}>
