@@ -28,6 +28,9 @@ import CrmBatches from "./crm/pages/CrmBatches.tsx";
 import CrmFees from "./crm/pages/CrmFees.tsx";
 import CrmStudentFees from "./crm/pages/CrmStudentFees.tsx";
 import CrmAttendance from "./crm/pages/CrmAttendance.tsx";
+import CrmExpenses from "./crm/pages/CrmExpenses.tsx";
+import CrmReports from "./crm/pages/CrmReports.tsx";
+import CrmImportExport from "./crm/pages/CrmImportExport.tsx";
 
 const queryClient = new QueryClient();
 
