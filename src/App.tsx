@@ -67,9 +67,9 @@ const App = () => (
                   <Route path="batches" element={<CrmBatches />} />
                   <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmStub title="Certificates" />} />
-                  <Route path="expenses" element={<CrmStub title="Expenses" />} />
-                  <Route path="reports" element={<CrmStub title="Reports" />} />
-                  <Route path="import-export" element={<CrmStub title="Import / Export" />} />
+                  <Route path="expenses" element={<CrmExpenses />} />
+                  <Route path="reports" element={<CrmReports />} />
+                  <Route path="import-export" element={<CrmImportExport />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
