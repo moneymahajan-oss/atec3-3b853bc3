@@ -194,6 +194,297 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          diff: Json | null
+          entity: string
+          entity_id: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          diff?: Json | null
+          entity: string
+          entity_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          diff?: Json | null
+          entity?: string
+          entity_id?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      crm_courses: {
+        Row: {
+          brochure_url: string | null
+          category: Database["public"]["Enums"]["crm_course_category"]
+          certificate_title: string | null
+          concise_syllabus: string | null
+          created_at: string
+          detailed_syllabus_html: string | null
+          display_order: number
+          duration: string | null
+          emi_options: Json
+          id: string
+          instagram_url: string | null
+          is_active: boolean
+          meta_description: string | null
+          meta_title: string | null
+          mode: Database["public"]["Enums"]["crm_course_mode"]
+          name: string
+          next_batch_date: string | null
+          og_image_url: string | null
+          registration_fee: number
+          slug: string | null
+          total_fee: number
+          updated_at: string
+          video_url: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          brochure_url?: string | null
+          category: Database["public"]["Enums"]["crm_course_category"]
+          certificate_title?: string | null
+          concise_syllabus?: string | null
+          created_at?: string
+          detailed_syllabus_html?: string | null
+          display_order?: number
+          duration?: string | null
+          emi_options?: Json
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          meta_description?: string | null
+          meta_title?: string | null
+          mode?: Database["public"]["Enums"]["crm_course_mode"]
+          name: string
+          next_batch_date?: string | null
+          og_image_url?: string | null
+          registration_fee?: number
+          slug?: string | null
+          total_fee?: number
+          updated_at?: string
+          video_url?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          brochure_url?: string | null
+          category?: Database["public"]["Enums"]["crm_course_category"]
+          certificate_title?: string | null
+          concise_syllabus?: string | null
+          created_at?: string
+          detailed_syllabus_html?: string | null
+          display_order?: number
+          duration?: string | null
+          emi_options?: Json
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          meta_description?: string | null
+          meta_title?: string | null
+          mode?: Database["public"]["Enums"]["crm_course_mode"]
+          name?: string
+          next_batch_date?: string | null
+          og_image_url?: string | null
+          registration_fee?: number
+          slug?: string | null
+          total_fee?: number
+          updated_at?: string
+          video_url?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      crm_institute_settings: {
+        Row: {
+          address: string | null
+          certificate_template_computer: string | null
+          certificate_template_finance: string | null
+          collection_timings: string | null
+          created_at: string
+          director_signature_url: string | null
+          email: string | null
+          fee_reminder_days: number
+          gst: string | null
+          id: string
+          institute_seal_url: string | null
+          is_singleton: boolean
+          logo_url: string | null
+          name: string
+          phone: string | null
+          receipt_footer: string | null
+          receipt_header: string | null
+          referral_reward: number
+          updated_at: string
+          upi_id: string | null
+          website: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          certificate_template_computer?: string | null
+          certificate_template_finance?: string | null
+          collection_timings?: string | null
+          created_at?: string
+          director_signature_url?: string | null
+          email?: string | null
+          fee_reminder_days?: number
+          gst?: string | null
+          id?: string
+          institute_seal_url?: string | null
+          is_singleton?: boolean
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          receipt_footer?: string | null
+          receipt_header?: string | null
+          referral_reward?: number
+          updated_at?: string
+          upi_id?: string | null
+          website?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          certificate_template_computer?: string | null
+          certificate_template_finance?: string | null
+          collection_timings?: string | null
+          created_at?: string
+          director_signature_url?: string | null
+          email?: string | null
+          fee_reminder_days?: number
+          gst?: string | null
+          id?: string
+          institute_seal_url?: string | null
+          is_singleton?: boolean
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          receipt_footer?: string | null
+          receipt_header?: string | null
+          referral_reward?: number
+          updated_at?: string
+          upi_id?: string | null
+          website?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      crm_user_roles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["crm_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["crm_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["crm_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crm_whatsapp_logs: {
+        Row: {
+          contact_name: string | null
+          contact_number: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          message_snapshot: string
+          sent_at: string | null
+          staff_id: string | null
+          staff_name: string | null
+          status: Database["public"]["Enums"]["crm_wa_log_status"]
+          template_key: string
+        }
+        Insert: {
+          contact_name?: string | null
+          contact_number: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message_snapshot: string
+          sent_at?: string | null
+          staff_id?: string | null
+          staff_name?: string | null
+          status?: Database["public"]["Enums"]["crm_wa_log_status"]
+          template_key: string
+        }
+        Update: {
+          contact_name?: string | null
+          contact_number?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          message_snapshot?: string
+          sent_at?: string | null
+          staff_id?: string | null
+          staff_name?: string | null
+          status?: Database["public"]["Enums"]["crm_wa_log_status"]
+          template_key?: string
+        }
+        Relationships: []
+      }
+      crm_whatsapp_templates: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          template_key: string
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          template_key: string
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          template_key?: string
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: []
+      }
       downloads: {
         Row: {
           category: string | null
@@ -619,11 +910,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_any_crm_role: { Args: { _user_id: string }; Returns: boolean }
+      has_crm_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["crm_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       admin_role: "super_admin" | "editor"
       announcement_type: "badge" | "news" | "urgent"
+      crm_course_category: "finance" | "computer"
+      crm_course_mode: "offline" | "online" | "hybrid"
+      crm_role: "admin" | "counsellor"
+      crm_wa_log_status: "link_generated" | "marked_sent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -753,6 +1056,10 @@ export const Constants = {
     Enums: {
       admin_role: ["super_admin", "editor"],
       announcement_type: ["badge", "news", "urgent"],
+      crm_course_category: ["finance", "computer"],
+      crm_course_mode: ["offline", "online", "hybrid"],
+      crm_role: ["admin", "counsellor"],
+      crm_wa_log_status: ["link_generated", "marked_sent"],
     },
   },
 } as const
