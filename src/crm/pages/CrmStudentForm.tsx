@@ -263,6 +263,18 @@ export default function CrmStudentForm() {
                 </Select>
               </div>
               <div>
+                <Label>Batch</Label>
+                <Select value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Unassigned —</SelectItem>
+                    {batches
+                      .filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
+                      .map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Enrolment date</Label>
                 <Input type="date" value={form.enrolment_date} onChange={(e) => set("enrolment_date", e.target.value)} />
               </div>
