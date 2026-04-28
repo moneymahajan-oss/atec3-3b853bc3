@@ -85,6 +85,7 @@ export default function CrmStudentForm() {
         gender: data.gender ?? "",
         address: data.address ?? "",
         course_id: data.course_id ?? "",
+        batch_id: data.batch_id ?? "",
         enrolment_date: data.enrolment_date ?? "",
         status: data.status ?? "active",
         total_fee: data.total_fee ?? 0,
