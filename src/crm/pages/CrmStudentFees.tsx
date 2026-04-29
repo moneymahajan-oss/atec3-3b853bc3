@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Receipt, Trash2, Printer, MessageSquare } from "lucide-react";
+import { ArrowLeft, Plus, Receipt, Ban, Printer, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
+import { VoidDialog } from "../components/VoidDialog";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
@@ -30,11 +31,13 @@ type Student = {
 type Plan = {
   id: string; installment_no: number; label: string | null;
   due_date: string | null; amount: number; amount_paid: number; status: string;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
 type Payment = {
   id: string; receipt_no: string | null; amount: number; mode: string;
   paid_on: string; reference: string | null; fee_plan_id: string | null;
   collected_by_name: string | null;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
 
 const feeStatusColors: Record<string, string> = {
