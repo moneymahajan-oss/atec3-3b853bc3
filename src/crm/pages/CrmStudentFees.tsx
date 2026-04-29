@@ -232,24 +232,36 @@ export default function CrmStudentFees() {
               {plans.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
               ) : plans.map((p) => (
-                <TableRow key={p.id}>
+                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
                   <TableCell className="font-mono">{p.installment_no}</TableCell>
                   <TableCell className="text-sm">{p.label || "—"}</TableCell>
                   <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
                   <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
                   <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
-                  <TableCell><Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge></TableCell>
+                  <TableCell>
+                    {p.is_void ? (
+                      <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided: ${p.void_reason ?? ""}`}>VOID</Badge>
+                    ) : (
+                      <Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      {p.status !== "paid" && (
+                      {!p.is_void && p.status !== "paid" && (
                         <Button size="icon" variant="ghost" title="Send reminder" onClick={() => sendReminderOnWa(p)}>
                           <MessageSquare className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
-                        <Plus className="w-4 h-4 rotate-45" />
-                      </Button>
-                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePlan(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                      {!p.is_void && (
+                        <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
+                          <Plus className="w-4 h-4 rotate-45" />
+                        </Button>
+                      )}
+                      {isAdmin && !p.is_void && (
+                        <Button size="icon" variant="ghost" title="Void installment" onClick={() => setVoidPlan(p)}>
+                          <Ban className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
