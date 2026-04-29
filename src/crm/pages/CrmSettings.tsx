@@ -28,6 +28,7 @@ interface Settings {
   id: string;
   name: string;
   logo_url: string | null;
+  favicon_url: string | null;
   address: string | null;
   phone: string | null;
   whatsapp_number: string | null;
@@ -107,6 +108,15 @@ export default function CrmSettings() {
         <Section title="Identity">
           <Field label="Institute name"><Input value={settings.name} onChange={(e) => update("name", e.target.value)} /></Field>
           <Field label="Logo URL"><Input value={settings.logo_url ?? ""} onChange={(e) => update("logo_url", e.target.value)} placeholder="https://..." /></Field>
+          <Field label="Favicon URL">
+            <div className="space-y-2">
+              <Input value={settings.favicon_url ?? ""} onChange={(e) => update("favicon_url", e.target.value)} placeholder="https://... (32x32 or 64x64 PNG/ICO)" />
+              {settings.favicon_url && (
+                <img src={settings.favicon_url} alt="Favicon preview" className="w-8 h-8 rounded border bg-muted" />
+              )}
+              <p className="text-xs text-muted-foreground">Applied site-wide as the browser tab icon.</p>
+            </div>
+          </Field>
           <Field label="Website"><Input value={settings.website ?? ""} onChange={(e) => update("website", e.target.value)} /></Field>
           <Field label="GST number"><Input value={settings.gst ?? ""} onChange={(e) => update("gst", e.target.value)} /></Field>
         </Section>
