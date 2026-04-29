@@ -59,6 +59,8 @@ export default function CrmStudentFees() {
   const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0, status: "pending" });
   const [payOpen, setPayOpen] = useState(false);
   const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string });
+  const [voidPlan, setVoidPlan] = useState<Plan | null>(null);
+  const [voidPay, setVoidPay] = useState<Payment | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -74,7 +76,7 @@ export default function CrmStudentFees() {
   };
   useEffect(() => { load(); }, [studentId]);
 
-  const totalPaid = payments.reduce((a, p) => a + (p.amount || 0), 0);
+  const totalPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
   const totalBilled = student?.total_fee ?? 0;
   const due = totalBilled - totalPaid;
 
