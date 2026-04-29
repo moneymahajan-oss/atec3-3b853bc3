@@ -36,8 +36,16 @@ import CrmSeo from "./crm/pages/CrmSeo.tsx";
 import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
 import CrmReminders from "./crm/pages/CrmReminders.tsx";
 import CrmVoided from "./crm/pages/CrmVoided.tsx";
+import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
+import Enquire from "./pages/Enquire.tsx";
+import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient();
+
+function FaviconMount() {
+  useFaviconFromSettings();
+  return null;
+}
 
 const App = () => (
   <HelmetProvider>
@@ -48,8 +56,10 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <CrmAuthProvider>
+              <FaviconMount />
               <Routes>
                 <Route path="/" element={<Index />} />
+                <Route path="/enquire" element={<Enquire />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/site-content" element={<AdminSiteContent />} />
@@ -64,6 +74,7 @@ const App = () => (
                   <Route path="courses/:id" element={<CrmCourseForm />} />
                   <Route path="whatsapp" element={<CrmWhatsAppTemplates />} />
                   <Route path="settings" element={<CrmSettings />} />
+                  <Route path="enquiry-settings" element={<CrmEnquirySettings />} />
                   <Route path="enquiries" element={<CrmEnquiries />} />
                   <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
                   <Route path="students" element={<CrmStudents />} />
