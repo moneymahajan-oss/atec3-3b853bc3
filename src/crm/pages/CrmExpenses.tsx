@@ -233,10 +233,17 @@ export default function CrmExpenses() {
             ) : filtered.map((e) => {
               const cat = cats.find((c) => c.id === e.category_id);
               return (
-                <TableRow key={e.id}>
+                <TableRow key={e.id} className={e.is_void ? "opacity-50 line-through" : ""}>
                   <TableCell className="text-sm">{e.spent_on}</TableCell>
                   <TableCell>
-                    <div className="font-medium">{e.description}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {e.description}
+                      {e.is_void && (
+                        <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${e.voided_by_name ?? "—"}: ${e.void_reason ?? ""}`}>
+                          VOID
+                        </Badge>
+                      )}
+                    </div>
                     {e.reference && <div className="text-xs text-muted-foreground">Ref: {e.reference}</div>}
                   </TableCell>
                   <TableCell>
@@ -259,8 +266,12 @@ export default function CrmExpenses() {
                           <ReceiptIcon className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      {!e.is_void && (
+                        <>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Void" onClick={() => setVoidTarget(e)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
