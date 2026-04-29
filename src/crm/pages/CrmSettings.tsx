@@ -10,7 +10,6 @@ import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
 import { DangerZone } from "../components/DangerZone";
-import { AlertTriangle } from "lucide-react";
 
 interface ReminderSettingsValue {
   feeOverdueDaysOffset: number;
@@ -113,23 +112,17 @@ export default function CrmSettings() {
     <div>
       <PageHeader
         title="Institute Settings"
-        description="These details are used in WhatsApp templates, receipts, and certificates. Scroll to the bottom for the Danger Zone (admin-only data wipe)."
+        description="These details are used in WhatsApp templates, receipts, and certificates. The Danger Zone is shown first below."
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="font-semibold shadow-md"
-              onClick={() => {
-                document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
-            >
-              <AlertTriangle className="w-4 h-4 mr-1.5" /> Danger Zone ↓
-            </Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
           </div>
         }
       />
+
+      <div id="danger-zone" className="mb-6 scroll-mt-20">
+        <DangerZone />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Section title="Identity">
@@ -194,16 +187,6 @@ export default function CrmSettings() {
         </Section>
       </div>
 
-      <div id="danger-zone" className="mt-10 scroll-mt-20">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-px flex-1 bg-destructive/30" />
-          <h2 className="font-heading font-bold text-sm uppercase tracking-wider text-destructive">
-            System · Danger Zone
-          </h2>
-          <div className="h-px flex-1 bg-destructive/30" />
-        </div>
-        <DangerZone />
-      </div>
     </div>
   );
 }
