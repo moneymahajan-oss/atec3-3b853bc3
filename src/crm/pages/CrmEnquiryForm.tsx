@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
+import { SendWhatsAppCard } from "../components/SendWhatsAppCard";
+import { EnquiryTimeline } from "../components/EnquiryTimeline";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string };
