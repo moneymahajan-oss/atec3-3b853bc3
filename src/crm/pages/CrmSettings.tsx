@@ -50,6 +50,7 @@ export default function CrmSettings() {
   const { isAdmin, loading } = useCrmAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     (async () => {
@@ -64,6 +65,16 @@ export default function CrmSettings() {
       }
     })();
   }, []);
+
+  // Auto-scroll to Danger Zone if URL hash matches (from sidebar link)
+  useEffect(() => {
+    if (!settings) return;
+    if (location.hash === "#danger-zone") {
+      setTimeout(() => {
+        document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [settings, location.hash]);
 
   if (!loading && !isAdmin) return <Navigate to="/crm" replace />;
 
