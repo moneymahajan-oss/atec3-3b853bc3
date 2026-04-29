@@ -101,8 +101,22 @@ export default function CrmSettings() {
     <div>
       <PageHeader
         title="Institute Settings"
-        description="These details are used in WhatsApp templates, receipts, and certificates."
-        actions={<Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>}
+        description="These details are used in WhatsApp templates, receipts, and certificates. Scroll to the bottom for the Danger Zone (admin-only data wipe)."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => {
+                document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              ↓ Danger Zone
+            </Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -168,7 +182,14 @@ export default function CrmSettings() {
         </Section>
       </div>
 
-      <div className="mt-8">
+      <div id="danger-zone" className="mt-10 scroll-mt-20">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-px flex-1 bg-destructive/30" />
+          <h2 className="font-heading font-bold text-sm uppercase tracking-wider text-destructive">
+            System · Danger Zone
+          </h2>
+          <div className="h-px flex-1 bg-destructive/30" />
+        </div>
         <DangerZone />
       </div>
     </div>
