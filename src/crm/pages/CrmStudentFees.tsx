@@ -144,11 +144,20 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const removePayment = async (p: Payment) => {
-    if (!confirm(`Delete receipt ${p.receipt_no}? This will affect fee balance.`)) return;
-    const { error } = await supabase.from("crm_payments").delete().eq("id", p.id);
+  const confirmVoidPayment = async (reason: string) => {
+    if (!voidPay) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_payments").update(patch).eq("id", voidPay.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_payments", "delete", p.id);
+    await logAudit("crm_payments", "void", voidPay.id, { reason });
+    toast.success("Receipt voided. Fee balance recalculated.");
+    setVoidPay(null);
     load();
   };
 
