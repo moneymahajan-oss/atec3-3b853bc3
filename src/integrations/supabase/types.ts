@@ -1895,6 +1895,8 @@ export type Database = {
         | "crm_walk_in"
         | "crm_from_catalogue"
         | "crm_manual"
+        | "website_enquiry_form"
+        | "student_self_fill"
       crm_enquiry_status:
         | "new"
         | "contacted"
@@ -2112,6 +2114,8 @@ export const Constants = {
         "crm_walk_in",
         "crm_from_catalogue",
         "crm_manual",
+        "website_enquiry_form",
+        "student_self_fill",
       ],
       crm_enquiry_status: [
         "new",
