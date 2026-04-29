@@ -1,30 +1,26 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
-  Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon,
+  Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import { useCrmAuth } from "../hooks/useCrmAuth";
+import { loadAllReminderCounts } from "../lib/reminders";
 
 type NavItem = {
   title: string;
   url: string;
   icon: typeof LayoutDashboard;
   exact?: boolean;
-  badge?: string;
+  badge?: string | number;
+  badgeTone?: "default" | "danger";
   adminOnly?: boolean;
 };
-
-const main: NavItem[] = [
-  { title: "Dashboard", url: "/crm", icon: LayoutDashboard, exact: true },
-  { title: "Courses", url: "/crm/courses", icon: BookOpen },
-  { title: "Enquiries", url: "/crm/enquiries", icon: Users },
-  { title: "Students", url: "/crm/students", icon: GraduationCap },
-];
 
 const ops: NavItem[] = [
   { title: "Fees", url: "/crm/fees", icon: Wallet },
@@ -47,7 +43,34 @@ export function CrmSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const { pathname } = useLocation();
-  const { isAdmin } = useCrmAuth();
+  const { isAdmin, hasAccess } = useCrmAuth();
+  const [reminderTotal, setReminderTotal] = useState<number>(0);
+
+  useEffect(() => {
+    if (!hasAccess) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const c = await loadAllReminderCounts();
+        if (!cancelled) setReminderTotal(c.total);
+      } catch { /* ignore */ }
+    };
+    load();
+    const t = setInterval(load, 5 * 60 * 1000); // refresh every 5min
+    return () => { cancelled = true; clearInterval(t); };
+  }, [hasAccess, pathname]);
+
+  const main: NavItem[] = [
+    { title: "Dashboard", url: "/crm", icon: LayoutDashboard, exact: true },
+    {
+      title: "Reminders", url: "/crm/reminders", icon: BellRing,
+      badge: reminderTotal > 0 ? reminderTotal : undefined,
+      badgeTone: "danger",
+    },
+    { title: "Courses", url: "/crm/courses", icon: BookOpen },
+    { title: "Enquiries", url: "/crm/enquiries", icon: Users },
+    { title: "Students", url: "/crm/students", icon: GraduationCap },
+  ];
 
   const isActive = (url: string, exact?: boolean) =>
     exact ? pathname === url : pathname === url || pathname.startsWith(url + "/");
@@ -62,8 +85,13 @@ export function CrmSidebar() {
             {!collapsed && (
               <span className="flex-1 truncate">{item.title}</span>
             )}
-            {!collapsed && item.badge && (
-              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {!collapsed && item.badge !== undefined && (
+              <span className={
+                "ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold " +
+                (item.badgeTone === "danger"
+                  ? "bg-rose-500 text-white"
+                  : "bg-muted text-muted-foreground")
+              }>
                 {item.badge}
               </span>
             )}
