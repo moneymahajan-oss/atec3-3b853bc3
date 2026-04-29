@@ -51,7 +51,6 @@ export function DangerZone() {
     for (const table of WIPE_TABLES) {
       const { error, count } = await supabase
         .from(table)
-        // @ts-expect-error generic delete on dynamic table name
         .delete({ count: "exact" })
         .not("id", "is", null);
       if (error) {
