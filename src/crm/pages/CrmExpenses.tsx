@@ -329,6 +329,14 @@ export default function CrmExpenses() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VoidDialog
+        open={!!voidTarget}
+        onOpenChange={(v) => { if (!v) setVoidTarget(null); }}
+        title={voidTarget ? `Void expense "${voidTarget.description}"` : "Void expense"}
+        description="This expense will be excluded from totals and reports, but kept for audit history."
+        onConfirm={confirmVoid}
+      />
     </div>
   );
 }
