@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
-  Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing,
+  Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing, Ban,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -34,6 +34,7 @@ const tools: NavItem[] = [
   { title: "WhatsApp Templates", url: "/crm/whatsapp", icon: MessageSquare },
   { title: "Campaigns", url: "/crm/campaigns", icon: Megaphone },
   { title: "Reports", url: "/crm/reports", icon: BarChart3 },
+  { title: "Voided / Cancelled", url: "/crm/voided", icon: Ban },
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
   { title: "SEO Meta", url: "/crm/seo", icon: SearchIcon, adminOnly: true },
   { title: "Settings", url: "/crm/settings", icon: Settings, adminOnly: true },
