@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Filter, Pencil, Trash2, Download, Upload as UploadIcon, Receipt as ReceiptIcon } from "lucide-react";
+import { Plus, Search, Filter, Pencil, Ban, Download, Upload as UploadIcon, Receipt as ReceiptIcon } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
+import { VoidDialog } from "../components/VoidDialog";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
