@@ -40,12 +40,14 @@ export default function CrmFees() {
       if (error) toast.error(error.message);
       const paidByStudent: Record<string, number> = {};
       (payments ?? []).forEach((p) => {
+        if ((p as { is_void?: boolean }).is_void) return;
         paidByStudent[p.student_id] = (paidByStudent[p.student_id] || 0) + (p.amount ?? 0);
       });
       const today = new Date().toISOString().slice(0, 10);
       const plansBy: Record<string, { next?: { date: string; amount: number }; overdue: number }> = {};
       (plans ?? []).forEach((p) => {
         if (!p.student_id) return;
+        if ((p as { is_void?: boolean }).is_void) return;
         const bucket = plansBy[p.student_id] ||= { overdue: 0 };
         const remaining = (p.amount ?? 0) - (p.amount_paid ?? 0);
         if (remaining <= 0) return;
