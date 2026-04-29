@@ -471,7 +471,22 @@ export default function CrmEnquiryForm() {
           </Card>
         </div>
 
-        <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 h-fit sticky top-4">
+        <div className="space-y-6 h-fit lg:sticky lg:top-4">
+          {!isNew && (
+            <SendWhatsAppCard
+              enquiry={{
+                id: id!,
+                name: form.name,
+                phone: form.phone,
+                whatsapp: null,
+                course_name_snapshot: form.course_name_snapshot ?? null,
+              }}
+              course={courseDetails as never}
+              institute={(institute ?? { name: null, phone: null, whatsapp_number: null, website: null }) as never}
+            />
+          )}
+          {!isNew && <EnquiryTimeline enquiryId={id!} />}
+          <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
               <Lock className="w-4 h-4" /> Internal staff notes
