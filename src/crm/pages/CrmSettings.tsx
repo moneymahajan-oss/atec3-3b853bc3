@@ -9,6 +9,7 @@ import { useCrmAuth } from "../hooks/useCrmAuth";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
+import { DangerZone } from "../components/DangerZone";
 
 interface ReminderSettingsValue {
   feeOverdueDaysOffset: number;
@@ -165,6 +166,10 @@ export default function CrmSettings() {
               onChange={(e) => updateReminder("attendanceThreshold", Number(e.target.value))} />
           </Field>
         </Section>
+      </div>
+
+      <div className="mt-8">
+        <DangerZone />
       </div>
     </div>
   );
