@@ -377,7 +377,7 @@ export default function CrmStudentFees() {
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Standalone —</SelectItem>
-                  {plans.filter((p) => p.status !== "paid").map((p) =>
+                  {plans.filter((p) => p.status !== "paid" && !p.is_void).map((p) =>
                     <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
                   )}
                 </SelectContent>
@@ -391,6 +391,21 @@ export default function CrmStudentFees() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VoidDialog
+        open={!!voidPlan}
+        onOpenChange={(v) => { if (!v) setVoidPlan(null); }}
+        title={voidPlan ? `Void installment #${voidPlan.installment_no}` : "Void installment"}
+        description="This installment will be removed from totals and reminders, but kept for audit history."
+        onConfirm={confirmVoidPlan}
+      />
+      <VoidDialog
+        open={!!voidPay}
+        onOpenChange={(v) => { if (!v) setVoidPay(null); }}
+        title={voidPay ? `Void receipt ${voidPay.receipt_no ?? ""}` : "Void receipt"}
+        description="The fee balance will be recalculated automatically."
+        onConfirm={confirmVoidPayment}
+      />
     </div>
   );
 }
