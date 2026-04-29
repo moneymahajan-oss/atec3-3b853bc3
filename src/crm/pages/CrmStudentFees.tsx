@@ -105,11 +105,20 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const removePlan = async (p: Plan) => {
-    if (!confirm(`Delete installment #${p.installment_no}?`)) return;
-    const { error } = await supabase.from("crm_fee_plans").delete().eq("id", p.id);
+  const confirmVoidPlan = async (reason: string) => {
+    if (!voidPlan) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_fee_plans").update(patch).eq("id", voidPlan.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_fee_plans", "delete", p.id);
+    await logAudit("crm_fee_plans", "void", voidPlan.id, { reason });
+    toast.success("Installment voided");
+    setVoidPlan(null);
     load();
   };
 
