@@ -135,6 +135,26 @@ export default function CrmSettings() {
           <Field label="Receipt header"><Textarea rows={2} value={settings.receipt_header ?? ""} onChange={(e) => update("receipt_header", e.target.value)} /></Field>
           <Field label="Receipt footer"><Textarea rows={2} value={settings.receipt_footer ?? ""} onChange={(e) => update("receipt_footer", e.target.value)} /></Field>
         </Section>
+
+        <Section title="Reminders dashboard">
+          <p className="text-xs text-muted-foreground -mt-2">Tune the windows used by the Reminders page and dashboard badge.</p>
+          <Field label="Show overdue once N days past due">
+            <Input type="number" min={0} value={settings.reminder_settings?.feeOverdueDaysOffset ?? 0}
+              onChange={(e) => updateReminder("feeOverdueDaysOffset", Number(e.target.value))} />
+          </Field>
+          <Field label="Fee due-soon window (days before due)">
+            <Input type="number" min={0} value={settings.reminder_settings?.feeDueSoonWindow ?? 3}
+              onChange={(e) => updateReminder("feeDueSoonWindow", Number(e.target.value))} />
+          </Field>
+          <Field label="Batch ending window (days before end)">
+            <Input type="number" min={1} value={settings.reminder_settings?.batchEndingWindow ?? 14}
+              onChange={(e) => updateReminder("batchEndingWindow", Number(e.target.value))} />
+          </Field>
+          <Field label="Low attendance threshold (%)">
+            <Input type="number" min={0} max={100} value={settings.reminder_settings?.attendanceThreshold ?? 75}
+              onChange={(e) => updateReminder("attendanceThreshold", Number(e.target.value))} />
+          </Field>
+        </Section>
       </div>
     </div>
   );
