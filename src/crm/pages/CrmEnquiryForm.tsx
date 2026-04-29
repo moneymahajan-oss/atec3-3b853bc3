@@ -186,6 +186,18 @@ export default function CrmEnquiryForm() {
       const { error } = await supabase.from("crm_enquiries").update(payload).eq("id", id!);
       if (error) { toast.error(error.message); setSaving(false); return; }
       await logAudit("crm_enquiries", "update", id, payload);
+      // Stage change: write a system note
+      if (prevStatus !== form.status) {
+        const { data: nd } = await supabase.from("crm_enquiry_notes").insert({
+          enquiry_id: id!,
+          body: `Stage changed: ${prevStatus.replace(/_/g, " ")} → ${form.status.replace(/_/g, " ")}${form.status === "lost" && form.lost_reason ? ` (reason: ${form.lost_reason})` : ""}`,
+          note_type: "stage_change",
+          staff_id: user?.id,
+          staff_name: user?.user_metadata?.full_name || user?.email || null,
+        }).select("*").maybeSingle();
+        if (nd) setNotes((n) => [nd as NoteRow, ...n]);
+        setPrevStatus(form.status);
+      }
       toast.success("Saved");
     }
     setSaving(false);
@@ -228,7 +240,13 @@ export default function CrmEnquiryForm() {
     <div className="space-y-6">
       <PageHeader
         title={isNew ? "New Enquiry" : form.name}
-        description={isNew ? "Capture a fresh lead." : `Phone: ${form.phone}`}
+        description={
+          isNew
+            ? "Capture a fresh lead."
+            : createdAt
+              ? `Phone: ${form.phone} · Enquiry received ${Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000))} day(s) ago${createdByName ? ` · by ${createdByName}` : ""}`
+              : `Phone: ${form.phone}`
+        }
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate("/crm/enquiries")}>
