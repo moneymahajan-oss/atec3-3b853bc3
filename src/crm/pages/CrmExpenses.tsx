@@ -29,6 +29,7 @@ type Expense = {
   vendor: string | null; description: string; amount: number; mode: string;
   reference: string | null; notes: string | null; receipt_url: string | null;
   recorded_by_name: string | null;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null;
 };
 
 const empty: Partial<Expense> = {
