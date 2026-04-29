@@ -49,6 +49,8 @@ export default function CrmExpenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Expense>>(empty);
   const [uploading, setUploading] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Expense | null>(null);
+  const [showVoided, setShowVoided] = useState(false);
 
   const load = async () => {
     setLoading(true);
