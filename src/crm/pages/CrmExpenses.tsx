@@ -133,16 +133,25 @@ export default function CrmExpenses() {
     setOpen(false); setEditing(empty); load();
   };
 
-  const remove = async (e: Expense) => {
-    if (!confirm(`Delete expense "${e.description}"?`)) return;
-    const { error } = await supabase.from("crm_expenses").delete().eq("id", e.id);
+  const confirmVoid = async (reason: string) => {
+    if (!voidTarget) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_expenses").update(patch).eq("id", voidTarget.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_expenses", "delete", e.id);
+    await logAudit("crm_expenses", "void", voidTarget.id, { reason });
+    toast.success("Expense voided");
+    setVoidTarget(null);
     load();
   };
 
   const exportXlsx = () => {
-    const rows = filtered.map((e) => ({
+    const rows = filtered.filter((e) => !e.is_void).map((e) => ({
       Date: e.spent_on,
       Category: e.category_name_snapshot,
       Vendor: e.vendor,
