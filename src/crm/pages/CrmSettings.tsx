@@ -117,14 +117,14 @@ export default function CrmSettings() {
         actions={
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="font-semibold shadow-md"
               onClick={() => {
                 document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              ↓ Danger Zone
+              <AlertTriangle className="w-4 h-4 mr-1.5" /> Danger Zone ↓
             </Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
           </div>
