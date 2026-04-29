@@ -589,6 +589,7 @@ export type Database = {
       crm_enquiries: {
         Row: {
           alt_phone: string | null
+          any_message: string | null
           assigned_to: string | null
           assigned_to_name: string | null
           budget_range: Database["public"]["Enums"]["crm_budget_range"] | null
@@ -626,9 +627,11 @@ export type Database = {
           status: Database["public"]["Enums"]["crm_enquiry_status"]
           stream: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           alt_phone?: string | null
+          any_message?: string | null
           assigned_to?: string | null
           assigned_to_name?: string | null
           budget_range?: Database["public"]["Enums"]["crm_budget_range"] | null
@@ -668,9 +671,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["crm_enquiry_status"]
           stream?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           alt_phone?: string | null
+          any_message?: string | null
           assigned_to?: string | null
           assigned_to_name?: string | null
           budget_range?: Database["public"]["Enums"]["crm_budget_range"] | null
@@ -710,6 +715,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["crm_enquiry_status"]
           stream?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: [
           {
@@ -720,6 +726,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_enquiry_form_fields: {
+        Row: {
+          created_at: string
+          dropdown_options: Json | null
+          field_key: string
+          field_label: string
+          id: string
+          is_locked: boolean
+          required_on_public: boolean
+          show_in_crm_form: boolean
+          show_on_public: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dropdown_options?: Json | null
+          field_key: string
+          field_label: string
+          id?: string
+          is_locked?: boolean
+          required_on_public?: boolean
+          show_in_crm_form?: boolean
+          show_on_public?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dropdown_options?: Json | null
+          field_key?: string
+          field_label?: string
+          id?: string
+          is_locked?: boolean
+          required_on_public?: boolean
+          show_in_crm_form?: boolean
+          show_on_public?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       crm_enquiry_notes: {
         Row: {
@@ -758,6 +806,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_enquiry_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       crm_expense_categories: {
         Row: {
@@ -940,6 +1021,7 @@ export type Database = {
           created_at: string
           director_signature_url: string | null
           email: string | null
+          favicon_url: string | null
           fee_reminder_days: number
           gst: string | null
           id: string
@@ -952,6 +1034,9 @@ export type Database = {
           receipt_header: string | null
           referral_reward: number
           reminder_settings: Json
+          self_fill_form_subtitle: string | null
+          self_fill_form_title: string | null
+          self_fill_thank_you_message: string | null
           updated_at: string
           upi_id: string | null
           website: string | null
@@ -965,6 +1050,7 @@ export type Database = {
           created_at?: string
           director_signature_url?: string | null
           email?: string | null
+          favicon_url?: string | null
           fee_reminder_days?: number
           gst?: string | null
           id?: string
@@ -977,6 +1063,9 @@ export type Database = {
           receipt_header?: string | null
           referral_reward?: number
           reminder_settings?: Json
+          self_fill_form_subtitle?: string | null
+          self_fill_form_title?: string | null
+          self_fill_thank_you_message?: string | null
           updated_at?: string
           upi_id?: string | null
           website?: string | null
@@ -990,6 +1079,7 @@ export type Database = {
           created_at?: string
           director_signature_url?: string | null
           email?: string | null
+          favicon_url?: string | null
           fee_reminder_days?: number
           gst?: string | null
           id?: string
@@ -1002,6 +1092,9 @@ export type Database = {
           receipt_header?: string | null
           referral_reward?: number
           reminder_settings?: Json
+          self_fill_form_subtitle?: string | null
+          self_fill_form_title?: string | null
+          self_fill_thank_you_message?: string | null
           updated_at?: string
           upi_id?: string | null
           website?: string | null
@@ -1343,6 +1436,7 @@ export type Database = {
           staff_name: string | null
           status: Database["public"]["Enums"]["crm_wa_log_status"]
           template_key: string
+          triggered_from: string | null
         }
         Insert: {
           contact_name?: string | null
@@ -1357,6 +1451,7 @@ export type Database = {
           staff_name?: string | null
           status?: Database["public"]["Enums"]["crm_wa_log_status"]
           template_key: string
+          triggered_from?: string | null
         }
         Update: {
           contact_name?: string | null
@@ -1371,6 +1466,7 @@ export type Database = {
           staff_name?: string | null
           status?: Database["public"]["Enums"]["crm_wa_log_status"]
           template_key?: string
+          triggered_from?: string | null
         }
         Relationships: []
       }
