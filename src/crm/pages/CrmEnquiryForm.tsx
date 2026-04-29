@@ -223,11 +223,13 @@ export default function CrmEnquiryForm() {
   };
 
   const remove = async () => {
-    if (!confirm("Delete this enquiry? This cannot be undone.")) return;
+    if (!confirm(
+      "Delete this enquiry?\n\nThis will also remove:\n• All notes & timeline\n• All WhatsApp send logs\n• Link from any converted student (the student record itself is kept)\n\nThis cannot be undone."
+    )) return;
     const { error } = await supabase.from("crm_enquiries").delete().eq("id", id!);
     if (error) { toast.error(error.message); return; }
     await logAudit("crm_enquiries", "delete", id);
-    toast.success("Deleted");
+    toast.success("Enquiry and related records deleted");
     navigate("/crm/enquiries");
   };
 
