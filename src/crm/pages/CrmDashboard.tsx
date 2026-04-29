@@ -2,55 +2,88 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "../components/PageHeader";
-import { BookOpen, MessageSquare, Users, Wallet } from "lucide-react";
+import { BellRing, BookOpen, Cake, MessageSquare, Users, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCrmAuth } from "../hooks/useCrmAuth";
+import { loadAllReminderCounts, type ReminderCounts } from "../lib/reminders";
 
 export default function CrmDashboard() {
-  const { isAdmin } = useCrmAuth();
-  const [counts, setCounts] = useState({ courses: 0, templates: 0, waLogs: 0 });
+  const { isAdmin, hasAccess } = useCrmAuth();
+  const [counts, setCounts] = useState({ courses: 0, templates: 0, students: 0, enquiries: 0 });
+  const [reminders, setReminders] = useState<ReminderCounts | null>(null);
 
   useEffect(() => {
+    if (!hasAccess) return;
     (async () => {
-      const [c, t, w] = await Promise.all([
+      const [c, t, s, e] = await Promise.all([
         supabase.from("crm_courses").select("id", { count: "exact", head: true }),
         supabase.from("crm_whatsapp_templates").select("id", { count: "exact", head: true }),
-        supabase.from("crm_whatsapp_logs").select("id", { count: "exact", head: true }),
+        supabase.from("crm_students").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("crm_enquiries").select("id", { count: "exact", head: true })
+          .not("status", "in", "(converted,lost)"),
       ]);
-      setCounts({ courses: c.count ?? 0, templates: t.count ?? 0, waLogs: w.count ?? 0 });
+      setCounts({
+        courses: c.count ?? 0,
+        templates: t.count ?? 0,
+        students: s.count ?? 0,
+        enquiries: e.count ?? 0,
+      });
+      try { setReminders(await loadAllReminderCounts()); } catch { /* ignore */ }
     })();
-  }, []);
+  }, [hasAccess]);
 
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        description="Welcome to ATEC CRM. Phase 1 is live — Courses, WhatsApp Templates and Settings are ready."
+        description="Welcome back. Here's what's happening at ATEC today."
       />
 
+      {reminders && reminders.total > 0 && (
+        <Link
+          to="/crm/reminders"
+          className="block mb-6 rounded-2xl border bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-pink-500/10 p-5 hover:shadow-md transition-all"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0">
+              <BellRing className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-heading font-bold text-lg">{reminders.total} active reminders</h2>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-rose-500 text-white font-semibold">Action needed</span>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                {reminders.overdue > 0 && <span>🔴 {reminders.overdue} fee overdue</span>}
+                {reminders.dueSoon > 0 && <span>🟡 {reminders.dueSoon} due soon</span>}
+                {reminders.birthdaysToday > 0 && <span>🎂 {reminders.birthdaysToday} birthday{reminders.birthdaysToday !== 1 && "s"} today</span>}
+                {reminders.followUp > 0 && <span>📞 {reminders.followUp} follow-up{reminders.followUp !== 1 && "s"}</span>}
+                {reminders.lowAttendance > 0 && <span>⚠️ {reminders.lowAttendance} low attendance</span>}
+                {reminders.docsPending > 0 && <span>📋 {reminders.docsPending} docs pending</span>}
+                {reminders.batchEnding > 0 && <span>🎓 {reminders.batchEnding} batch{reminders.batchEnding !== 1 && "es"} ending</span>}
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <KpiCard icon={BookOpen} label="Active courses" value={counts.courses} to="/crm/courses" />
-        <KpiCard icon={MessageSquare} label="WA templates" value={counts.templates} to="/crm/whatsapp" />
-        <KpiCard icon={Users} label="WA links sent" value={counts.waLogs} to="/crm/courses" />
-        <KpiCard icon={Wallet} label="Pending fees" value="—" to="#" />
+        <KpiCard icon={Users} label="Open enquiries" value={counts.enquiries} to="/crm/enquiries" />
+        <KpiCard icon={BookOpen} label="Active students" value={counts.students} to="/crm/students" />
+        <KpiCard icon={Wallet} label="Pending fees" value={reminders ? reminders.overdue + reminders.dueSoon : "—"} to="/crm/reminders" />
+        <KpiCard icon={Cake} label="Birthdays today" value={reminders?.birthdaysToday ?? "—"} to="/crm/reminders" />
       </div>
 
-      <div className="bg-card border rounded-2xl p-5 mb-6">
+      <div className="bg-card border rounded-2xl p-5">
         <h2 className="font-heading font-bold mb-2">Quick actions</h2>
         <div className="flex flex-wrap gap-2">
-          <Button asChild><Link to="/crm/courses">Manage courses</Link></Button>
-          <Button asChild variant="outline"><Link to="/crm/whatsapp">Edit WhatsApp templates</Link></Button>
-          {isAdmin && <Button asChild variant="outline"><Link to="/crm/settings">Institute settings</Link></Button>}
+          <Button asChild><Link to="/crm/enquiries">New enquiry</Link></Button>
+          <Button asChild variant="outline"><Link to="/crm/students">New student</Link></Button>
+          <Button asChild variant="outline"><Link to="/crm/fees">Collect fee</Link></Button>
+          <Button asChild variant="outline"><Link to="/crm/attendance">Mark attendance</Link></Button>
+          <Button asChild variant="outline"><Link to="/crm/whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WA templates</Link></Button>
+          {isAdmin && <Button asChild variant="ghost"><Link to="/crm/settings">Settings</Link></Button>}
         </div>
-      </div>
-
-      <div className="bg-muted/40 border border-dashed rounded-2xl p-5">
-        <h3 className="font-heading font-semibold mb-1">Coming in Phase 2</h3>
-        <p className="text-sm text-muted-foreground">
-          Enquiry &amp; lead management, Student master with documents and internal notes,
-          and the full WhatsApp template library (welcome, follow-ups, admission, fees, attendance,
-          completion, alumni). Once Phase 1 is signed off, just ask: "build phase 2".
-        </p>
       </div>
     </div>
   );
