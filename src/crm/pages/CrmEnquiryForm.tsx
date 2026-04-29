@@ -530,6 +530,7 @@ export default function CrmEnquiryForm() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
