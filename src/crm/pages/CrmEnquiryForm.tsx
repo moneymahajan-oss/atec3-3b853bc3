@@ -122,7 +122,7 @@ export default function CrmEnquiryForm() {
       setNotes((nd ?? []) as NoteRow[]);
       setLoading(false);
     })();
-    supabase.from("crm_institute_settings").select("name, phone, whatsapp_number, website").maybeSingle()
+    supabase.from("crm_institute_settings").select("name, phone, whatsapp_number, website, address").maybeSingle()
       .then(({ data }) => setInstitute((data as never) ?? null));
   }, [id, isNew, navigate]);
 

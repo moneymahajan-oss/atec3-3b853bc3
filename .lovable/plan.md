@@ -1,44 +1,36 @@
-# Make the Danger Zone actually findable
+## Goal
+Fix WhatsApp messages sent from the Enquiry panel so the website (and other institute/course fields you've saved in Settings) actually appear in the message.
 
-## What you're seeing
+## Root cause
+The active templates in `crm_whatsapp_templates` use placeholders like `{website_link}`, `{phone}`, `{institute_address}`, `{duration}`, `{mode}`, `{concise_syllabus}`, `{brochure_link}`, `{video_link}`.
 
-In your screenshot of `/crm/settings`, the top-right shows only **"Save changes"** — the **"↓ Danger Zone"** shortcut button that was added last round is not visible. The code is in place (`src/crm/pages/CrmSettings.tsx` lines 107–116), so this is most likely a stale preview / browser cache. A hard refresh (Ctrl+Shift+R) should bring it back.
+But `buildVars` in `src/crm/lib/enquiryWa.ts` produces a different set of keys: `institute_website`, `institute_phone`, `course_duration`, `course_mode`, `course_short_syllabus`, `brochure_url`, `video_url` — and never produces `institute_address` at all.
 
-But the bigger issue is the design itself: a small outline button next to "Save changes" is easy to miss, and the actual Danger Zone card sits far below the fold on a 879px-tall viewport. Let's fix it properly so you never have to hunt for it again.
+Unknown placeholders are not replaced, then the "strip empty `Label:` lines" pass in `fillTemplate` deletes lines like `🌐 {website_link}` entirely. That's why your website disappears.
 
-## Plan
+## Fix (two parts)
 
-Three changes, all in the CRM settings area:
+### 1. Extend `buildVars` to provide both old and new aliases
+In `src/crm/lib/enquiryWa.ts`, add alias keys so existing templates keep working without manual rewrites:
+- `website_link` = institute website
+- `phone` = institute phone (fallback to whatsapp_number)
+- `institute_address` = institute address (new — load from settings)
+- `duration`, `mode`, `concise_syllabus` = course fields
+- `brochure_link` = `brochure_url`
+- `video_link` = `video_url`
 
-### 1. Add a permanent "Danger Zone" entry in the sidebar (admin only)
+Keep all existing keys (`institute_website`, `course_duration`, etc.) so nothing else breaks.
 
-In `src/crm/components/CrmSidebar.tsx`, add a new item at the bottom of the sidebar (under a "System" group) labeled **"Danger Zone"** with a red `AlertTriangle` icon. It links to `/crm/settings#danger-zone`. Only renders when `isAdmin` is true.
+### 2. Load address from settings
+Update `src/crm/pages/CrmEnquiryForm.tsx` (line ~125) to also `select` the `address` column from `crm_institute_settings`, and extend the `InstituteCtx` type in `enquiryWa.ts` to include `address`.
 
-This means: from anywhere in the CRM, one click jumps straight to the wipe button.
+### 3. Improve `fillTemplate` resilience (small safety net)
+In `src/crm/lib/whatsapp.ts`'s `fillTemplate`, after variable substitution, also strip any `{...}` placeholders that remain unfilled — and only then run the empty-line cleanup. This prevents future mismatches from leaving raw `{foo}` tokens in messages.
 
-### 2. Make the in-page shortcut a bold, unmissable pill
+## Files to edit
+- `src/crm/lib/enquiryWa.ts` — extend `InstituteCtx` with `address`; add alias keys in `buildVars`.
+- `src/crm/pages/CrmEnquiryForm.tsx` — include `address` in the settings select and pass it to `institute`.
+- `src/crm/lib/whatsapp.ts` — strip leftover `{placeholders}` before the empty-line cleanup.
 
-Replace the small outline button in `CrmSettings.tsx` header with a solid red destructive button labeled **"Danger Zone ↓"** with the `AlertTriangle` icon. Keep it next to "Save changes" but make it visually loud (solid red, not outlined).
-
-### 3. Auto-scroll when arriving via hash
-
-In `CrmSettings.tsx`, add a `useEffect` that reads `window.location.hash` and, if it equals `#danger-zone`, scrolls the section into view after settings load. This makes the sidebar link land you directly on the red card.
-
-## Files touched
-
-- `src/crm/components/CrmSidebar.tsx` — add admin-only "Danger Zone" sidebar item under a "System" group, linking to `/crm/settings#danger-zone`.
-- `src/crm/pages/CrmSettings.tsx` — swap the outline shortcut for a solid destructive button with icon; add `useEffect` to auto-scroll on `#danger-zone` hash.
-
-## Not changed
-
-- `DangerZone.tsx` — already correct (red border, two-step confirm with checkbox + "DELETE EVERYTHING" phrase).
-- The wipe logic, audit logging, and confirmation flow stay exactly as they are.
-- Permissions stay admin-only.
-
-## Verification
-
-After approval and a hard refresh:
-1. Sidebar shows a red **"Danger Zone"** item under a "System" group (admin only).
-2. Clicking it navigates to `/crm/settings` and auto-scrolls to the red Danger Zone card.
-3. On the settings page itself, the top-right now has a bold red **"Danger Zone ↓"** button next to "Save changes".
-4. The "Wipe all CRM data" button is one click away from any CRM page.
+## Out of scope
+Not rewriting the templates themselves — the alias approach fixes the issue without touching your saved template bodies. You can clean up template wording later from the WhatsApp Templates page if you want.

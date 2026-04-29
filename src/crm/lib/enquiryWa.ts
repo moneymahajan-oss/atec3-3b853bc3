@@ -58,28 +58,48 @@ export interface InstituteCtx {
   phone?: string | null;
   whatsapp_number?: string | null;
   website?: string | null;
+  address?: string | null;
 }
 
 export function buildVars(e: EnquiryCtx, course: CourseCtx | null, inst: InstituteCtx) {
   const longSyl = course?.detailed_syllabus_html
     ? course.detailed_syllabus_html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()
     : "";
+  const institutePhone = inst.phone || inst.whatsapp_number || "";
+  const instituteWebsite = inst.website || "";
+  const duration = course?.duration || "";
+  const mode = course?.mode || "";
+  const concise = course?.concise_syllabus || "";
+  const brochure = course?.brochure_url || "";
+  const video = course?.video_url || "";
   return {
     name: e.name,
-    phone: e.phone,
+    // Enquiry contact phone (the lead). Note: templates that say {phone} for the
+    // institute's contact number are aliased to institute phone below via overwrite.
     course_name: course?.name || e.course_name_snapshot || "our course",
     course_fee: course?.total_fee ?? "",
-    course_duration: course?.duration || "",
-    course_mode: course?.mode || "",
-    course_short_syllabus: course?.concise_syllabus || "",
+    course_duration: duration,
+    course_mode: mode,
+    course_short_syllabus: concise,
     course_long_syllabus: longSyl,
-    brochure_url: course?.brochure_url || "",
-    video_url: course?.video_url || "",
+    brochure_url: brochure,
+    video_url: video,
     instagram_url: course?.instagram_url || "",
     next_batch_date: course?.next_batch_date || "soon",
     institute_name: inst.name || "ATEC Education",
-    institute_phone: inst.phone || inst.whatsapp_number || "",
-    institute_website: inst.website || "",
+    institute_phone: institutePhone,
+    institute_website: instituteWebsite,
+    institute_address: inst.address || "",
+    // Aliases used by existing template bodies
+    phone: institutePhone,
+    website_link: instituteWebsite,
+    website: instituteWebsite,
+    address: inst.address || "",
+    duration,
+    mode,
+    concise_syllabus: concise,
+    brochure_link: brochure,
+    video_link: video,
   };
 }
 

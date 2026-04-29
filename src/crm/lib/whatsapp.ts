@@ -10,6 +10,8 @@ export function fillTemplate(
     const v = value === undefined || value === null || value === "" ? "" : String(value);
     result = result.replace(regex, v);
   }
+  // Strip any unfilled {placeholders} so they don't appear raw in messages
+  result = result.replace(/\{[a-zA-Z0-9_]+\}/g, "");
   // Drop lines that became "Label:" with nothing after the colon (optional vars left empty)
   return result
     .split("\n")
