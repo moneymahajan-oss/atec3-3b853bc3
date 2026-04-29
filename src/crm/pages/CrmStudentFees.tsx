@@ -290,8 +290,15 @@ export default function CrmStudentFees() {
               {payments.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No payments yet.</TableCell></TableRow>
               ) : payments.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs">{p.receipt_no}</TableCell>
+                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
+                  <TableCell className="font-mono text-xs">
+                    {p.receipt_no}
+                    {p.is_void && (
+                      <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>
+                        VOID
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>{p.paid_on}</TableCell>
                   <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
                   <TableCell className="text-sm">{p.reference || "—"}</TableCell>
@@ -299,13 +306,21 @@ export default function CrmStudentFees() {
                   <TableCell className="text-sm">{p.collected_by_name || "—"}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
-                        <MessageSquare className="w-4 h-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
-                        <Printer className="w-4 h-4" />
-                      </Button>
-                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePayment(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                      {!p.is_void && (
+                        <>
+                          <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
+                            <Printer className="w-4 h-4" />
+                          </Button>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" title="Void receipt" onClick={() => setVoidPay(p)}>
+                              <Ban className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
