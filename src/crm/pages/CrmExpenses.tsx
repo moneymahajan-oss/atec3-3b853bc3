@@ -66,6 +66,7 @@ export default function CrmExpenses() {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter((e) => {
+    if (!showVoided && e.is_void) return false;
     if (catFilter !== "all" && e.category_id !== catFilter) return false;
     if (from && e.spent_on < from) return false;
     if (to && e.spent_on > to) return false;
@@ -74,17 +75,18 @@ export default function CrmExpenses() {
     return e.description.toLowerCase().includes(t)
       || (e.vendor ?? "").toLowerCase().includes(t)
       || (e.reference ?? "").toLowerCase().includes(t);
-  }), [items, q, catFilter, from, to]);
+  }), [items, q, catFilter, from, to, showVoided]);
 
   const totals = useMemo(() => {
-    const total = filtered.reduce((a, e) => a + (e.amount || 0), 0);
+    const live = filtered.filter((e) => !e.is_void);
+    const total = live.reduce((a, e) => a + (e.amount || 0), 0);
     const byCat: Record<string, number> = {};
-    filtered.forEach((e) => {
+    live.forEach((e) => {
       const k = e.category_name_snapshot || "Uncategorised";
       byCat[k] = (byCat[k] || 0) + (e.amount || 0);
     });
     const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
-    return { total, count: filtered.length, top };
+    return { total, count: live.length, top };
   }, [filtered]);
 
   const set = <K extends keyof Expense>(k: K, v: Expense[K]) => setEditing((e) => ({ ...e, [k]: v }));
