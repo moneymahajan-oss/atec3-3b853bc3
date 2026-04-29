@@ -85,30 +85,31 @@ export function SendWhatsAppCard({ enquiry, course, institute }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {ENQUIRY_BUTTONS.map((b) => {
               const last = b.key !== "SEND_ALL" ? lastSent[b.key] : undefined;
               const isAll = b.key === "SEND_ALL";
               return (
                 <div
                   key={b.key}
-                  className="border rounded-lg p-3 hover:bg-muted/30 transition-colors"
+                  className="border rounded-md p-2 hover:bg-muted/30 transition-colors flex flex-col gap-1.5 min-w-0"
                 >
                   <Button
                     variant={isAll ? "default" : "outline"}
-                    className="w-full justify-start h-auto py-2"
+                    size="sm"
+                    className="w-full justify-start h-8 px-2 text-xs font-medium min-w-0"
                     onClick={() => isAll ? setSendAllOpen(true) : handleClick(b.key as EnquiryTemplateKey)}
                   >
-                    <span className="text-lg mr-2">{b.emoji}</span>
-                    <span className="text-sm">{b.label}</span>
+                    <span className="text-sm mr-1.5 shrink-0">{b.emoji}</span>
+                    <span className="truncate">{b.label}</span>
                   </Button>
-                  <div className="flex items-center justify-between mt-2 px-1">
-                    <span className={`text-[11px] ${last ? ageColor(last) : "text-muted-foreground"}`}>
-                      {last ? `Last sent: ${timeAgo(last)}` : "Not sent yet"}
+                  <div className="flex items-center justify-between gap-1 px-0.5 min-w-0">
+                    <span className={`text-[10px] truncate ${last ? ageColor(last) : "text-muted-foreground"}`}>
+                      {last ? timeAgo(last) : "Not sent"}
                     </span>
                     {b.key === "SEND_BROCHURE_IMAGE" && (
-                      <Button size="sm" variant="ghost" className="h-7 px-2" onClick={copyBrochureImage}>
-                        <Copy className="w-3 h-3 mr-1" /> Copy Image
+                      <Button size="sm" variant="ghost" className="h-5 px-1.5 text-[10px] shrink-0" onClick={copyBrochureImage}>
+                        <Copy className="w-2.5 h-2.5 mr-0.5" /> Copy
                       </Button>
                     )}
                   </div>
