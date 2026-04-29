@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCrmAuth } from "../hooks/useCrmAuth";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
 import { DangerZone } from "../components/DangerZone";
+import { AlertTriangle } from "lucide-react";
 
 interface ReminderSettingsValue {
   feeOverdueDaysOffset: number;
