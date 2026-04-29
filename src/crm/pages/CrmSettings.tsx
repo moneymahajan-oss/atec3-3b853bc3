@@ -51,7 +51,14 @@ export default function CrmSettings() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
-      if (data) setSettings(data as Settings);
+      if (data) {
+        const raw = data as unknown as Record<string, unknown>;
+        const rs = (raw.reminder_settings ?? {}) as Partial<ReminderSettingsValue>;
+        setSettings({
+          ...(raw as unknown as Settings),
+          reminder_settings: { ...DEFAULT_REMINDER, ...rs },
+        });
+      }
     })();
   }, []);
 
@@ -62,11 +69,21 @@ export default function CrmSettings() {
     setSettings({ ...settings, [k]: v });
   };
 
+  const updateReminder = (k: keyof ReminderSettingsValue, v: number) => {
+    if (!settings) return;
+    const cur = settings.reminder_settings ?? DEFAULT_REMINDER;
+    setSettings({ ...settings, reminder_settings: { ...cur, [k]: v } });
+  };
+
   const save = async () => {
     if (!settings) return;
     setSaving(true);
-    const { id, ...patch } = settings;
-    const { error } = await supabase.from("crm_institute_settings").update(patch).eq("id", id);
+    const { id, reminder_settings, ...rest } = settings;
+    const patch = {
+      ...rest,
+      reminder_settings: (reminder_settings ?? DEFAULT_REMINDER) as unknown as Record<string, unknown>,
+    };
+    const { error } = await supabase.from("crm_institute_settings").update(patch as never).eq("id", id);
     setSaving(false);
     if (error) {
       toast.error(error.message);
