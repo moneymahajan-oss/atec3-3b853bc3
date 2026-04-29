@@ -182,7 +182,14 @@ export default function CrmSettings() {
         </Section>
       </div>
 
-      <div className="mt-8">
+      <div id="danger-zone" className="mt-10 scroll-mt-20">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-px flex-1 bg-destructive/30" />
+          <h2 className="font-heading font-bold text-sm uppercase tracking-wider text-destructive">
+            System · Danger Zone
+          </h2>
+          <div className="h-px flex-1 bg-destructive/30" />
+        </div>
         <DangerZone />
       </div>
     </div>
