@@ -34,18 +34,20 @@ export default function CrmFees() {
       setLoading(true);
       const [{ data: students, error }, { data: payments }, { data: plans }] = await Promise.all([
         supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee").order("created_at", { ascending: false }),
-        supabase.from("crm_payments").select("student_id,amount"),
-        supabase.from("crm_fee_plans").select("student_id,due_date,amount,amount_paid,status"),
+        supabase.from("crm_payments").select("student_id,amount,is_void"),
+        supabase.from("crm_fee_plans").select("student_id,due_date,amount,amount_paid,status,is_void"),
       ]);
       if (error) toast.error(error.message);
       const paidByStudent: Record<string, number> = {};
       (payments ?? []).forEach((p) => {
+        if ((p as { is_void?: boolean }).is_void) return;
         paidByStudent[p.student_id] = (paidByStudent[p.student_id] || 0) + (p.amount ?? 0);
       });
       const today = new Date().toISOString().slice(0, 10);
       const plansBy: Record<string, { next?: { date: string; amount: number }; overdue: number }> = {};
       (plans ?? []).forEach((p) => {
         if (!p.student_id) return;
+        if ((p as { is_void?: boolean }).is_void) return;
         const bucket = plansBy[p.student_id] ||= { overdue: 0 };
         const remaining = (p.amount ?? 0) - (p.amount_paid ?? 0);
         if (remaining <= 0) return;

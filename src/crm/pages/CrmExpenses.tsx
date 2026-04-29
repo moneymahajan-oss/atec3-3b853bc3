@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Filter, Pencil, Trash2, Download, Upload as UploadIcon, Receipt as ReceiptIcon } from "lucide-react";
+import { Plus, Search, Filter, Pencil, Ban, Download, Upload as UploadIcon, Receipt as ReceiptIcon } from "lucide-react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
+import { VoidDialog } from "../components/VoidDialog";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ type Expense = {
   vendor: string | null; description: string; amount: number; mode: string;
   reference: string | null; notes: string | null; receipt_url: string | null;
   recorded_by_name: string | null;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null;
 };
 
 const empty: Partial<Expense> = {
@@ -47,6 +49,8 @@ export default function CrmExpenses() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<Expense>>(empty);
   const [uploading, setUploading] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<Expense | null>(null);
+  const [showVoided, setShowVoided] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -62,6 +66,7 @@ export default function CrmExpenses() {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => items.filter((e) => {
+    if (!showVoided && e.is_void) return false;
     if (catFilter !== "all" && e.category_id !== catFilter) return false;
     if (from && e.spent_on < from) return false;
     if (to && e.spent_on > to) return false;
@@ -70,17 +75,18 @@ export default function CrmExpenses() {
     return e.description.toLowerCase().includes(t)
       || (e.vendor ?? "").toLowerCase().includes(t)
       || (e.reference ?? "").toLowerCase().includes(t);
-  }), [items, q, catFilter, from, to]);
+  }), [items, q, catFilter, from, to, showVoided]);
 
   const totals = useMemo(() => {
-    const total = filtered.reduce((a, e) => a + (e.amount || 0), 0);
+    const live = filtered.filter((e) => !e.is_void);
+    const total = live.reduce((a, e) => a + (e.amount || 0), 0);
     const byCat: Record<string, number> = {};
-    filtered.forEach((e) => {
+    live.forEach((e) => {
       const k = e.category_name_snapshot || "Uncategorised";
       byCat[k] = (byCat[k] || 0) + (e.amount || 0);
     });
     const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
-    return { total, count: filtered.length, top };
+    return { total, count: live.length, top };
   }, [filtered]);
 
   const set = <K extends keyof Expense>(k: K, v: Expense[K]) => setEditing((e) => ({ ...e, [k]: v }));
@@ -127,16 +133,25 @@ export default function CrmExpenses() {
     setOpen(false); setEditing(empty); load();
   };
 
-  const remove = async (e: Expense) => {
-    if (!confirm(`Delete expense "${e.description}"?`)) return;
-    const { error } = await supabase.from("crm_expenses").delete().eq("id", e.id);
+  const confirmVoid = async (reason: string) => {
+    if (!voidTarget) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_expenses").update(patch).eq("id", voidTarget.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_expenses", "delete", e.id);
+    await logAudit("crm_expenses", "void", voidTarget.id, { reason });
+    toast.success("Expense voided");
+    setVoidTarget(null);
     load();
   };
 
   const exportXlsx = () => {
-    const rows = filtered.map((e) => ({
+    const rows = filtered.filter((e) => !e.is_void).map((e) => ({
       Date: e.spent_on,
       Category: e.category_name_snapshot,
       Vendor: e.vendor,
@@ -197,6 +212,11 @@ export default function CrmExpenses() {
         </div>
       </div>
 
+      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+        <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
+        Show voided entries
+      </label>
+
       <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
@@ -218,10 +238,17 @@ export default function CrmExpenses() {
             ) : filtered.map((e) => {
               const cat = cats.find((c) => c.id === e.category_id);
               return (
-                <TableRow key={e.id}>
+                <TableRow key={e.id} className={e.is_void ? "opacity-50 line-through" : ""}>
                   <TableCell className="text-sm">{e.spent_on}</TableCell>
                   <TableCell>
-                    <div className="font-medium">{e.description}</div>
+                    <div className="font-medium flex items-center gap-2">
+                      {e.description}
+                      {e.is_void && (
+                        <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${e.voided_by_name ?? "—"}: ${e.void_reason ?? ""}`}>
+                          VOID
+                        </Badge>
+                      )}
+                    </div>
                     {e.reference && <div className="text-xs text-muted-foreground">Ref: {e.reference}</div>}
                   </TableCell>
                   <TableCell>
@@ -244,8 +271,12 @@ export default function CrmExpenses() {
                           <ReceiptIcon className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(e)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                      {!e.is_void && (
+                        <>
+                          <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditing(e); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Void" onClick={() => setVoidTarget(e)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -298,6 +329,14 @@ export default function CrmExpenses() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VoidDialog
+        open={!!voidTarget}
+        onOpenChange={(v) => { if (!v) setVoidTarget(null); }}
+        title={voidTarget ? `Void expense "${voidTarget.description}"` : "Void expense"}
+        description="This expense will be excluded from totals and reports, but kept for audit history."
+        onConfirm={confirmVoid}
+      />
     </div>
   );
 }

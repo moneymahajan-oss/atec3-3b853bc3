@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Receipt, Trash2, Printer, MessageSquare } from "lucide-react";
+import { ArrowLeft, Plus, Receipt, Ban, Printer, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
+import { VoidDialog } from "../components/VoidDialog";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
@@ -30,11 +31,13 @@ type Student = {
 type Plan = {
   id: string; installment_no: number; label: string | null;
   due_date: string | null; amount: number; amount_paid: number; status: string;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
 type Payment = {
   id: string; receipt_no: string | null; amount: number; mode: string;
   paid_on: string; reference: string | null; fee_plan_id: string | null;
   collected_by_name: string | null;
+  is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
 
 const feeStatusColors: Record<string, string> = {
@@ -56,6 +59,8 @@ export default function CrmStudentFees() {
   const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0, status: "pending" });
   const [payOpen, setPayOpen] = useState(false);
   const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string });
+  const [voidPlan, setVoidPlan] = useState<Plan | null>(null);
+  const [voidPay, setVoidPay] = useState<Payment | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -71,7 +76,7 @@ export default function CrmStudentFees() {
   };
   useEffect(() => { load(); }, [studentId]);
 
-  const totalPaid = payments.reduce((a, p) => a + (p.amount || 0), 0);
+  const totalPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
   const totalBilled = student?.total_fee ?? 0;
   const due = totalBilled - totalPaid;
 
@@ -100,11 +105,20 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const removePlan = async (p: Plan) => {
-    if (!confirm(`Delete installment #${p.installment_no}?`)) return;
-    const { error } = await supabase.from("crm_fee_plans").delete().eq("id", p.id);
+  const confirmVoidPlan = async (reason: string) => {
+    if (!voidPlan) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_fee_plans").update(patch).eq("id", voidPlan.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_fee_plans", "delete", p.id);
+    await logAudit("crm_fee_plans", "void", voidPlan.id, { reason });
+    toast.success("Installment voided");
+    setVoidPlan(null);
     load();
   };
 
@@ -130,11 +144,20 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const removePayment = async (p: Payment) => {
-    if (!confirm(`Delete receipt ${p.receipt_no}? This will affect fee balance.`)) return;
-    const { error } = await supabase.from("crm_payments").delete().eq("id", p.id);
+  const confirmVoidPayment = async (reason: string) => {
+    if (!voidPay) return;
+    const patch = {
+      is_void: true,
+      void_reason: reason,
+      voided_at: new Date().toISOString(),
+      voided_by: user?.id ?? null,
+      voided_by_name: user?.user_metadata?.full_name || user?.email || null,
+    };
+    const { error } = await supabase.from("crm_payments").update(patch).eq("id", voidPay.id);
     if (error) { toast.error(error.message); return; }
-    await logAudit("crm_payments", "delete", p.id);
+    await logAudit("crm_payments", "void", voidPay.id, { reason });
+    toast.success("Receipt voided. Fee balance recalculated.");
+    setVoidPay(null);
     load();
   };
 
@@ -209,24 +232,36 @@ export default function CrmStudentFees() {
               {plans.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
               ) : plans.map((p) => (
-                <TableRow key={p.id}>
+                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
                   <TableCell className="font-mono">{p.installment_no}</TableCell>
                   <TableCell className="text-sm">{p.label || "—"}</TableCell>
                   <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
                   <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
                   <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
-                  <TableCell><Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge></TableCell>
+                  <TableCell>
+                    {p.is_void ? (
+                      <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided: ${p.void_reason ?? ""}`}>VOID</Badge>
+                    ) : (
+                      <Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      {p.status !== "paid" && (
+                      {!p.is_void && p.status !== "paid" && (
                         <Button size="icon" variant="ghost" title="Send reminder" onClick={() => sendReminderOnWa(p)}>
                           <MessageSquare className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
-                        <Plus className="w-4 h-4 rotate-45" />
-                      </Button>
-                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePlan(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                      {!p.is_void && (
+                        <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
+                          <Plus className="w-4 h-4 rotate-45" />
+                        </Button>
+                      )}
+                      {isAdmin && !p.is_void && (
+                        <Button size="icon" variant="ghost" title="Void installment" onClick={() => setVoidPlan(p)}>
+                          <Ban className="w-4 h-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -255,8 +290,15 @@ export default function CrmStudentFees() {
               {payments.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No payments yet.</TableCell></TableRow>
               ) : payments.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-mono text-xs">{p.receipt_no}</TableCell>
+                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
+                  <TableCell className="font-mono text-xs">
+                    {p.receipt_no}
+                    {p.is_void && (
+                      <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>
+                        VOID
+                      </Badge>
+                    )}
+                  </TableCell>
                   <TableCell>{p.paid_on}</TableCell>
                   <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
                   <TableCell className="text-sm">{p.reference || "—"}</TableCell>
@@ -264,13 +306,21 @@ export default function CrmStudentFees() {
                   <TableCell className="text-sm">{p.collected_by_name || "—"}</TableCell>
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
-                      <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
-                        <MessageSquare className="w-4 h-4" />
-                      </Button>
-                      <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
-                        <Printer className="w-4 h-4" />
-                      </Button>
-                      {isAdmin && <Button size="icon" variant="ghost" onClick={() => removePayment(p)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
+                      {!p.is_void && (
+                        <>
+                          <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
+                            <MessageSquare className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
+                            <Printer className="w-4 h-4" />
+                          </Button>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" title="Void receipt" onClick={() => setVoidPay(p)}>
+                              <Ban className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -327,7 +377,7 @@ export default function CrmStudentFees() {
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Standalone —</SelectItem>
-                  {plans.filter((p) => p.status !== "paid").map((p) =>
+                  {plans.filter((p) => p.status !== "paid" && !p.is_void).map((p) =>
                     <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
                   )}
                 </SelectContent>
@@ -341,6 +391,21 @@ export default function CrmStudentFees() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <VoidDialog
+        open={!!voidPlan}
+        onOpenChange={(v) => { if (!v) setVoidPlan(null); }}
+        title={voidPlan ? `Void installment #${voidPlan.installment_no}` : "Void installment"}
+        description="This installment will be removed from totals and reminders, but kept for audit history."
+        onConfirm={confirmVoidPlan}
+      />
+      <VoidDialog
+        open={!!voidPay}
+        onOpenChange={(v) => { if (!v) setVoidPay(null); }}
+        title={voidPay ? `Void receipt ${voidPay.receipt_no ?? ""}` : "Void receipt"}
+        description="The fee balance will be recalculated automatically."
+        onConfirm={confirmVoidPayment}
+      />
     </div>
   );
 }

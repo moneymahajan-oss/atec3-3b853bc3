@@ -10,6 +10,20 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
 
+interface ReminderSettingsValue {
+  feeOverdueDaysOffset: number;
+  feeDueSoonWindow: number;
+  batchEndingWindow: number;
+  attendanceThreshold: number;
+}
+
+const DEFAULT_REMINDER: ReminderSettingsValue = {
+  feeOverdueDaysOffset: 0,
+  feeDueSoonWindow: 3,
+  batchEndingWindow: 14,
+  attendanceThreshold: 75,
+};
+
 interface Settings {
   id: string;
   name: string;
@@ -26,6 +40,7 @@ interface Settings {
   receipt_header: string | null;
   receipt_footer: string | null;
   collection_timings: string | null;
+  reminder_settings: ReminderSettingsValue | null;
 }
 
 export default function CrmSettings() {
@@ -36,7 +51,14 @@ export default function CrmSettings() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
-      if (data) setSettings(data as Settings);
+      if (data) {
+        const raw = data as unknown as Record<string, unknown>;
+        const rs = (raw.reminder_settings ?? {}) as Partial<ReminderSettingsValue>;
+        setSettings({
+          ...(raw as unknown as Settings),
+          reminder_settings: { ...DEFAULT_REMINDER, ...rs },
+        });
+      }
     })();
   }, []);
 
@@ -47,11 +69,21 @@ export default function CrmSettings() {
     setSettings({ ...settings, [k]: v });
   };
 
+  const updateReminder = (k: keyof ReminderSettingsValue, v: number) => {
+    if (!settings) return;
+    const cur = settings.reminder_settings ?? DEFAULT_REMINDER;
+    setSettings({ ...settings, reminder_settings: { ...cur, [k]: v } });
+  };
+
   const save = async () => {
     if (!settings) return;
     setSaving(true);
-    const { id, ...patch } = settings;
-    const { error } = await supabase.from("crm_institute_settings").update(patch).eq("id", id);
+    const { id, reminder_settings, ...rest } = settings;
+    const patch = {
+      ...rest,
+      reminder_settings: (reminder_settings ?? DEFAULT_REMINDER) as unknown as Record<string, unknown>,
+    };
+    const { error } = await supabase.from("crm_institute_settings").update(patch as never).eq("id", id);
     setSaving(false);
     if (error) {
       toast.error(error.message);
@@ -102,6 +134,26 @@ export default function CrmSettings() {
         <Section title="Receipt">
           <Field label="Receipt header"><Textarea rows={2} value={settings.receipt_header ?? ""} onChange={(e) => update("receipt_header", e.target.value)} /></Field>
           <Field label="Receipt footer"><Textarea rows={2} value={settings.receipt_footer ?? ""} onChange={(e) => update("receipt_footer", e.target.value)} /></Field>
+        </Section>
+
+        <Section title="Reminders dashboard">
+          <p className="text-xs text-muted-foreground -mt-2">Tune the windows used by the Reminders page and dashboard badge.</p>
+          <Field label="Show overdue once N days past due">
+            <Input type="number" min={0} value={settings.reminder_settings?.feeOverdueDaysOffset ?? 0}
+              onChange={(e) => updateReminder("feeOverdueDaysOffset", Number(e.target.value))} />
+          </Field>
+          <Field label="Fee due-soon window (days before due)">
+            <Input type="number" min={0} value={settings.reminder_settings?.feeDueSoonWindow ?? 3}
+              onChange={(e) => updateReminder("feeDueSoonWindow", Number(e.target.value))} />
+          </Field>
+          <Field label="Batch ending window (days before end)">
+            <Input type="number" min={1} value={settings.reminder_settings?.batchEndingWindow ?? 14}
+              onChange={(e) => updateReminder("batchEndingWindow", Number(e.target.value))} />
+          </Field>
+          <Field label="Low attendance threshold (%)">
+            <Input type="number" min={0} max={100} value={settings.reminder_settings?.attendanceThreshold ?? 75}
+              onChange={(e) => updateReminder("attendanceThreshold", Number(e.target.value))} />
+          </Field>
         </Section>
       </div>
     </div>
