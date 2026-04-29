@@ -35,6 +35,7 @@ import CrmCertificates from "./crm/pages/CrmCertificates.tsx";
 import CrmSeo from "./crm/pages/CrmSeo.tsx";
 import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
 import CrmReminders from "./crm/pages/CrmReminders.tsx";
+import CrmVoided from "./crm/pages/CrmVoided.tsx";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
                   <Route path="certificates" element={<CrmCertificates />} />
                   <Route path="expenses" element={<CrmExpenses />} />
                   <Route path="reports" element={<CrmReports />} />
+                  <Route path="voided" element={<CrmVoided />} />
                   <Route path="import-export" element={<CrmImportExport />} />
                   <Route path="seo" element={<CrmSeo />} />
                   <Route path="campaigns" element={<CrmCampaigns />} />

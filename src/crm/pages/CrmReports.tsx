@@ -46,9 +46,9 @@ export default function CrmReports() {
     (async () => {
       setLoading(true);
       const [{ data: p }, { data: e }, { data: en }, { data: s }] = await Promise.all([
-        supabase.from("crm_payments").select("id,paid_on,amount,mode,student_id").gte("paid_on", from).lte("paid_on", to),
+        supabase.from("crm_payments").select("id,paid_on,amount,mode,student_id").eq("is_void", false).gte("paid_on", from).lte("paid_on", to),
         isAdmin
-          ? supabase.from("crm_expenses").select("id,spent_on,amount,category_name_snapshot").gte("spent_on", from).lte("spent_on", to)
+          ? supabase.from("crm_expenses").select("id,spent_on,amount,category_name_snapshot").eq("is_void", false).gte("spent_on", from).lte("spent_on", to)
           : Promise.resolve({ data: [] as Exp[] }),
         supabase.from("crm_enquiries").select("id,status,source,created_at").gte("created_at", from).lte("created_at", to + "T23:59:59"),
         supabase.from("crm_students").select("id,course_name_snapshot,total_fee,created_at").gte("created_at", from).lte("created_at", to + "T23:59:59"),
