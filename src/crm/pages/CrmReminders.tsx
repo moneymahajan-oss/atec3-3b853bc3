@@ -153,7 +153,7 @@ export default function CrmReminders() {
                   .filter((c) => c > 0).length
               } categories.`
         }
-        action={
+        actions={
           <Button variant="outline" onClick={reload} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Refresh
           </Button>
