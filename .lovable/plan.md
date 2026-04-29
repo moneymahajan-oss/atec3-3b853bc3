@@ -1,152 +1,166 @@
+# Enquiry Module v2 — Public Form, Configurable Fields, WhatsApp Console & Favicon
 
-# ATEC Education CRM — Master Build Plan
+Scope is strictly: enquiry list, enquiry detail, public `/enquire`, admin enquiry settings, brand favicon. **Students, fees, batches, attendance, courses, certificates, reports, expenses are not touched.**
 
-## 1. Adapted stack (vs original prompt)
+---
 
-The original prompt specified Next.js 14 + Prisma + PostgreSQL + Cloudinary + Vercel. Lovable cannot build Next.js apps, so we adapt:
+## Part 1 — Database migration
 
-| Original | What we'll use |
-|---|---|
-| Next.js 14 App Router | React 18 + Vite + React Router (already in project) |
-| PostgreSQL + Prisma | Lovable Cloud (Supabase Postgres) |
-| Cloudinary (docs/images/PDFs/videos) | Supabase Storage buckets |
-| NextAuth.js | Supabase Auth (email/password + Google) |
-| Resend | Lovable transactional email (built-in) |
-| next-seo + next-sitemap | react-helmet-async (already used) + dynamic sitemap edge function |
-| Vercel | Lovable hosting |
-| SheetJS | `xlsx` package (same library) |
-| @react-pdf/renderer | `@react-pdf/renderer` (works in browser) |
-| Puppeteer | Not available — PDFs rendered client-side via `@react-pdf/renderer` |
-| WhatsApp wa.me links | Same — pure click-to-chat, no API |
+New tables and columns (additive — existing data preserved):
 
-Everything else in the spec (modules, fields, templates, workflows, business rules) stays as written.
+**`crm_enquiry_form_fields`** — drives both public form & CRM form
+- `id uuid pk`, `field_key text unique`, `field_label text`
+- `show_on_public bool default true`, `required_on_public bool default false`
+- `show_in_crm_form bool default true`
+- `show_in_list bool default true`, `show_in_export bool default true`
+- `dropdown_options jsonb` (null for free text), `sort_order int default 0`
+- `is_locked bool default false` (for `lead_stage`, `counsellor`, `internal_notes` rows that can't be turned off public-side)
+- Seeded with the 19 rows from your spec (full_name, mobile, whatsapp, email, city, qualification, college_name, class_year, stream, current_status, company_name, designation, course_interested, preferred_mode, preferred_timing, budget_range, how_heard, any_message, lead_stage, counsellor, internal_notes)
+- RLS: anon SELECT (needed by public `/enquire`); CRM-admin manage
 
-## 2. Project location
+**`crm_enquiry_report_columns`** — drives list view and Excel export column set/order
+- `id uuid pk`, `column_key text unique`, `label text`, `show_in_list bool`, `show_in_export bool`, `sort_order int`
+- Seeded with the 26 columns from your spec
+- RLS: CRM staff SELECT, admin manage
 
-CRM lives inside this same project at the `/crm/*` route prefix:
+**`crm_whatsapp_logs`** — already exists, but add columns to support the new flow:
+- `triggered_from text` (already covered by existing `entity_type`? — we'll add a dedicated `triggered_from text` column with values `enquiry_panel | catalogue | student_form | website | send_all`)
+- Already has `template_key`, `message_snapshot`, `staff_id`, `staff_name`, `entity_type`, `entity_id`, `created_at`, `status` — all reusable. The "WA Sent" column on the list reads from this table filtered by `entity_type='enquiry'`.
 
+**`crm_enquiries`** — add the few missing columns from your spec:
+- `whatsapp text` (separate from `phone`), `any_message text`
+- All other fields (college_name, class_year, stream, current_status, company_name, designation, preferred_mode, preferred_timing, budget_range, hear_about_us) already exist.
+- Add new enum values for `crm_enquiry_source`: `website_enquiry_form`, `website_course_page`, `student_self_fill`, `crm_manual`, `crm_from_catalogue`. Existing `walk_in`, `referral`, `crm_walk_in` stay.
+
+**`crm_institute_settings`** — add columns:
+- `favicon_url text`
+- `self_fill_form_title text` default `'Enquire Now'`
+- `self_fill_form_subtitle text`
+- `self_fill_thank_you_message text` default `'Thank you! Our team will contact you shortly.'`
+
+**RLS for public form**: add policy on `crm_enquiries` allowing `anon` INSERT only when `source = 'student_self_fill'` and `name`/`phone` are non-empty. Anon SELECT on `crm_enquiry_form_fields` and `crm_courses` (active only — already present) so the public form can render.
+
+---
+
+## Part 2 — Public `/enquire` page
+
+New file `src/pages/Enquire.tsx`, route added in `App.tsx` (sits outside `/crm`, no auth).
+
+- Loads `crm_institute_settings` (logo, title, subtitle, thank-you, favicon)
+- Loads `crm_enquiry_form_fields` where `show_on_public=true`, ordered by `sort_order`
+- Loads active `crm_courses` for the Course Interested dropdown
+- Renders fields dynamically; required attribute driven by `required_on_public`
+- Phone validated to 10 digits, email validated if present (zod schema)
+- Submits with `source='student_self_fill'`, `status='new'`, `priority='medium'`
+- Shows configurable thank-you screen after success with a "Submit another" button
+- Mobile-first layout, branded with institute primary color and logo
+
+---
+
+## Part 3 — Enquiry list page (`CrmEnquiries.tsx`)
+
+Top action bar reflow:
 ```
-/                        → existing public ATEC website (untouched)
-/admin/*                 → existing simple admin (kept as-is for now)
-/crm/login               → CRM login
-/crm                     → CRM dashboard
-/crm/courses             → Course catalogue
-/crm/enquiries           → Enquiry / lead management
-/crm/students            → Student master
-/crm/fees                → Fee collection & reports
-/crm/batches             → Batch management
-/crm/attendance          → Attendance
-/crm/certificates        → Certificate generation
-/crm/expenses            → Expenses
-/crm/reports             → Reports
-/crm/import-export       → Bulk import/export
-/crm/whatsapp            → WhatsApp template editor + bulk campaign
-/crm/settings            → Institute settings, staff, SEO, etc.
+[+ New Enquiry] [↑ Import] [↓ Export] [Search] [From date] [To date] [Stage▼] [Source▼] [Course▼] [Counsellor▼] [Reset]
 ```
 
-The CRM gets its own layout (sidebar + top bar + dark/light), independent of the public site's navbar/footer. The existing Lovable Cloud database is shared.
+- Import/Export buttons inline, always visible. Export uses SheetJS (`xlsx`, already used by CrmImportExport). Export honours both filters AND the `show_in_export` toggle from `crm_enquiry_report_columns`, in the saved column order.
+- Date range filters `created_at`. All filters compound.
+- Course filter: dropdown of active courses. Counsellor: distinct values from `assigned_to_name`.
 
-## 3. Simplified roles (phase 1)
+New columns inserted between existing ones:
+1. **Days Since Enquiry** — computed `Math.floor((now - created_at)/86400000)`. Display "Today" / "1 day ago" / "N days". Badge color: 0–2 green, 3–7 yellow, 8+ red. Sortable.
+2. **WA Sent** — left-join most recent `crm_whatsapp_logs` row where `entity_type='enquiry'` AND `entity_id=enquiry.id`. Display `{template_key} · {timeAgo}`; em-dash if none. Color: green today, blue <7 days, grey older.
 
-Per your decision, we start with **2 roles only** and grow later:
+Source column: prefix each value with the emoji map you provided (🌐 📄 📝 👤 📋 🚶 🎁).
 
-- `admin` — full access (your owner/manager)
-- `counsellor` — enquiries, students, fees collection, send WhatsApp; no settings, no expenses, no delete
+Visible columns and column order are read from `crm_enquiry_report_columns` (only `show_in_list=true`, ordered by `sort_order`).
 
-Roles are stored in a `crm_user_roles` table (separate from any `profiles` table) with an enum `crm_role`, plus a `has_crm_role()` security-definer function used in all RLS policies. This avoids the recursive-RLS trap and makes adding `super_admin`, `branch_admin`, `accounts`, `faculty`, multi-branch, and 2FA later a non-breaking change.
+---
 
-A basic `crm_audit_logs` table records: who, what action, on which record, when, and a JSON diff snapshot. No IP capture in phase 1 (would need an edge function).
+## Part 4 — Enquiry detail page (`CrmEnquiryForm.tsx`)
 
-## 4. Build phases (18-week plan compressed into Lovable iterations)
+Below header: subtle grey "Enquiry received N days ago".
 
-Each phase = one large user-approved build. We do not start the next phase until you've tested the previous one in preview.
+**Send via WhatsApp card** (replaces current ad-hoc WA usage) with 8 buttons in a responsive grid. Each button shows emoji, label, and "Last sent: …" derived from `crm_whatsapp_logs` for this enquiry + that template_key.
 
-### Phase 1 — Foundation (Week 1-2 in your plan)
-**Build target: 1 large iteration**
-1. CRM auth (email/password + Google), role table, `has_crm_role()` RPC, route guards
-2. CRM shell: sidebar nav, top bar, dark/light toggle, global search stub, notifications bell stub, mobile responsive
-3. Institute settings table (name, logo, address, phone, WhatsApp number, email, website, GST, UPI ID, fee reminder threshold, referral reward amount) — single row, editable from Settings page
-4. **Course Catalogue module** with all fields from spec section 2:
-   - Course CRUD with category (Finance/Computer), duration, mode, fee, registration fee, EMI options, concise + detailed syllabus (rich text via Tiptap), brochure PDF upload, promo media (Instagram URL, YouTube URL, fallback video upload), certificate title, active toggle, SEO fields (slug, meta title, meta description, OG image)
-   - Pre-populate Finance + Computer courses
-   - **"Send to Enquiry" drawer** on every course card → search existing enquiry or enter new mobile → generates COURSE_INFO wa.me link
-5. WhatsApp template engine (DB-driven) + `wa.me` link generator helper (with `encodeURIComponent`, conditional line removal for empty optional vars), seeded with COURSE_INFO + ENQUIRY_WELCOME templates
-6. Audit log table + helper, used on course writes
-7. Storage buckets: `crm-course-media` (public), `crm-student-docs` (private), `crm-receipts` (private), `crm-certificates` (public for QR verification)
+Behaviour per button:
+- Fetch active template from `crm_whatsapp_templates` by `template_key`
+- Fill `{variables}` from the enquiry + linked course (name, phone, course name, fee, duration, brochure_url, video_url, instagram_url, institute name/phone/website) using existing `fillTemplate()` from `src/crm/lib/whatsapp.ts`
+- Build `https://wa.me/{number}?text=${encodeURIComponent(...)}`, open in new tab
+- Insert `crm_whatsapp_logs` row with `template_key`, `message_snapshot`, `entity_type='enquiry'`, `entity_id`, `triggered_from='enquiry_panel'`, `staff_id/name`
+- Refresh "last sent" indicator
 
-### Phase 2 — Enquiry & Student Master + WhatsApp library (Week 3-4)
-1. Full WhatsApp template editor at `/crm/whatsapp` — admin can edit/toggle/add all templates from spec
-2. Seed all 16 templates from the spec
-3. **Enquiry module** with all fields, lead stages, follow-up dates, **internal notes (append-only, lock-icon styling, never sent)**, action panel (welcome / course info / follow-up / convert / schedule), enquiry timeline
-4. **Student master** — Student ID auto (ATEC-YYYY-XXXXX), all profile fields, photo upload (passport crop), document uploads to `/atec/{student_id}/{doc_type}/`, multi-document support, referral link, **internal admission notes (same lock-icon treatment)**, multi-course enrollment with discount + reason + EMI schedule
-5. WhatsApp message log (`crm_whatsapp_logs`) — every wa.me link generation is logged with template, contact, staff, timestamp, status (`link_generated` → `marked_sent`)
-6. Student timeline view aggregating WA logs + notes + enrollments
+**Send All Course Info** opens a modal with a numbered list (buttons 2–5). Each row has its own "Open WhatsApp" button — clicking opens that link, logs with `triggered_from='send_all'`, and ticks a green check on that row.
 
-### Phase 3 — Fees + Batches + Attendance (Week 5-6)
-1. Fee payment recording, mode tracking, auto receipt number (`ATEC-RCP-YYYYMM-XXXX`), receipt PDF generation client-side via `@react-pdf/renderer`, share-via-WA button
-2. Outstanding balance auto-calc, overdue flag (configurable threshold), void payment with reason (audit trail)
-3. **Batch management** — batch CRUD, faculty assignment, seats, students list, attendance %, batch-wise collection summary, promote student, mark-complete trigger
-4. **Attendance** — daily marking per batch, % auto-calc, low-attendance flag (<75%), manual LOW_ATTENDANCE_ALERT button per student
-5. Daily/monthly collection reports, outstanding dues, payment-mode breakup
+**Course Catalogue Picture** button — beside the Open link, a "Copy Image" button copies the linked course's brochure/thumbnail URL to clipboard (`navigator.clipboard.writeText`) with toast "Image copied — paste in WhatsApp after opening the link".
 
-### Phase 4 — Import/Export + Reports + Expenses (Week 7-8)
-1. **Excel import** for: Students, Enquiries, Fee Payments, Attendance, Expenses, Courses
-   - Use `xlsx` npm package, all parsing client-side, validate row-by-row (Zod schemas), show error list with row numbers, allow partial commit, download error rows as separate Excel
-   - Duplicate detection by mobile (10-digit normalize)
-   - Downloadable template files (pre-formatted, header rows, sample data, dropdowns where supported)
-2. **Excel export** on every list view with current filters applied (timestamp in filename)
-3. **Expenses module** — full CRUD, category management (admin-configurable), bill scan upload, monthly summary, P&L view (collection − expenses)
-4. **Reports module** — all 16 reports from spec section 12, with date range / course / category filters, PDF + Excel export
+**Activity Timeline** card under notes: merges 3 sources, sorted by timestamp desc:
+- Enquiry creation (🌐 with source label) — from `crm_enquiries.created_at` + `source` + `created_by_name`
+- WA sends (📱) — from `crm_whatsapp_logs` filtered by entity
+- Notes (📝) — from `crm_enquiry_notes`
 
-### Phase 5 — Certificates + SEO + Alumni/Campaign + Polish (Week 9-10)
-1. **Certificate module** — Certificate ID auto (`ATEC-CERT-[FIN/COM]-YYYY-XXXXX`), per-category template (Finance/Computer) with director signature image + institute seal, generate PDF, QR code linking to `/verify/{cert_id}` public route showing only name + course + date
-2. Public certificate verification page (no auth)
-3. **Alumni/Campaign module** — bulk WA campaign mode: select template + segment (course / category / batch / completed / enquiry stage / city) → paginated list of pre-filled wa.me links → "Open WhatsApp" + "Mark as Sent" per row → export campaign list as Excel
-4. Referral code auto-generation (first 4 letters of name uppercase + last 4 digits of mobile), referral reward tracking (Pending / Paid / N/A)
-5. **SEO module** — per-page meta editor (for the public website pages), dynamic sitemap.xml via edge function, robots.txt editor (stored in DB, served by edge function), 301 redirect manager, JSON-LD Course schema injection
-6. Notifications bell (in-app) for: overdue fees, low attendance, upcoming batches, new enquiries
-7. Global search across Student ID / name / mobile / certificate ID
-8. Dark/light mode finalization, keyboard shortcuts, mobile field-counsellor view polish
-9. Daily DB export (manual download from settings; true automated S3/Drive backup is out of Lovable's scope and will be documented for the user)
+Stage-change history requires a tiny addition: when status changes on save, write a `crm_enquiry_notes` row with `note_type='stage_change'` and body `"Stage: {old} → {new}"`. Timeline renders these with the 🔄 icon.
 
-## 5. Database schema (phase-by-phase)
+---
 
-### Phase 1 tables
-- `crm_user_roles` (id, user_id, role enum, created_at) — RLS via `has_crm_role()`
-- `crm_audit_logs` (id, user_id, action, entity, entity_id, diff jsonb, created_at)
-- `crm_institute_settings` (single row: name, logo_url, address, phone, whatsapp_number, email, website, gst, upi_id, fee_reminder_days, referral_reward, receipt_header, receipt_footer, certificate_template_finance, certificate_template_computer)
-- `crm_courses` (id, name, category enum [finance|computer], duration, mode enum, total_fee, registration_fee, emi_options jsonb, concise_syllabus, detailed_syllabus_html, brochure_url, instagram_url, youtube_url, video_url, certificate_title, is_active, slug, meta_title, meta_description, og_image_url, created_at, updated_at)
-- `crm_whatsapp_templates` (id, key, name, body, variables jsonb, is_active, created_at, updated_at) — note: project already has a `whatsapp_templates` table for the public site; we'll keep these separate under a `crm_` prefix to avoid collisions
-- `crm_whatsapp_logs` (id, template_key, contact_number, contact_name, message_snapshot, entity_type, entity_id, status enum [link_generated|marked_sent], staff_id, created_at)
+## Part 5 — Admin → Enquiry Configuration
 
-### Phase 2-5 tables (planned, built when each phase starts)
-`crm_enquiries`, `crm_enquiry_notes`, `crm_students`, `crm_admission_notes`, `crm_student_documents`, `crm_enrollments`, `crm_fee_payments`, `crm_fee_installments`, `crm_batches`, `crm_batch_students`, `crm_attendance`, `crm_certificates`, `crm_expenses`, `crm_expense_categories`, `crm_referrals`, `crm_seo_pages`, `crm_redirects`, `crm_import_logs`, `crm_export_logs`, `crm_notifications`, `crm_staff` (extends `crm_user_roles` with display name, branch placeholder for future).
+New page `src/crm/pages/CrmEnquirySettings.tsx`, route `/crm/enquiry-settings`, sidebar link under Settings group. Admin-only (uses `useCrmAuth`).
 
-**Critical security rule (carried from your spec rule #1):** `crm_enquiry_notes` and `crm_admission_notes` have RLS that only allows `admin` or `counsellor` roles to SELECT, and they are never joined into any RPC or view that builds WhatsApp messages. The wa.me link builder is a frontend helper that only ever sees `crm_whatsapp_templates` + the entity record — notes are fetched via a separate query on the notes page only.
+Four tabs (shadcn `Tabs`):
 
-## 6. Technical decisions to flag
+1. **Form Fields** — table from `crm_enquiry_form_fields`. Inline editable label (saves on blur). Switches for Public, Required, CRM. "Edit options" button on rows where `dropdown_options` is non-null opens a modal to add/remove/reorder option strings. Locked rows (`is_locked=true`) show greyed switches with a 🔒 icon.
 
-- **PDF generation**: Puppeteer is not available in Lovable's edge runtime. Receipts and certificates render client-side with `@react-pdf/renderer`, which is well-supported and produces professional output. The certificate QR is generated with `qrcode` npm package and embedded in the PDF.
-- **Rich text editor for detailed syllabus**: Tiptap (already commonly used with shadcn). Stored as HTML.
-- **Excel**: `xlsx` (SheetJS community edition) for both import and export, all client-side.
-- **Image cropping (passport photos)**: `react-easy-crop` + canvas, output uploaded to Storage.
-- **Bulk WA campaign**: paginated list view; for very large lists (>500 contacts) we paginate to avoid browser hangs. Each row is a button that opens `wa.me/...` in a new tab.
-- **Daily DB backup automation**: Lovable doesn't run cron jobs to S3. We provide a one-click "Download full DB export" in Settings (uses Supabase functions to dump key tables as a single zip of CSVs). Scheduled off-site backup is documented as a future Supabase pg_cron + edge function setup.
-- **2FA, multi-branch, full 5-role matrix, IP logging**: deferred to a later phase; the schema has placeholders so it's an additive change.
-- **Lovable AI**: not used in phase 1. Could be added later (e.g. summarize enquiry history, draft custom WA message), but not in spec.
+2. **Report Columns** — list from `crm_enquiry_report_columns`. Two switches per row (Show in List, Show in Export). Drag handles (`@dnd-kit/core` if present, else simple up/down arrows) reorder rows; saves `sort_order`.
 
-## 7. What we'll build right now if you approve
+3. **Self-Fill Form Settings** — fields from `crm_institute_settings`:
+   - Public Form URL: read-only `{origin}/enquire` with copy button
+   - Form Title, Form Subtitle (textarea), Thank-You Message (textarea)
+   - "Preview" button opens `/enquire` in new tab
 
-Approving this plan switches Lovable into build mode. The **first build** will deliver Phase 1 only:
+4. **WhatsApp Templates (Enquiry)** — filtered view of `crm_whatsapp_templates` showing only the 7 enquiry-related keys (`ENQUIRY_WELCOME`, `SEND_BROCHURE_IMAGE`, `COURSE_INFO`, `COURSE_LONG_DETAIL`, `COURSE_MEDIA`, `ENQUIRY_FOLLOWUP_1`, `ENQUIRY_FOLLOWUP_2`). Each has body textarea, variables hint, active toggle, Save, and Preview (renders with sample data). Auto-seed any missing templates with sensible defaults on first visit.
 
-1. Two-role CRM auth at `/crm/login` with Google + email/password
-2. CRM layout shell with sidebar (Dashboard, Courses, Enquiries [stub], Students [stub], Fees [stub], Batches [stub], WhatsApp Templates, Settings) and dark/light toggle
-3. Institute Settings page (fully functional)
-4. Course Catalogue page (fully functional CRUD + media + Send-to-Enquiry drawer + 17 pre-seeded courses)
-5. WhatsApp Templates page seeded with COURSE_INFO + ENQUIRY_WELCOME, with editor
-6. Storage buckets, RLS policies, audit logging on course writes
-7. Public CRM separation: existing `/`, `/admin/*` routes untouched
+Existing global `CrmWhatsAppTemplates` page remains untouched; this tab is a focused subset for enquiry workflow.
 
-Stub pages will say "Coming in Phase 2" with a link to this plan, so the sidebar already shows the full IA.
+---
 
-After you test Phase 1 in preview, send "build phase 2" (or similar) and we move on. Each subsequent phase is a fresh, focused build — that's how we keep changes reviewable and avoid breaking what already works.
+## Part 6 — Favicon upload (Brand)
+
+In `CrmSettings.tsx` add a "Brand" section:
+- Favicon upload (file input, accept `.ico,.png,.svg`, max 512KB), uploads to existing `crm-course-media` bucket under `branding/favicon-{ts}.{ext}`, stores public URL in `crm_institute_settings.favicon_url`.
+- A new hook `useFaviconFromSettings()` reads `favicon_url` and applies via existing `useFavicon()` hook. Mounted once in `App.tsx` so it covers `/`, `/crm/*`, `/enquire`, and any cert verify pages.
+
+---
+
+## Files
+
+**New**:
+- `supabase/migrations/<ts>_enquiry_v2.sql` — tables, columns, enum values, RLS, seeds
+- `src/pages/Enquire.tsx`
+- `src/crm/pages/CrmEnquirySettings.tsx`
+- `src/crm/components/SendWhatsAppCard.tsx` (used by enquiry detail)
+- `src/crm/components/SendAllModal.tsx`
+- `src/crm/components/EnquiryTimeline.tsx`
+- `src/hooks/useFaviconFromSettings.tsx`
+
+**Edited**:
+- `src/App.tsx` — add `/enquire` and `/crm/enquiry-settings` routes; mount favicon hook
+- `src/crm/components/CrmSidebar.tsx` — add "Enquiry Settings" link
+- `src/crm/pages/CrmEnquiries.tsx` — new top bar, date filters, Days Since + WA Sent columns, source emojis, Excel export honoring report columns, dynamic columns
+- `src/crm/pages/CrmEnquiryForm.tsx` — "received N days ago" line, WhatsApp card, timeline, stage-change note on save
+- `src/crm/pages/CrmSettings.tsx` — Brand section with favicon upload
+
+**Untouched**: every student, fee, batch, attendance, course-catalogue, certificate, expense, report file.
+
+---
+
+## Validation
+
+- Phone normalized to 10 digits (zod).
+- Public form name ≤ 100 chars, message ≤ 1000.
+- All wa.me message text passed through `encodeURIComponent` (handles ₹, *, newlines, emojis — verified in existing `buildWaLink`).
+- WA log insert is non-blocking (failure toasts but doesn't block link open).
+- New `anon` INSERT policy on `crm_enquiries` is narrow: `source='student_self_fill'` AND `length(name)>0` AND `phone ~ '^\d{10}$'`.
+
+After approval I'll run the migration first, then build the UI in the order: public form → list changes → detail changes → admin settings → favicon.

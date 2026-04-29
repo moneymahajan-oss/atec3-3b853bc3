@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
+import { SendWhatsAppCard } from "../components/SendWhatsAppCard";
+import { EnquiryTimeline } from "../components/EnquiryTimeline";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string };
@@ -67,6 +69,11 @@ export default function CrmEnquiryForm() {
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(!isNew);
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [createdByName, setCreatedByName] = useState<string | null>(null);
+  const [prevStatus, setPrevStatus] = useState<string>("new");
+  const [courseDetails, setCourseDetails] = useState<{ id: string; name: string; total_fee: number | null; duration: string | null; mode: string | null; brochure_url: string | null; video_url: string | null; instagram_url: string | null; concise_syllabus: string | null; detailed_syllabus_html: string | null; next_batch_date: string | null } | null>(null);
+  const [institute, setInstitute] = useState<{ name: string | null; phone: string | null; whatsapp_number: string | null; website: string | null } | null>(null);
 
   useEffect(() => {
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
@@ -106,13 +113,27 @@ export default function CrmEnquiryForm() {
         referred_by: data.referred_by ?? "",
         course_name_snapshot: data.course_name_snapshot,
       });
+      setCreatedAt(data.created_at ?? null);
+      setCreatedByName((data as { created_by_name?: string | null }).created_by_name ?? null);
+      setPrevStatus(data.status ?? "new");
       const { data: nd } = await supabase.from("crm_enquiry_notes")
         .select("id,body,note_type,staff_name,created_at")
         .eq("enquiry_id", id!).order("created_at", { ascending: false });
       setNotes((nd ?? []) as NoteRow[]);
       setLoading(false);
     })();
+    supabase.from("crm_institute_settings").select("name, phone, whatsapp_number, website").maybeSingle()
+      .then(({ data }) => setInstitute((data as never) ?? null));
   }, [id, isNew, navigate]);
+
+  // Load course details when course_id changes
+  useEffect(() => {
+    if (!form.course_id) { setCourseDetails(null); return; }
+    supabase.from("crm_courses")
+      .select("id, name, total_fee, duration, mode, brochure_url, video_url, instagram_url, concise_syllabus, detailed_syllabus_html, next_batch_date")
+      .eq("id", form.course_id).maybeSingle()
+      .then(({ data }) => setCourseDetails((data as never) ?? null));
+  }, [form.course_id]);
 
   const set = (k: keyof typeof empty, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

@@ -37,6 +37,7 @@ const tools: NavItem[] = [
   { title: "Voided / Cancelled", url: "/crm/voided", icon: Ban },
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
   { title: "SEO Meta", url: "/crm/seo", icon: SearchIcon, adminOnly: true },
+  { title: "Enquiry Config", url: "/crm/enquiry-settings", icon: Settings, adminOnly: true },
   { title: "Settings", url: "/crm/settings", icon: Settings, adminOnly: true },
 ];
 
