@@ -98,12 +98,22 @@ async function fetchPendingFeePlansWithStudent() {
   const { data, error } = await supabase
     .from("crm_fee_plans")
     .select(`
-      id, student_id, installment_no, amount, amount_paid, due_date, status,
+      id, student_id, installment_no, amount, amount_paid, due_date, status, is_void,
       crm_students:student_id ( full_name, phone, course_name_snapshot )
     `)
-    .in("status", ["pending", "partial", "overdue"]);
+    .in("status", ["pending", "partial", "overdue"])
+    .or("is_void.is.null,is_void.eq.false");
   if (error) throw error;
   return data ?? [];
+}
+
+export async function loadReminderSettings(): Promise<ReminderSettings> {
+  const { data } = await supabase
+    .from("crm_institute_settings")
+    .select("reminder_settings")
+    .maybeSingle();
+  const raw = (data as { reminder_settings?: Partial<ReminderSettings> } | null)?.reminder_settings;
+  return { ...DEFAULT_REMINDER_SETTINGS, ...(raw ?? {}) };
 }
 
 export async function loadOverdue(settings = DEFAULT_REMINDER_SETTINGS): Promise<OverdueRow[]> {
