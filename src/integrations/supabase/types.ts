@@ -794,6 +794,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          is_void: boolean
           mode: Database["public"]["Enums"]["crm_payment_mode"]
           notes: string | null
           receipt_url: string | null
@@ -803,6 +804,10 @@ export type Database = {
           spent_on: string
           updated_at: string
           vendor: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string | null
         }
         Insert: {
           amount: number
@@ -811,6 +816,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          is_void?: boolean
           mode?: Database["public"]["Enums"]["crm_payment_mode"]
           notes?: string | null
           receipt_url?: string | null
@@ -820,6 +826,10 @@ export type Database = {
           spent_on?: string
           updated_at?: string
           vendor?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Update: {
           amount?: number
@@ -828,6 +838,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          is_void?: boolean
           mode?: Database["public"]["Enums"]["crm_payment_mode"]
           notes?: string | null
           receipt_url?: string | null
@@ -837,6 +848,10 @@ export type Database = {
           spent_on?: string
           updated_at?: string
           vendor?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Relationships: [
           {
@@ -856,12 +871,17 @@ export type Database = {
           due_date: string | null
           id: string
           installment_no: number
+          is_void: boolean
           label: string | null
           notes: string | null
           plan_type: Database["public"]["Enums"]["crm_fee_plan_type"]
           status: Database["public"]["Enums"]["crm_fee_status"]
           student_id: string
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string | null
         }
         Insert: {
           amount?: number
@@ -870,12 +890,17 @@ export type Database = {
           due_date?: string | null
           id?: string
           installment_no?: number
+          is_void?: boolean
           label?: string | null
           notes?: string | null
           plan_type?: Database["public"]["Enums"]["crm_fee_plan_type"]
           status?: Database["public"]["Enums"]["crm_fee_status"]
           student_id: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Update: {
           amount?: number
@@ -884,12 +909,17 @@ export type Database = {
           due_date?: string | null
           id?: string
           installment_no?: number
+          is_void?: boolean
           label?: string | null
           notes?: string | null
           plan_type?: Database["public"]["Enums"]["crm_fee_plan_type"]
           status?: Database["public"]["Enums"]["crm_fee_status"]
           student_id?: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Relationships: [
           {
@@ -921,6 +951,7 @@ export type Database = {
           receipt_footer: string | null
           receipt_header: string | null
           referral_reward: number
+          reminder_settings: Json
           updated_at: string
           upi_id: string | null
           website: string | null
@@ -945,6 +976,7 @@ export type Database = {
           receipt_footer?: string | null
           receipt_header?: string | null
           referral_reward?: number
+          reminder_settings?: Json
           updated_at?: string
           upi_id?: string | null
           website?: string | null
@@ -969,6 +1001,7 @@ export type Database = {
           receipt_footer?: string | null
           receipt_header?: string | null
           referral_reward?: number
+          reminder_settings?: Json
           updated_at?: string
           upi_id?: string | null
           website?: string | null
@@ -984,6 +1017,7 @@ export type Database = {
           created_at: string
           fee_plan_id: string | null
           id: string
+          is_void: boolean
           mode: Database["public"]["Enums"]["crm_payment_mode"]
           notes: string | null
           paid_on: string
@@ -991,6 +1025,10 @@ export type Database = {
           receipt_pdf_url: string | null
           reference: string | null
           student_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voided_by_name: string | null
         }
         Insert: {
           amount: number
@@ -999,6 +1037,7 @@ export type Database = {
           created_at?: string
           fee_plan_id?: string | null
           id?: string
+          is_void?: boolean
           mode?: Database["public"]["Enums"]["crm_payment_mode"]
           notes?: string | null
           paid_on?: string
@@ -1006,6 +1045,10 @@ export type Database = {
           receipt_pdf_url?: string | null
           reference?: string | null
           student_id: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Update: {
           amount?: number
@@ -1014,6 +1057,7 @@ export type Database = {
           created_at?: string
           fee_plan_id?: string | null
           id?: string
+          is_void?: boolean
           mode?: Database["public"]["Enums"]["crm_payment_mode"]
           notes?: string | null
           paid_on?: string
@@ -1021,6 +1065,10 @@ export type Database = {
           receipt_pdf_url?: string | null
           reference?: string | null
           student_id?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voided_by_name?: string | null
         }
         Relationships: [
           {
