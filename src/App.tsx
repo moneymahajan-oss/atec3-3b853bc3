@@ -34,6 +34,7 @@ import CrmImportExport from "./crm/pages/CrmImportExport.tsx";
 import CrmCertificates from "./crm/pages/CrmCertificates.tsx";
 import CrmSeo from "./crm/pages/CrmSeo.tsx";
 import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
+import CrmReminders from "./crm/pages/CrmReminders.tsx";
 
 const queryClient = new QueryClient();
 
