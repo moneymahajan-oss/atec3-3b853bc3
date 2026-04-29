@@ -10,6 +10,20 @@ import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
 
+interface ReminderSettingsValue {
+  feeOverdueDaysOffset: number;
+  feeDueSoonWindow: number;
+  batchEndingWindow: number;
+  attendanceThreshold: number;
+}
+
+const DEFAULT_REMINDER: ReminderSettingsValue = {
+  feeOverdueDaysOffset: 0,
+  feeDueSoonWindow: 3,
+  batchEndingWindow: 14,
+  attendanceThreshold: 75,
+};
+
 interface Settings {
   id: string;
   name: string;
@@ -26,6 +40,7 @@ interface Settings {
   receipt_header: string | null;
   receipt_footer: string | null;
   collection_timings: string | null;
+  reminder_settings: ReminderSettingsValue | null;
 }
 
 export default function CrmSettings() {
