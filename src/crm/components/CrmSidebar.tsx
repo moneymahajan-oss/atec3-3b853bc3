@@ -141,6 +141,14 @@ export function CrmSidebar() {
             <SidebarMenu>{tools.map(renderItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-destructive">System</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{system.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
