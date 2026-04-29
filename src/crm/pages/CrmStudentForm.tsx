@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Upload, Lock, Plus, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string; total_fee: number; registration_fee: number };
+type NoteRow = { id: string; body: string; note_type: string; staff_name: string | null; created_at: string };
 
 const empty = {
   full_name: "",
@@ -24,17 +26,48 @@ const empty = {
   email: "",
   dob: "",
   gender: "",
+  // address
   address: "",
+  city: "",
+  state: "",
+  pin: "",
+  // family
+  father_name: "",
+  father_occupation: "",
+  father_phone: "",
+  mother_name: "",
+  emergency_contact_name: "",
+  emergency_contact_phone: "",
+  // academic / professional
+  qualification: "",
+  college_name: "",
+  class_year: "",
+  stream: "",
+  current_status: "",
+  company_name: "",
+  designation: "",
+  // course
   course_id: "",
   batch_id: "",
   enrolment_date: new Date().toISOString().slice(0, 10),
   status: "active",
+  // fees
   total_fee: 0,
+  discount_amount: 0,
+  discount_reason: "",
   registration_fee_paid: 0,
+  // attribution
+  hear_about_us: "",
+  referred_by: "",
+  // misc
   notes: "",
   photo_url: "",
   id_proof_url: "",
+  address_proof_url: "",
 };
+
+const QUALIFICATIONS = ["below_10th","10th","12th","diploma","graduate","post_graduate","other"];
+const CURRENT_STATUSES = ["student","working_professional","job_seeker","business_owner","homemaker","other"];
 
 export default function CrmStudentForm() {
   const { id } = useParams();
@@ -47,8 +80,10 @@ export default function CrmStudentForm() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [batches, setBatches] = useState<{ id: string; name: string; course_id: string | null }[]>([]);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<"photo" | "id" | null>(null);
+  const [uploading, setUploading] = useState<"photo" | "id" | "addr" | null>(null);
   const [loading, setLoading] = useState(!isNew);
+  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [newNote, setNewNote] = useState("");
 
   useEffect(() => {
     supabase.from("crm_courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
@@ -59,7 +94,6 @@ export default function CrmStudentForm() {
 
   useEffect(() => {
     if (isNew) {
-      // Prefill from enquiry if provided
       if (fromEnquiry) {
         supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle().then(({ data }) => {
           if (!data) return;
@@ -69,8 +103,19 @@ export default function CrmStudentForm() {
             phone: data.phone ?? "",
             alt_phone: data.alt_phone ?? "",
             email: data.email ?? "",
+            city: data.city ?? "",
+            state: data.state ?? "",
             course_id: data.course_id ?? "",
             course_name_snapshot: data.course_name_snapshot,
+            qualification: data.qualification ?? "",
+            college_name: data.college_name ?? "",
+            class_year: data.class_year ?? "",
+            stream: data.stream ?? "",
+            current_status: data.current_status ?? "",
+            company_name: data.company_name ?? "",
+            designation: data.designation ?? "",
+            hear_about_us: data.hear_about_us ?? "",
+            referred_by: data.referred_by ?? "",
           }));
         });
       }
@@ -87,18 +132,43 @@ export default function CrmStudentForm() {
         dob: data.dob ?? "",
         gender: data.gender ?? "",
         address: data.address ?? "",
+        city: data.city ?? "",
+        state: data.state ?? "",
+        pin: data.pin ?? "",
+        father_name: data.father_name ?? "",
+        father_occupation: data.father_occupation ?? "",
+        father_phone: data.father_phone ?? "",
+        mother_name: data.mother_name ?? "",
+        emergency_contact_name: data.emergency_contact_name ?? "",
+        emergency_contact_phone: data.emergency_contact_phone ?? "",
+        qualification: data.qualification ?? "",
+        college_name: data.college_name ?? "",
+        class_year: data.class_year ?? "",
+        stream: data.stream ?? "",
+        current_status: data.current_status ?? "",
+        company_name: data.company_name ?? "",
+        designation: data.designation ?? "",
         course_id: data.course_id ?? "",
         batch_id: data.batch_id ?? "",
         enrolment_date: data.enrolment_date ?? "",
         status: data.status ?? "active",
         total_fee: data.total_fee ?? 0,
+        discount_amount: data.discount_amount ?? 0,
+        discount_reason: data.discount_reason ?? "",
         registration_fee_paid: data.registration_fee_paid ?? 0,
+        hear_about_us: data.hear_about_us ?? "",
+        referred_by: data.referred_by ?? "",
         notes: data.notes ?? "",
         photo_url: data.photo_url ?? "",
         id_proof_url: data.id_proof_url ?? "",
+        address_proof_url: data.address_proof_url ?? "",
         enrolment_no: data.enrolment_no,
         course_name_snapshot: data.course_name_snapshot,
       });
+      const { data: nd } = await supabase.from("crm_admission_notes")
+        .select("id,body,note_type,staff_name,created_at")
+        .eq("student_id", id!).order("created_at", { ascending: false });
+      setNotes((nd ?? []) as NoteRow[]);
       setLoading(false);
     })();
   }, [id, isNew, fromEnquiry, navigate]);
@@ -115,7 +185,7 @@ export default function CrmStudentForm() {
     }));
   };
 
-  const upload = async (file: File, kind: "photo" | "id") => {
+  const upload = async (file: File, kind: "photo" | "id" | "addr") => {
     setUploading(kind);
     const bucket = kind === "photo" ? "crm-course-media" : "crm-student-docs";
     const path = `students/${user?.id ?? "anon"}/${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
@@ -124,16 +194,26 @@ export default function CrmStudentForm() {
     if (kind === "photo") {
       const { data } = supabase.storage.from(bucket).getPublicUrl(path);
       set("photo_url", data.publicUrl);
-    } else {
-      // private bucket: store path
+    } else if (kind === "id") {
       set("id_proof_url", path);
+    } else {
+      set("address_proof_url", path);
     }
     setUploading(null);
     toast.success("Uploaded");
   };
 
+  const netPayable = Math.max(0, (Number(form.total_fee) || 0) - (Number(form.discount_amount) || 0));
+
   const save = async () => {
     if (!form.full_name || !form.phone) { toast.error("Name and phone required"); return; }
+    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, "").slice(-10))) {
+      toast.error("Phone must be 10 digits"); return;
+    }
+    if (form.pin && !/^\d{6}$/.test(form.pin)) { toast.error("PIN must be 6 digits"); return; }
+    if (Number(form.discount_amount) > 0 && !form.discount_reason.trim()) {
+      toast.error("Discount reason is required when discount > 0"); return;
+    }
     setSaving(true);
     const courseRow = courses.find((c) => c.id === form.course_id);
     const payload = {
@@ -144,16 +224,37 @@ export default function CrmStudentForm() {
       dob: form.dob || null,
       gender: (form.gender || null) as never,
       address: form.address || null,
+      city: form.city || null,
+      state: form.state || null,
+      pin: form.pin || null,
+      father_name: form.father_name || null,
+      father_occupation: form.father_occupation || null,
+      father_phone: form.father_phone || null,
+      mother_name: form.mother_name || null,
+      emergency_contact_name: form.emergency_contact_name || null,
+      emergency_contact_phone: form.emergency_contact_phone || null,
+      qualification: (form.qualification || null) as never,
+      college_name: form.college_name || null,
+      class_year: form.class_year || null,
+      stream: form.stream || null,
+      current_status: (form.current_status || null) as never,
+      company_name: form.company_name || null,
+      designation: form.designation || null,
       course_id: form.course_id || null,
       batch_id: form.batch_id || null,
       course_name_snapshot: courseRow?.name ?? form.course_name_snapshot ?? null,
       enrolment_date: form.enrolment_date,
       status: form.status as never,
       total_fee: Number(form.total_fee) || 0,
+      discount_amount: Number(form.discount_amount) || 0,
+      discount_reason: form.discount_reason || null,
       registration_fee_paid: Number(form.registration_fee_paid) || 0,
+      hear_about_us: form.hear_about_us || null,
+      referred_by: form.referred_by || null,
       notes: form.notes || null,
       photo_url: form.photo_url || null,
       id_proof_url: form.id_proof_url || null,
+      address_proof_url: form.address_proof_url || null,
     };
     if (isNew) {
       const { data, error } = await supabase.from("crm_students").insert({
@@ -162,7 +263,6 @@ export default function CrmStudentForm() {
         created_by: user?.id,
       }).select("id").maybeSingle();
       if (error) { toast.error(error.message); setSaving(false); return; }
-      // Mark enquiry as converted
       if (fromEnquiry && data?.id) {
         await supabase.from("crm_enquiries")
           .update({ status: "converted" as never, converted_student_id: data.id })
@@ -180,6 +280,20 @@ export default function CrmStudentForm() {
     setSaving(false);
   };
 
+  const addNote = async () => {
+    if (!newNote.trim() || isNew) return;
+    const { data, error } = await supabase.from("crm_admission_notes").insert({
+      student_id: id!,
+      body: newNote.trim(),
+      note_type: "note",
+      staff_id: user?.id,
+      staff_name: user?.user_metadata?.full_name || user?.email || null,
+    }).select("*").maybeSingle();
+    if (error) { toast.error(error.message); return; }
+    setNotes((n) => [data as NoteRow, ...n]);
+    setNewNote("");
+  };
+
   const remove = async () => {
     if (!confirm("Delete this student record? This cannot be undone.")) return;
     const { error } = await supabase.from("crm_students").delete().eq("id", id!);
@@ -188,6 +302,9 @@ export default function CrmStudentForm() {
     toast.success("Deleted");
     navigate("/crm/students");
   };
+
+  const isStudentBg = form.current_status === "student";
+  const isWorkingBg = form.current_status === "working_professional" || form.current_status === "business_owner";
 
   if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
 
@@ -209,132 +326,339 @@ export default function CrmStudentForm() {
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>Personal & enrolment details</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Full name *</Label>
-                <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Personal details</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Full name *</Label>
+                  <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Phone (10 digits) *</Label>
+                  <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} />
+                </div>
+                <div>
+                  <Label>Alt phone</Label>
+                  <Input value={form.alt_phone} onChange={(e) => set("alt_phone", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Date of birth</Label>
+                  <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Gender</Label>
+                  <Select value={form.gender || "unset"} onValueChange={(v) => set("gender", v === "unset" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">—</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Address</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <Label>Phone *</Label>
-                <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-              </div>
-              <div>
-                <Label>Alt phone</Label>
-                <Input value={form.alt_phone} onChange={(e) => set("alt_phone", e.target.value)} />
-              </div>
-              <div>
-                <Label>Email</Label>
-                <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-              </div>
-              <div>
-                <Label>Date of birth</Label>
-                <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
-              </div>
-              <div>
-                <Label>Gender</Label>
-                <Select value={form.gender || "unset"} onValueChange={(v) => set("gender", v === "unset" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unset">—</SelectItem>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="sm:col-span-2">
-                <Label>Address</Label>
+                <Label>Address line</Label>
                 <Textarea rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} />
               </div>
-            </div>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <Label>City</Label>
+                  <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
+                </div>
+                <div>
+                  <Label>State</Label>
+                  <Input value={form.state} onChange={(e) => set("state", e.target.value)} />
+                </div>
+                <div>
+                  <Label>PIN (6 digits)</Label>
+                  <Input value={form.pin} onChange={(e) => set("pin", e.target.value)} maxLength={6} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="border-t pt-4 grid sm:grid-cols-2 gap-4">
-              <div>
-                <Label>Course *</Label>
-                <Select value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— None —</SelectItem>
-                    {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+          <Card>
+            <CardHeader><CardTitle>Family & emergency</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Father's name</Label>
+                  <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Father's occupation</Label>
+                  <Input value={form.father_occupation} onChange={(e) => set("father_occupation", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Father's phone</Label>
+                  <Input value={form.father_phone} onChange={(e) => set("father_phone", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Mother's name</Label>
+                  <Input value={form.mother_name} onChange={(e) => set("mother_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Emergency contact name</Label>
+                  <Input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Emergency contact phone</Label>
+                  <Input value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)} />
+                </div>
               </div>
-              <div>
-                <Label>Batch</Label>
-                <Select value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
-                  <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">— Unassigned —</SelectItem>
-                    {batches
-                      .filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
-                      .map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Enrolment date</Label>
-                <Input type="date" value={form.enrolment_date} onChange={(e) => set("enrolment_date", e.target.value)} />
-              </div>
-              <div>
-                <Label>Total fee (₹)</Label>
-                <Input type="number" value={form.total_fee} onChange={(e) => set("total_fee", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>Registration paid (₹)</Label>
-                <Input type="number" value={form.registration_fee_paid} onChange={(e) => set("registration_fee_paid", Number(e.target.value))} />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["active","completed","on_hold","dropped"].map((s) => <SelectItem key={s} value={s}>{s.replace("_"," ")}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            <div>
-              <Label>Notes</Label>
-              <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-            </div>
-
-            {!isNew && isAdmin && (
-              <div className="pt-4 border-t">
-                <Button variant="destructive" size="sm" onClick={remove}>
-                  <Trash2 className="w-4 h-4 mr-2" /> Delete student
-                </Button>
+          <Card>
+            <CardHeader><CardTitle>Background</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Qualification</Label>
+                  <Select value={form.qualification || "unset"} onValueChange={(v) => set("qualification", v === "unset" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">—</SelectItem>
+                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{q.replace(/_/g, " ")}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Current status</Label>
+                  <Select value={form.current_status || "unset"} onValueChange={(v) => set("current_status", v === "unset" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">—</SelectItem>
+                      {CURRENT_STATUSES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {isStudentBg && (
+                  <>
+                    <div>
+                      <Label>College / school</Label>
+                      <Input value={form.college_name} onChange={(e) => set("college_name", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Class / year</Label>
+                      <Input value={form.class_year} onChange={(e) => set("class_year", e.target.value)} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Stream</Label>
+                      <Input value={form.stream} onChange={(e) => set("stream", e.target.value)} />
+                    </div>
+                  </>
+                )}
+                {isWorkingBg && (
+                  <>
+                    <div>
+                      <Label>Company</Label>
+                      <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Designation</Label>
+                      <Input value={form.designation} onChange={(e) => set("designation", e.target.value)} />
+                    </div>
+                  </>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader><CardTitle>Documents</CardTitle></CardHeader>
-          <CardContent className="space-y-5">
-            <div>
-              <Label>Photo</Label>
-              {form.photo_url && (
-                <img src={form.photo_url} alt="" className="w-32 h-32 object-cover rounded-md border my-2" />
+          <Card>
+            <CardHeader><CardTitle>Course & enrolment</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Course *</Label>
+                  <Select value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— None —</SelectItem>
+                      {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Batch</Label>
+                  <Select value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Unassigned —</SelectItem>
+                      {batches
+                        .filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
+                        .map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Enrolment date</Label>
+                  <Input type="date" value={form.enrolment_date} onChange={(e) => set("enrolment_date", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["active","completed","on_hold","dropped"].map((s) => <SelectItem key={s} value={s}>{s.replace("_"," ")}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Fees</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>Total fee (₹)</Label>
+                  <Input type="number" value={form.total_fee} onChange={(e) => set("total_fee", Number(e.target.value))} />
+                </div>
+                <div>
+                  <Label>Discount (₹)</Label>
+                  <Input type="number" value={form.discount_amount} onChange={(e) => set("discount_amount", Number(e.target.value))} />
+                </div>
+                {Number(form.discount_amount) > 0 && (
+                  <div className="sm:col-span-2">
+                    <Label>Discount reason *</Label>
+                    <Input value={form.discount_reason} onChange={(e) => set("discount_reason", e.target.value)} placeholder="Required when discount > 0" />
+                  </div>
+                )}
+                <div>
+                  <Label>Registration paid (₹)</Label>
+                  <Input type="number" value={form.registration_fee_paid} onChange={(e) => set("registration_fee_paid", Number(e.target.value))} />
+                </div>
+                <div className="flex items-end">
+                  <div className="bg-primary/10 border border-primary/20 rounded-md px-4 py-2 w-full">
+                    <p className="text-xs text-muted-foreground">Net payable</p>
+                    <p className="text-2xl font-bold text-primary">₹ {netPayable.toLocaleString("en-IN")}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Attribution & notes</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <Label>How did they hear about us?</Label>
+                  <Input value={form.hear_about_us} onChange={(e) => set("hear_about_us", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Referred by</Label>
+                  <Input value={form.referred_by} onChange={(e) => set("referred_by", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>General notes</Label>
+                <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+              </div>
+              {!isNew && isAdmin && (
+                <div className="pt-4 border-t">
+                  <Button variant="destructive" size="sm" onClick={remove}>
+                    <Trash2 className="w-4 h-4 mr-2" /> Delete student
+                  </Button>
+                </div>
               )}
-              <Input type="file" accept="image/*" disabled={uploading === "photo"}
-                onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
-              {uploading === "photo" && <p className="text-xs text-muted-foreground mt-1"><Upload className="inline w-3 h-3 mr-1 animate-pulse" />Uploading…</p>}
-            </div>
-            <div>
-              <Label>ID proof (private)</Label>
-              {form.id_proof_url && (
-                <p className="text-xs text-muted-foreground my-2 truncate">📎 {form.id_proof_url.split("/").pop()}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Documents</CardTitle></CardHeader>
+            <CardContent className="space-y-5">
+              <div>
+                <Label>Photo</Label>
+                {form.photo_url && (
+                  <img src={form.photo_url} alt="" className="w-32 h-32 object-cover rounded-md border my-2" />
+                )}
+                <Input type="file" accept="image/*" disabled={uploading === "photo"}
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
+                {uploading === "photo" && <p className="text-xs text-muted-foreground mt-1"><Upload className="inline w-3 h-3 mr-1 animate-pulse" />Uploading…</p>}
+              </div>
+              <div>
+                <Label>ID proof (private)</Label>
+                {form.id_proof_url && (
+                  <p className="text-xs text-muted-foreground my-2 truncate">📎 {form.id_proof_url.split("/").pop()}</p>
+                )}
+                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "id"}
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "id")} />
+              </div>
+              <div>
+                <Label>Address proof (private)</Label>
+                {form.address_proof_url && (
+                  <p className="text-xs text-muted-foreground my-2 truncate">📎 {form.address_proof_url.split("/").pop()}</p>
+                )}
+                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "addr"}
+                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "addr")} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <Lock className="w-4 h-4" /> Internal admission notes
+              </CardTitle>
+              <p className="text-xs text-amber-800/70 dark:text-amber-300/70">
+                Private — never shown to students. Visible to CRM staff only.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isNew ? (
+                <p className="text-sm text-amber-900/70 dark:text-amber-200/70">Save the student first to add notes.</p>
+              ) : (
+                <>
+                  <Textarea
+                    rows={2}
+                    placeholder="Add an internal note…"
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    className="bg-white dark:bg-background"
+                  />
+                  <Button size="sm" onClick={addNote} disabled={!newNote.trim()}>
+                    <Plus className="w-4 h-4 mr-1" /> Add note
+                  </Button>
+                  <div className="space-y-3 pt-2 max-h-[400px] overflow-y-auto">
+                    {notes.length === 0 ? (
+                      <p className="text-sm text-amber-900/70 dark:text-amber-200/70 flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> No notes yet.
+                      </p>
+                    ) : notes.map((n) => (
+                      <div key={n.id} className="border-l-2 border-amber-500/60 pl-3 bg-white/60 dark:bg-background/40 rounded-r p-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px]">{n.note_type}</Badge>
+                          <span>{new Date(n.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mt-1 whitespace-pre-wrap">{n.body}</p>
+                        {n.staff_name && <p className="text-[11px] text-muted-foreground mt-1">— {n.staff_name}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
-              <Input type="file" accept="image/*,application/pdf" disabled={uploading === "id"}
-                onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "id")} />
-              {uploading === "id" && <p className="text-xs text-muted-foreground mt-1"><Upload className="inline w-3 h-3 mr-1 animate-pulse" />Uploading…</p>}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
