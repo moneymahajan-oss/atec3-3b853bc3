@@ -212,6 +212,11 @@ export default function CrmExpenses() {
         </div>
       </div>
 
+      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+        <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} />
+        Show voided entries
+      </label>
+
       <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
