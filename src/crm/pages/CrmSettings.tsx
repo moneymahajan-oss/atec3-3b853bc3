@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useCrmAuth } from "../hooks/useCrmAuth";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { logAudit } from "../lib/audit";
 import { DangerZone } from "../components/DangerZone";
+import { AlertTriangle } from "lucide-react";
 
 interface ReminderSettingsValue {
   feeOverdueDaysOffset: number;
@@ -49,6 +50,7 @@ export default function CrmSettings() {
   const { isAdmin, loading } = useCrmAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     (async () => {
@@ -63,6 +65,16 @@ export default function CrmSettings() {
       }
     })();
   }, []);
+
+  // Auto-scroll to Danger Zone if URL hash matches (from sidebar link)
+  useEffect(() => {
+    if (!settings) return;
+    if (location.hash === "#danger-zone") {
+      setTimeout(() => {
+        document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [settings, location.hash]);
 
   if (!loading && !isAdmin) return <Navigate to="/crm" replace />;
 
@@ -105,14 +117,14 @@ export default function CrmSettings() {
         actions={
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="font-semibold shadow-md"
               onClick={() => {
                 document.getElementById("danger-zone")?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
             >
-              ↓ Danger Zone
+              <AlertTriangle className="w-4 h-4 mr-1.5" /> Danger Zone ↓
             </Button>
             <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save changes"}</Button>
           </div>

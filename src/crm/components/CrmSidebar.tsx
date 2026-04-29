@@ -4,6 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
   Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing, Ban,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -38,7 +39,10 @@ const tools: NavItem[] = [
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
   { title: "SEO Meta", url: "/crm/seo", icon: SearchIcon, adminOnly: true },
   { title: "Enquiry Config", url: "/crm/enquiry-settings", icon: Settings, adminOnly: true },
-  { title: "Settings", url: "/crm/settings", icon: Settings, adminOnly: true },
+];
+
+const system: NavItem[] = [
+  { title: "Danger Zone", url: "/crm/settings#danger-zone", icon: AlertTriangle, adminOnly: true, badge: "!", badgeTone: "danger" },
 ];
 
 export function CrmSidebar() {
@@ -137,6 +141,14 @@ export function CrmSidebar() {
             <SidebarMenu>{tools.map(renderItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-destructive">System</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>{system.map(renderItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );

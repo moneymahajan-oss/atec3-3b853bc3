@@ -1,31 +1,44 @@
-# Make the Danger Zone visible & easy to find
+# Make the Danger Zone actually findable
 
-## Problem
+## What you're seeing
 
-The "Wipe all CRM data" button exists and is wired correctly in `src/crm/pages/CrmSettings.tsx` (line 172, inside the admin-only Institute Settings page). But it's the **last** item on a long, two-column settings page — below Identity, Contact, Payments, Receipt, and Reminders dashboard sections. On the current viewport (879×672) it's completely below the fold, so users think it's missing.
+In your screenshot of `/crm/settings`, the top-right shows only **"Save changes"** — the **"↓ Danger Zone"** shortcut button that was added last round is not visible. The code is in place (`src/crm/pages/CrmSettings.tsx` lines 107–116), so this is most likely a stale preview / browser cache. A hard refresh (Ctrl+Shift+R) should bring it back.
 
-It also requires admin role (`isAdmin` check at the top of `CrmSettings.tsx`) — non-admins are redirected away and will never see it.
+But the bigger issue is the design itself: a small outline button next to "Save changes" is easy to miss, and the actual Danger Zone card sits far below the fold on a 879px-tall viewport. Let's fix it properly so you never have to hunt for it again.
 
-## Fix
+## Plan
 
-Three small changes to surface the Danger Zone:
+Three changes, all in the CRM settings area:
 
-1. **Add a "Jump to Danger Zone" shortcut** at the top of `CrmSettings.tsx`, next to the "Save changes" button in the `PageHeader` actions. Clicking it scrolls smoothly to the Danger Zone section.
+### 1. Add a permanent "Danger Zone" entry in the sidebar (admin only)
 
-2. **Promote Danger Zone to its own full-width section** below the two-column grid (instead of floating loose). Wrap it under a clear `<h2>System</h2>` heading with a red accent so it's visually unmissable when the user does scroll down. Add `id="danger-zone"` for the anchor.
+In `src/crm/components/CrmSidebar.tsx`, add a new item at the bottom of the sidebar (under a "System" group) labeled **"Danger Zone"** with a red `AlertTriangle` icon. It links to `/crm/settings#danger-zone`. Only renders when `isAdmin` is true.
 
-3. **Add an "Admin only — Danger Zone" hint** in the page description so admins know it exists before scrolling.
+This means: from anywhere in the CRM, one click jumps straight to the wipe button.
 
-### Files touched
+### 2. Make the in-page shortcut a bold, unmissable pill
 
-- `src/crm/pages/CrmSettings.tsx` — add anchor button in header actions, wrap `<DangerZone />` in a labelled section with `id="danger-zone"`, update page description.
+Replace the small outline button in `CrmSettings.tsx` header with a solid red destructive button labeled **"Danger Zone ↓"** with the `AlertTriangle` icon. Keep it next to "Save changes" but make it visually loud (solid red, not outlined).
 
-### Not changed
+### 3. Auto-scroll when arriving via hash
 
-- `DangerZone.tsx` itself — already correct (red border, AlertTriangle icon, two-step confirm).
-- Sidebar — Danger Zone stays inside Settings (it's a destructive admin action, not a top-level nav item).
-- Permissions — remains admin-only.
+In `CrmSettings.tsx`, add a `useEffect` that reads `window.location.hash` and, if it equals `#danger-zone`, scrolls the section into view after settings load. This makes the sidebar link land you directly on the red card.
+
+## Files touched
+
+- `src/crm/components/CrmSidebar.tsx` — add admin-only "Danger Zone" sidebar item under a "System" group, linking to `/crm/settings#danger-zone`.
+- `src/crm/pages/CrmSettings.tsx` — swap the outline shortcut for a solid destructive button with icon; add `useEffect` to auto-scroll on `#danger-zone` hash.
+
+## Not changed
+
+- `DangerZone.tsx` — already correct (red border, two-step confirm with checkbox + "DELETE EVERYTHING" phrase).
+- The wipe logic, audit logging, and confirmation flow stay exactly as they are.
+- Permissions stay admin-only.
 
 ## Verification
 
-After changes: open `/crm/settings` as an admin → see "↓ Danger Zone" button in top-right header → click it → page scrolls to the red-bordered Danger Zone card with the "Wipe all CRM data" button.
+After approval and a hard refresh:
+1. Sidebar shows a red **"Danger Zone"** item under a "System" group (admin only).
+2. Clicking it navigates to `/crm/settings` and auto-scrolls to the red Danger Zone card.
+3. On the settings page itself, the top-right now has a bold red **"Danger Zone ↓"** button next to "Save changes".
+4. The "Wipe all CRM data" button is one click away from any CRM page.
