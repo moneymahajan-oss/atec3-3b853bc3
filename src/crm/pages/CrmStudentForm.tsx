@@ -601,17 +601,48 @@ export default function CrmStudentForm() {
 
         <div className="space-y-6">
           <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Camera className="w-4 h-4" /> Student Photo</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-3">
+                <Avatar className="h-32 w-32 border-2 border-dashed">
+                  {form.photo_url ? <AvatarImage src={form.photo_url} alt={form.full_name || "Student photo"} /> : null}
+                  <AvatarFallback className="text-2xl">
+                    {form.full_name
+                      ? form.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
+                      : <User className="w-10 h-10 text-muted-foreground" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="w-full grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline" size="sm" disabled={uploading === "photo"}>
+                    <label className="cursor-pointer">
+                      <Upload className="w-3.5 h-3.5 mr-1" />
+                      {uploading === "photo" ? "Uploading…" : form.photo_url ? "Replace" : "Upload"}
+                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
+                    </label>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" disabled={uploading === "photo"}>
+                    <label className="cursor-pointer">
+                      <Camera className="w-3.5 h-3.5 mr-1" /> Camera
+                      <input type="file" className="hidden" accept="image/*" capture="user"
+                        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
+                    </label>
+                  </Button>
+                </div>
+                {form.photo_url && (
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={removePhoto}>
+                    <X className="w-3.5 h-3.5 mr-1" /> Remove photo
+                  </Button>
+                )}
+                <p className="text-[11px] text-muted-foreground text-center">JPG / PNG / WebP, max 5 MB</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader><CardTitle>Documents</CardTitle></CardHeader>
             <CardContent className="space-y-5">
-              <div>
-                <Label>Photo</Label>
-                {form.photo_url && (
-                  <img src={form.photo_url} alt="" className="w-32 h-32 object-cover rounded-md border my-2" />
-                )}
-                <Input type="file" accept="image/*" disabled={uploading === "photo"}
-                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
-                {uploading === "photo" && <p className="text-xs text-muted-foreground mt-1"><Upload className="inline w-3 h-3 mr-1 animate-pulse" />Uploading…</p>}
-              </div>
+
               <div>
                 <Label>ID proof (private)</Label>
                 {form.id_proof_url && (
