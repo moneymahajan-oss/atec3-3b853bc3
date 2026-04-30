@@ -162,30 +162,6 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const sendReceiptOnWa = async (p: Payment) => {
-    if (!student) return;
-    const body = `Hi ${student.full_name},\n\nWe've received your payment of ₹${p.amount.toLocaleString("en-IN")} via ${p.mode.toUpperCase()} on ${p.paid_on}.\n\nReceipt №: ${p.receipt_no}\nCourse: ${student.course_name_snapshot ?? ""}\n\nThank you!\n— ATEC Education`;
-    await logWaSend({
-      template_key: "payment_receipt", contact_number: student.phone, contact_name: student.full_name,
-      message_snapshot: body, entity_type: "payment", entity_id: p.id,
-    });
-    window.open(buildWaLink(student.phone, body), "_blank");
-  };
-
-  const sendReminderOnWa = async (pl: Plan) => {
-    if (!student) return;
-    const remaining = pl.amount - pl.amount_paid;
-    const body = fillTemplate(
-      `Hi {name},\n\nThis is a friendly reminder for your fee installment #{n} of ₹{amt} due on {date}.\nCourse: {course}\n\nKindly pay at your earliest convenience.\n— ATEC Education`,
-      { name: student.full_name, n: pl.installment_no, amt: remaining.toLocaleString("en-IN"), date: pl.due_date ?? "—", course: student.course_name_snapshot ?? "" }
-    );
-    await logWaSend({
-      template_key: "fee_reminder", contact_number: student.phone, contact_name: student.full_name,
-      message_snapshot: body, entity_type: "fee_plan", entity_id: pl.id,
-    });
-    window.open(buildWaLink(student.phone, body), "_blank");
-  };
-
   if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
   if (!student) return <div className="p-8">Student not found.</div>;
 
