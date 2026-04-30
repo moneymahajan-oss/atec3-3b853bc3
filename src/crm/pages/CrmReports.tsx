@@ -131,6 +131,30 @@ export default function CrmReports() {
     return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [exps]);
 
+  // Students who joined more than one course (grouped by normalized phone)
+  const multiCourse = useMemo(() => {
+    const groups: Record<string, AllStud[]> = {};
+    allStuds.forEach((s) => {
+      const norm = (s.phone || "").replace(/\D/g, "").slice(-10);
+      if (!norm || norm.length < 10) return;
+      (groups[norm] ||= []).push(s);
+    });
+    return Object.entries(groups)
+      .filter(([, list]) => {
+        const distinct = new Set(list.map((x) => x.course_id || x.course_name_snapshot || ""));
+        return distinct.size >= 2;
+      })
+      .map(([phone, list]) => ({
+        phone,
+        name: list[0].full_name,
+        firstId: list[0].id,
+        courses: Array.from(new Set(list.map((x) => x.course_name_snapshot || "—"))).join(", "),
+        totalFee: list.reduce((a, x) => a + (x.total_fee || 0), 0),
+        count: list.length,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [allStuds]);
+
   const exportFullReport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthly), "Monthly P&L");
