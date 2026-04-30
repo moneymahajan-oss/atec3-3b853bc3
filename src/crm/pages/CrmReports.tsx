@@ -20,6 +20,7 @@ type Pay = { id: string; paid_on: string; amount: number; mode: string; student_
 type Exp = { id: string; spent_on: string; amount: number; category_name_snapshot: string | null };
 type Enq = { id: string; status: string; source: string; created_at: string };
 type Stud = { id: string; course_name_snapshot: string | null; total_fee: number; created_at: string };
+type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string };
 
 const monthKey = (d: string) => d?.slice(0, 7);
 const monthLabel = (k: string) => {
@@ -40,6 +41,7 @@ export default function CrmReports() {
   const [exps, setExps] = useState<Exp[]>([]);
   const [enqs, setEnqs] = useState<Enq[]>([]);
   const [studs, setStuds] = useState<Stud[]>([]);
+  const [allStuds, setAllStuds] = useState<AllStud[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,6 +59,9 @@ export default function CrmReports() {
       setExps((e ?? []) as Exp[]);
       setEnqs((en ?? []) as Enq[]);
       setStuds((s ?? []) as Stud[]);
+      const { data: all } = await supabase.from("crm_students")
+        .select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status");
+      setAllStuds((all ?? []) as AllStud[]);
       setLoading(false);
     })();
   }, [from, to, isAdmin]);
