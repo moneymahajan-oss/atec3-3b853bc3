@@ -1,62 +1,65 @@
-# Fix: Overdue Payments Not Showing in Reminders
+## Goal
 
-## Root Cause
+Add a WhatsApp action against every student row in the Students list, the Fees list, and the Student Fees detail page, so staff can send a contextual WhatsApp message to that specific student in one click.
 
-I queried the database and found this fee plan that **should** appear as overdue but doesn't:
+## What the user gets
 
-| Amount | Paid | Due Date | Status |
-|---|---|---|---|
-| ₹3000 | ₹0 | 2026-04-29 (yesterday) | **paid** |
+On each row, a green WhatsApp icon button. Clicking it opens a small "Send WhatsApp" dialog showing the student's name + phone and a list of message templates relevant to that section. Picking a template:
 
-The installment is past due and unpaid (₹0 collected of ₹3000), but its `status` column is incorrectly set to `paid`. This appears to be stale/wrong data — likely a payment was recorded against it then voided, or the status was set manually, leaving `amount_paid = 0` but `status = 'paid'`.
+1. Fills the template with that student's data (name, course, fee, dues, next due date, receipt no, institute name/phone, etc.)
+2. Opens `https://wa.me/<student-phone>?text=...` in a new tab
+3. Logs the send into `crm_whatsapp_logs` (entity_type = `student`, entity_id = student.id)
 
-The reminder loader in `src/crm/lib/reminders.ts` (`fetchPendingFeePlansWithStudent`) only fetches plans with `status IN ('pending','partial','overdue')`. Because this plan's status is `paid`, it is filtered out — even though the actual unpaid balance proves it is overdue.
+## Where buttons appear
 
-The system has two sources of truth for "is this fee paid?" — the `status` field and the `amount` vs `amount_paid` math — and they have drifted apart.
+1. **Students list** (`src/crm/pages/CrmStudents.tsx`) — new "Message" column with WhatsApp icon button per row. Templates offered: Welcome / Onboarding, Class Schedule, Generic Follow-up, Document Reminder.
+2. **Fees list** (`src/crm/pages/CrmFees.tsx`) — WhatsApp icon next to the "Open" link per row. Templates offered: Fee Reminder (next due), Overdue Notice, Payment Receipt Thanks, Custom Fee Message. Disabled if `due = 0`, except "Thanks for payment".
+3. **Student Fees detail** (`src/crm/pages/CrmStudentFees.tsx`) — header-level "WhatsApp" button (replaces/augments existing MessageSquare usage) plus a small WhatsApp icon on each payment row to send that specific receipt's "Payment Received" message, and on each fee plan row to send a reminder for that installment.
 
-## Fix Plan
+## Technical implementation
 
-### 1. Make the overdue/due-soon loaders trust the money, not the status
+**New helper**: `src/crm/lib/studentWa.ts`
+- `StudentCtx` type (id, full_name, phone, enrolment_no, course_name_snapshot, total_fee, total_paid, due, next_due_date, next_due_amount, last_receipt_no, last_payment_amount).
+- `STUDENT_TEMPLATE_KEYS` constant + label map grouped by section (`students`, `fees`, `payment`, `plan`).
+- `buildStudentVars(student, institute)` — produces variable dict for `fillTemplate`.
+- `sendWhatsAppForStudent({ templateKey, student, institute, triggeredFrom })` — mirrors `sendWhatsAppForEnquiry` in `src/crm/lib/enquiryWa.ts`: loads template from `crm_whatsapp_templates`, fills vars, builds wa.me link, logs to `crm_whatsapp_logs` with `entity_type='student'`.
 
-In `src/crm/lib/reminders.ts`, change `fetchPendingFeePlansWithStudent` to fetch **any non-void plan with an outstanding balance**, regardless of status:
+**New component**: `src/crm/components/StudentWhatsAppButton.tsx`
+- Props: `student: StudentCtx`, `section: 'students' | 'fees' | 'plan' | 'payment'`, optional `extraVars`, optional `size/variant`.
+- Renders an icon button (green WhatsApp). Clicking opens a `Dialog` listing the templates for that section. Clicking a template calls `sendWhatsAppForStudent` and `window.open(url)`.
+- Loads `crm_institute_settings` once via React state.
+- `e.stopPropagation()` on the button so it does not trigger the row's navigate-to-detail click.
 
-- Drop the `status IN (pending, partial, overdue)` filter
-- Filter in JS for `amount_paid < amount` (already done downstream)
-- This way a wrongly-flagged "paid" plan with ₹0 collected still surfaces as overdue
+**Database migration**: Seed new `crm_whatsapp_templates` rows (insert with `ON CONFLICT (template_key) DO NOTHING` so it is safe to re-run). Keys + bodies:
 
-### 2. Auto-correct the status when we detect drift
+- `STUDENT_WELCOME` — "Hi {name}, welcome to {institute_name}! Your enrolment № is {enrolment_no} for {course_name}. …"
+- `STUDENT_CLASS_SCHEDULE` — generic class schedule reminder.
+- `STUDENT_DOC_REMINDER` — request pending documents.
+- `STUDENT_GENERIC_FOLLOWUP` — "Hi {name}, hope your {course_name} classes are going well…"
+- `FEE_REMINDER_DUE` — "Hi {name}, your next fee installment of ₹{next_due_amount} is due on {next_due_date}…"
+- `FEE_OVERDUE_NOTICE` — "Hi {name}, your fee of ₹{due_amount} is overdue. Kindly clear at your earliest…"
+- `FEE_PAYMENT_THANKS` — "Hi {name}, we have received ₹{last_payment_amount}. Receipt № {last_receipt_no}. Balance ₹{due_amount}."
+- `FEE_CUSTOM_BALANCE` — short balance summary message.
 
-When `loadOverdue` / `loadDueSoon` find a plan where `amount_paid < amount` but `status = 'paid'`, also display it correctly in the reminders UI. Optionally trigger a one-time backfill to set status to `pending` / `overdue` so dashboards stay consistent.
+Variables list in each template uses the keys produced by `buildStudentVars`. `fillTemplate` already strips unused placeholders/empty lines, so missing optional values stay clean.
 
-### 3. Backfill migration to repair existing bad data
+**Wiring**:
+- `CrmStudents.tsx` — add a final column "Message" rendering `<StudentWhatsAppButton section="students" student={…} />`. Build `StudentCtx` from existing row fields (no extra fetch needed for this page).
+- `CrmFees.tsx` — extend the "Manage" cell with the button and pass `section="fees"`. The `Row` type already has `next_due_date`, `next_due_amount`, `total_fee`, `total_paid` → maps directly to `StudentCtx`.
+- `CrmStudentFees.tsx` — header action: replace/augment the existing MessageSquare button with `StudentWhatsAppButton section="fees"`. On each payment row, add `section="payment"` button with `extraVars={{ last_receipt_no, last_payment_amount }}`. On each plan row, add `section="plan"` button with `extraVars={{ next_due_amount: plan.amount - plan.amount_paid, next_due_date: plan.due_date, installment_no }}`.
 
-Add a SQL migration that fixes any current row where status disagrees with the math:
+**No schema changes** beyond seeding template rows. RLS already permits CRM staff to read templates and insert WA logs.
 
-```text
-UPDATE crm_fee_plans
-SET status = CASE
-  WHEN amount_paid >= amount THEN 'paid'
-  WHEN amount_paid > 0 AND amount_paid < amount THEN 'partial'
-  WHEN due_date < CURRENT_DATE THEN 'overdue'
-  ELSE 'pending'
-END
-WHERE COALESCE(is_void,false) = false;
-```
+## Files touched
 
-This will immediately reclassify the ₹3000/2026-04-29 plan as `overdue` and it will appear in the reminders panel.
+- new: `src/crm/lib/studentWa.ts`
+- new: `src/crm/components/StudentWhatsAppButton.tsx`
+- new: `supabase/migrations/<timestamp>_seed_student_wa_templates.sql`
+- edit: `src/crm/pages/CrmStudents.tsx`
+- edit: `src/crm/pages/CrmFees.tsx`
+- edit: `src/crm/pages/CrmStudentFees.tsx`
 
-### 4. Strengthen the payment trigger so this can't recur
+## Out of scope
 
-The existing `crm_apply_payment_to_plan()` trigger only updates status to `paid` or `partial`. It never demotes back to `pending` when a payment is voided (since voided payments are excluded from the SUM, `total_paid` becomes 0 but status stays `paid`). Update the trigger so when `total_paid = 0`, status returns to `pending` (or `overdue` if past due date).
-
-## Files to Change
-
-- `src/crm/lib/reminders.ts` — remove `status IN (...)` filter in `fetchPendingFeePlansWithStudent`
-- New migration — backfill `crm_fee_plans.status` from amount math + patch the `crm_apply_payment_to_plan` trigger
-
-## Result
-
-After this fix:
-- The ₹3000 installment due 2026-04-29 will show in the **Overdue** reminders list immediately
-- Future void/refund operations will correctly demote status back to pending/overdue
-- The reminders panel will always reflect actual unpaid balances, not stale status flags
+- No bulk-send (one student at a time per click). Bulk is already handled by Campaigns.
+- No editing of templates from these dialogs — admins continue to edit them in WhatsApp Templates settings.

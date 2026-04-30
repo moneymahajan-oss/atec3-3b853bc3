@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Receipt, Ban, Printer, MessageSquare } from "lucide-react";
+import { ArrowLeft, Plus, Receipt, Ban, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
 import { VoidDialog } from "../components/VoidDialog";
+import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
-import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
+
 import { toast } from "sonner";
 
 type Student = {
@@ -161,30 +162,6 @@ export default function CrmStudentFees() {
     load();
   };
 
-  const sendReceiptOnWa = async (p: Payment) => {
-    if (!student) return;
-    const body = `Hi ${student.full_name},\n\nWe've received your payment of ₹${p.amount.toLocaleString("en-IN")} via ${p.mode.toUpperCase()} on ${p.paid_on}.\n\nReceipt №: ${p.receipt_no}\nCourse: ${student.course_name_snapshot ?? ""}\n\nThank you!\n— ATEC Education`;
-    await logWaSend({
-      template_key: "payment_receipt", contact_number: student.phone, contact_name: student.full_name,
-      message_snapshot: body, entity_type: "payment", entity_id: p.id,
-    });
-    window.open(buildWaLink(student.phone, body), "_blank");
-  };
-
-  const sendReminderOnWa = async (pl: Plan) => {
-    if (!student) return;
-    const remaining = pl.amount - pl.amount_paid;
-    const body = fillTemplate(
-      `Hi {name},\n\nThis is a friendly reminder for your fee installment #{n} of ₹{amt} due on {date}.\nCourse: {course}\n\nKindly pay at your earliest convenience.\n— ATEC Education`,
-      { name: student.full_name, n: pl.installment_no, amt: remaining.toLocaleString("en-IN"), date: pl.due_date ?? "—", course: student.course_name_snapshot ?? "" }
-    );
-    await logWaSend({
-      template_key: "fee_reminder", contact_number: student.phone, contact_name: student.full_name,
-      message_snapshot: body, entity_type: "fee_plan", entity_id: pl.id,
-    });
-    window.open(buildWaLink(student.phone, body), "_blank");
-  };
-
   if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
   if (!student) return <div className="p-8">Student not found.</div>;
 
@@ -194,8 +171,23 @@ export default function CrmStudentFees() {
         title={`Fees · ${student.full_name}`}
         description={`${student.enrolment_no ?? student.phone} — ${student.course_name_snapshot ?? "No course"}`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button asChild variant="outline"><Link to="/crm/fees"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Link></Button>
+            <StudentWhatsAppButton
+              section="fees"
+              size="default"
+              variant="outline"
+              label="WhatsApp"
+              student={{
+                id: student.id,
+                full_name: student.full_name,
+                phone: student.phone,
+                enrolment_no: student.enrolment_no,
+                course_name_snapshot: student.course_name_snapshot,
+                total_fee: totalBilled,
+                total_paid: totalPaid,
+              }}
+            />
             <Button onClick={() => setPayOpen(true)}><Receipt className="w-4 h-4 mr-2" /> Record Payment</Button>
           </div>
         }
@@ -248,9 +240,21 @@ export default function CrmStudentFees() {
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
                       {!p.is_void && p.status !== "paid" && (
-                        <Button size="icon" variant="ghost" title="Send reminder" onClick={() => sendReminderOnWa(p)}>
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
+                        <StudentWhatsAppButton
+                          section="plan"
+                          student={{
+                            id: student.id,
+                            full_name: student.full_name,
+                            phone: student.phone,
+                            enrolment_no: student.enrolment_no,
+                            course_name_snapshot: student.course_name_snapshot,
+                            total_fee: totalBilled,
+                            total_paid: totalPaid,
+                            next_due_date: p.due_date,
+                            next_due_amount: p.amount - p.amount_paid,
+                          }}
+                          extraVars={{ installment_no: p.installment_no }}
+                        />
                       )}
                       {!p.is_void && (
                         <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
@@ -308,9 +312,22 @@ export default function CrmStudentFees() {
                     <div className="inline-flex gap-1">
                       {!p.is_void && (
                         <>
-                          <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                          <StudentWhatsAppButton
+                            section="payment"
+                            student={{
+                              id: student.id,
+                              full_name: student.full_name,
+                              phone: student.phone,
+                              enrolment_no: student.enrolment_no,
+                              course_name_snapshot: student.course_name_snapshot,
+                              total_fee: totalBilled,
+                              total_paid: totalPaid,
+                            }}
+                            extraVars={{
+                              last_payment_amount: p.amount.toLocaleString("en-IN"),
+                              last_receipt_no: p.receipt_no ?? "",
+                            }}
+                          />
                           <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
                             <Printer className="w-4 h-4" />
                           </Button>

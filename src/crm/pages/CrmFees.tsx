@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { PageHeader } from "../components/PageHeader";
+import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { toast } from "sonner";
 
 type Row = {
@@ -154,9 +155,25 @@ export default function CrmFees() {
                     ) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link to={`/crm/fees/${r.id}`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-                      <Receipt className="w-3.5 h-3.5" /> Open <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="inline-flex items-center gap-2 justify-end">
+                      <StudentWhatsAppButton
+                        section="fees"
+                        student={{
+                          id: r.id,
+                          full_name: r.full_name,
+                          phone: r.phone,
+                          enrolment_no: r.enrolment_no,
+                          course_name_snapshot: r.course_name_snapshot,
+                          total_fee: r.total_fee,
+                          total_paid: r.total_paid,
+                          next_due_date: r.next_due_date,
+                          next_due_amount: r.next_due_amount,
+                        }}
+                      />
+                      <Link to={`/crm/fees/${r.id}`} className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                        <Receipt className="w-3.5 h-3.5" /> Open <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
