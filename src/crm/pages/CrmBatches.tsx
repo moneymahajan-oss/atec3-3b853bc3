@@ -161,17 +161,23 @@ export default function CrmBatches() {
               <TableHead>Course</TableHead>
               <TableHead>Schedule</TableHead>
               <TableHead>Dates</TableHead>
-              <TableHead>Capacity</TableHead>
+              <TableHead>Live / Cap</TableHead>
+              <TableHead>Working days</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">No batches yet.</TableCell></TableRow>
-            ) : filtered.map((b) => (
+              <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No batches yet.</TableCell></TableRow>
+            ) : filtered.map((b) => {
+              const live = liveCounts[b.id] || 0;
+              const ratio = b.capacity > 0 ? live / b.capacity : 0;
+              const liveCls = ratio >= 1 ? "text-rose-600 dark:text-rose-400 font-semibold"
+                : ratio >= 0.8 ? "text-amber-600 dark:text-amber-400 font-semibold" : "";
+              return (
               <TableRow key={b.id}>
                 <TableCell>
                   <div className="font-medium">{b.name}</div>
@@ -183,17 +189,20 @@ export default function CrmBatches() {
                   {b.timing && <div className="text-xs text-muted-foreground">{b.timing}</div>}
                 </TableCell>
                 <TableCell className="text-sm">{b.start_date || "—"} → {b.end_date || "—"}</TableCell>
-                <TableCell className="text-sm">{b.capacity}</TableCell>
+                <TableCell className={`text-sm font-mono ${liveCls}`}>{live} / {b.capacity}</TableCell>
+                <TableCell className="text-sm font-mono">{workingDays[b.id] || 0}</TableCell>
                 <TableCell><Badge variant="secondary" className={statusColors[b.status] || ""}>{b.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/attendance?batch=${b.id}`)}>Attendance</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/attendance?batch=${b.id}`)}>Mark</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/batches/${b.id}/report`)}>Report</Button>
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
                     {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(b)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>
