@@ -66,7 +66,7 @@ export default function CrmStudentFees() {
   const load = async () => {
     setLoading(true);
     const [{ data: s }, { data: p }, { data: pay }] = await Promise.all([
-      supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee").eq("id", studentId!).maybeSingle(),
+      supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee,registration_fee_paid").eq("id", studentId!).maybeSingle(),
       supabase.from("crm_fee_plans").select("*").eq("student_id", studentId!).order("installment_no"),
       supabase.from("crm_payments").select("*").eq("student_id", studentId!).order("paid_on", { ascending: false }),
     ]);
@@ -77,7 +77,9 @@ export default function CrmStudentFees() {
   };
   useEffect(() => { load(); }, [studentId]);
 
-  const totalPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
+  const regPaid = (student as unknown as { registration_fee_paid?: number } | null)?.registration_fee_paid ?? 0;
+  const paymentsPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
+  const totalPaid = paymentsPaid + regPaid;
   const totalBilled = student?.total_fee ?? 0;
   const due = totalBilled - totalPaid;
 

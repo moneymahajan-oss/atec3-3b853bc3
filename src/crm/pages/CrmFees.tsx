@@ -34,7 +34,7 @@ export default function CrmFees() {
     (async () => {
       setLoading(true);
       const [{ data: students, error }, { data: payments }, { data: plans }] = await Promise.all([
-        supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee").order("created_at", { ascending: false }),
+        supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee,registration_fee_paid").order("created_at", { ascending: false }),
         supabase.from("crm_payments").select("student_id,amount,is_void"),
         supabase.from("crm_fee_plans").select("student_id,due_date,amount,amount_paid,status,is_void"),
       ]);
@@ -64,7 +64,7 @@ export default function CrmFees() {
         phone: s.phone,
         course_name_snapshot: s.course_name_snapshot,
         total_fee: s.total_fee ?? 0,
-        total_paid: paidByStudent[s.id] || 0,
+        total_paid: (paidByStudent[s.id] || 0) + (s.registration_fee_paid ?? 0),
         next_due_date: plansBy[s.id]?.next?.date ?? null,
         next_due_amount: plansBy[s.id]?.next?.amount ?? 0,
         overdue_count: plansBy[s.id]?.overdue ?? 0,
