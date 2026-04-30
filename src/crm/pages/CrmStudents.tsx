@@ -26,6 +26,7 @@ type Student = {
   status: string;
   total_fee: number;
   photo_url: string | null;
+  batch_id: string | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -45,14 +46,20 @@ export default function CrmStudents() {
   const [to, setTo] = useState("");
   const [rangePreset, setRangePreset] = useState("all");
 
+  const [runningBatchIds, setRunningBatchIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("crm_students")
-        .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee,photo_url")
-        .order("created_at", { ascending: false });
+      const [{ data, error }, { data: rb }] = await Promise.all([
+        supabase
+          .from("crm_students")
+          .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee,photo_url,batch_id")
+          .order("created_at", { ascending: false }),
+        supabase.from("crm_batches").select("id").eq("status", "running"),
+      ]);
       if (error) toast.error(error.message);
       setItems((data ?? []) as Student[]);
+      setRunningBatchIds(new Set((rb ?? []).map((b: { id: string }) => b.id)));
       setLoading(false);
     })();
   }, []);
@@ -70,7 +77,10 @@ export default function CrmStudents() {
   };
 
   const filtered = useMemo(() => items.filter((s) => {
-    if (status !== "all" && s.status !== status) return false;
+    if (status === "live") {
+      if (s.status !== "active") return false;
+      if (!s.batch_id || !runningBatchIds.has(s.batch_id)) return false;
+    } else if (status !== "all" && s.status !== status) return false;
     if (from && s.enrolment_date && s.enrolment_date < from) return false;
     if (to && s.enrolment_date && s.enrolment_date > to) return false;
     if (!q) return true;
@@ -81,7 +91,12 @@ export default function CrmStudents() {
       (s.enrolment_no ?? "").toLowerCase().includes(t) ||
       (s.course_name_snapshot ?? "").toLowerCase().includes(t)
     );
-  }), [items, q, status, from, to]);
+  }), [items, q, status, from, to, runningBatchIds]);
+
+  const liveCount = useMemo(
+    () => items.filter((s) => s.status === "active" && s.batch_id && runningBatchIds.has(s.batch_id)).length,
+    [items, runningBatchIds]
+  );
 
   const reset = () => { setQ(""); setStatus("all"); setFrom(""); setTo(""); setRangePreset("all"); };
 
@@ -97,6 +112,26 @@ export default function CrmStudents() {
         }
       />
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total students</div>
+          <div className="text-2xl font-bold">{items.length}</div>
+        </div>
+        <div className="rounded-lg border bg-emerald-500/10 p-3">
+          <div className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">🟢 Live (studying now)</div>
+          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{liveCount}</div>
+          <button onClick={() => setStatus("live")} className="text-[10px] text-emerald-700/70 hover:underline mt-1">Filter →</button>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</div>
+          <div className="text-2xl font-bold">{items.filter((s) => s.status === "active").length}</div>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Completed</div>
+          <div className="text-2xl font-bold">{items.filter((s) => s.status === "completed").length}</div>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
@@ -107,6 +142,7 @@ export default function CrmStudents() {
             <SelectTrigger className="sm:w-48"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="live">🟢 Live (active + running batch)</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="on_hold">On hold</SelectItem>

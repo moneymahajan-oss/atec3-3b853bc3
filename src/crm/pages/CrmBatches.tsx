@@ -45,6 +45,8 @@ export default function CrmBatches() {
   const { isAdmin, user } = useCrmAuth();
   const [items, setItems] = useState<Batch[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
+  const [workingDays, setWorkingDays] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
@@ -53,12 +55,26 @@ export default function CrmBatches() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: b }, { data: c }] = await Promise.all([
+    const [{ data: b }, { data: c }, { data: ls }, { data: at }] = await Promise.all([
       supabase.from("crm_batches").select("*").order("created_at", { ascending: false }),
       supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("crm_students").select("batch_id").eq("status", "active"),
+      supabase.from("crm_attendance").select("batch_id,attended_on"),
     ]);
     setItems((b ?? []) as Batch[]);
     setCourses((c ?? []) as Course[]);
+    const lc: Record<string, number> = {};
+    (ls ?? []).forEach((r: { batch_id: string | null }) => {
+      if (r.batch_id) lc[r.batch_id] = (lc[r.batch_id] || 0) + 1;
+    });
+    setLiveCounts(lc);
+    const wd: Record<string, Set<string>> = {};
+    (at ?? []).forEach((r: { batch_id: string; attended_on: string }) => {
+      (wd[r.batch_id] ||= new Set()).add(r.attended_on);
+    });
+    const wdMap: Record<string, number> = {};
+    Object.entries(wd).forEach(([k, v]) => { wdMap[k] = v.size; });
+    setWorkingDays(wdMap);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -145,17 +161,23 @@ export default function CrmBatches() {
               <TableHead>Course</TableHead>
               <TableHead>Schedule</TableHead>
               <TableHead>Dates</TableHead>
-              <TableHead>Capacity</TableHead>
+              <TableHead>Live / Cap</TableHead>
+              <TableHead>Working days</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">No batches yet.</TableCell></TableRow>
-            ) : filtered.map((b) => (
+              <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">No batches yet.</TableCell></TableRow>
+            ) : filtered.map((b) => {
+              const live = liveCounts[b.id] || 0;
+              const ratio = b.capacity > 0 ? live / b.capacity : 0;
+              const liveCls = ratio >= 1 ? "text-rose-600 dark:text-rose-400 font-semibold"
+                : ratio >= 0.8 ? "text-amber-600 dark:text-amber-400 font-semibold" : "";
+              return (
               <TableRow key={b.id}>
                 <TableCell>
                   <div className="font-medium">{b.name}</div>
@@ -167,17 +189,20 @@ export default function CrmBatches() {
                   {b.timing && <div className="text-xs text-muted-foreground">{b.timing}</div>}
                 </TableCell>
                 <TableCell className="text-sm">{b.start_date || "—"} → {b.end_date || "—"}</TableCell>
-                <TableCell className="text-sm">{b.capacity}</TableCell>
+                <TableCell className={`text-sm font-mono ${liveCls}`}>{live} / {b.capacity}</TableCell>
+                <TableCell className="text-sm font-mono">{workingDays[b.id] || 0}</TableCell>
                 <TableCell><Badge variant="secondary" className={statusColors[b.status] || ""}>{b.status}</Badge></TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex gap-1">
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/attendance?batch=${b.id}`)}>Attendance</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/attendance?batch=${b.id}`)}>Mark</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/crm/batches/${b.id}/report`)}>Report</Button>
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(b); setOpen(true); }}><Pencil className="w-4 h-4" /></Button>
                     {isAdmin && <Button size="icon" variant="ghost" onClick={() => remove(b)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

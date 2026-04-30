@@ -55,12 +55,15 @@ export default function CrmAttendance() {
     }
   }, [batchId]);
 
+  const [workingDaysCount, setWorkingDaysCount] = useState<number>(0);
+
   const loadRoster = async () => {
     if (!batchId || !date) return;
     setLoading(true);
-    const [{ data: rs }, { data: existing }] = await Promise.all([
+    const [{ data: rs }, { data: existing }, { data: wd }] = await Promise.all([
       supabase.from("crm_students").select("id,full_name,enrolment_no,phone").eq("batch_id", batchId).order("full_name"),
       supabase.from("crm_attendance").select("id,student_id,status,notes").eq("batch_id", batchId).eq("attended_on", date),
+      supabase.from("crm_attendance").select("attended_on").eq("batch_id", batchId),
     ]);
     const list = (rs ?? []) as Student[];
     setStudents(list);
@@ -70,6 +73,8 @@ export default function CrmAttendance() {
       m[e.student_id] = { id: e.id, student_id: e.student_id, status: e.status, notes: e.notes };
     });
     setMarks(m);
+    const set = new Set((wd ?? []).map((r: { attended_on: string }) => r.attended_on));
+    setWorkingDaysCount(set.size);
     setLoading(false);
   };
 
@@ -142,6 +147,13 @@ export default function CrmAttendance() {
           </div>
         </CardContent>
       </Card>
+
+      {batchId && (
+        <div className="flex items-center justify-between text-sm bg-muted/40 border rounded-lg px-4 py-2">
+          <div>📅 Working days marked so far: <span className="font-bold">{workingDaysCount}</span></div>
+          <a className="text-primary hover:underline text-xs" href={`/crm/batches/${batchId}/report`}>View full report →</a>
+        </div>
+      )}
 
       {batchId && (
         <>

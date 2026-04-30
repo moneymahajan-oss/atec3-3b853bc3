@@ -20,6 +20,7 @@ type Pay = { id: string; paid_on: string; amount: number; mode: string; student_
 type Exp = { id: string; spent_on: string; amount: number; category_name_snapshot: string | null };
 type Enq = { id: string; status: string; source: string; created_at: string };
 type Stud = { id: string; course_name_snapshot: string | null; total_fee: number; created_at: string };
+type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string };
 
 const monthKey = (d: string) => d?.slice(0, 7);
 const monthLabel = (k: string) => {
@@ -40,6 +41,7 @@ export default function CrmReports() {
   const [exps, setExps] = useState<Exp[]>([]);
   const [enqs, setEnqs] = useState<Enq[]>([]);
   const [studs, setStuds] = useState<Stud[]>([]);
+  const [allStuds, setAllStuds] = useState<AllStud[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -57,6 +59,9 @@ export default function CrmReports() {
       setExps((e ?? []) as Exp[]);
       setEnqs((en ?? []) as Enq[]);
       setStuds((s ?? []) as Stud[]);
+      const { data: all } = await supabase.from("crm_students")
+        .select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status");
+      setAllStuds((all ?? []) as AllStud[]);
       setLoading(false);
     })();
   }, [from, to, isAdmin]);
@@ -125,6 +130,30 @@ export default function CrmReports() {
     exps.forEach((e) => { m[e.category_name_snapshot || "Uncategorised"] = (m[e.category_name_snapshot || "Uncategorised"] || 0) + e.amount; });
     return Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [exps]);
+
+  // Students who joined more than one course (grouped by normalized phone)
+  const multiCourse = useMemo(() => {
+    const groups: Record<string, AllStud[]> = {};
+    allStuds.forEach((s) => {
+      const norm = (s.phone || "").replace(/\D/g, "").slice(-10);
+      if (!norm || norm.length < 10) return;
+      (groups[norm] ||= []).push(s);
+    });
+    return Object.entries(groups)
+      .filter(([, list]) => {
+        const distinct = new Set(list.map((x) => x.course_id || x.course_name_snapshot || ""));
+        return distinct.size >= 2;
+      })
+      .map(([phone, list]) => ({
+        phone,
+        name: list[0].full_name,
+        firstId: list[0].id,
+        courses: Array.from(new Set(list.map((x) => x.course_name_snapshot || "—"))).join(", "),
+        totalFee: list.reduce((a, x) => a + (x.total_fee || 0), 0),
+        count: list.length,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [allStuds]);
 
   const exportFullReport = () => {
     const wb = XLSX.utils.book_new();
@@ -250,6 +279,41 @@ export default function CrmReports() {
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Multi-course students ({multiCourse.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Students whose phone appears across 2+ different courses (lifetime)</p>
+        </CardHeader>
+        <CardContent>
+          {multiCourse.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No students enrolled in multiple courses yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Courses</TableHead>
+                  <TableHead className="text-right">Enrolments</TableHead>
+                  <TableHead className="text-right">Total fees</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {multiCourse.map((m) => (
+                  <TableRow key={m.phone} className="cursor-pointer" onClick={() => window.location.assign(`/crm/students/${m.firstId}`)}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="font-mono text-sm">{m.phone}</TableCell>
+                    <TableCell className="text-sm">{m.courses}</TableCell>
+                    <TableCell className="text-right font-mono">{m.count}</TableCell>
+                    <TableCell className="text-right font-mono">₹{m.totalFee.toLocaleString("en-IN")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
