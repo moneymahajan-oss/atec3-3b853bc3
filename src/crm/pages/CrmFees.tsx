@@ -64,7 +64,7 @@ export default function CrmFees() {
         phone: s.phone,
         course_name_snapshot: s.course_name_snapshot,
         total_fee: s.total_fee ?? 0,
-        total_paid: paidByStudent[s.id] || 0,
+        total_paid: (paidByStudent[s.id] || 0) + (s.registration_fee_paid ?? 0),
         next_due_date: plansBy[s.id]?.next?.date ?? null,
         next_due_amount: plansBy[s.id]?.next?.amount ?? 0,
         overdue_count: plansBy[s.id]?.overdue ?? 0,
