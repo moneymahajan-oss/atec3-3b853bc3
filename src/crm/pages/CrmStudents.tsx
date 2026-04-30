@@ -13,6 +13,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "../components/PageHeader";
+import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { toast } from "sonner";
 
 type Student = {
@@ -147,13 +148,14 @@ export default function CrmStudents() {
               <TableHead>Joined</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Fee</TableHead>
+              <TableHead className="text-right">Message</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                 No students match your filters. <Link to="/crm/students/new" className="underline">Add one</Link>.
               </TableCell></TableRow>
             ) : filtered.map((s) => {
@@ -177,6 +179,19 @@ export default function CrmStudents() {
                   <Badge variant="secondary" className={statusColors[s.status] || ""}>{s.status.replace("_"," ")}</Badge>
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm">₹{s.total_fee.toLocaleString("en-IN")}</TableCell>
+                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                  <StudentWhatsAppButton
+                    section="students"
+                    student={{
+                      id: s.id,
+                      full_name: s.full_name,
+                      phone: s.phone,
+                      enrolment_no: s.enrolment_no,
+                      course_name_snapshot: s.course_name_snapshot,
+                      total_fee: s.total_fee,
+                    }}
+                  />
+                </TableCell>
               </TableRow>
               );
             })}
