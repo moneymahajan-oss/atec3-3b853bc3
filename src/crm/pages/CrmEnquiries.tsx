@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw } from "lucide-react";
+import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +92,36 @@ export default function CrmEnquiries() {
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
   const [reportCols, setReportCols] = useState<{ column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number }[]>([]);
+  const [instituteName, setInstituteName] = useState<string>("ATEC Education");
+
+  const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
+
+  const buildFormMessage = (greetName?: string) => {
+    const who = (greetName || "").trim() || "there";
+    return (
+      `Hi ${who}, this is ${instituteName}.\n\n` +
+      `Please fill out our quick enquiry form so we can share course details, fees, and batch timings with you:\n` +
+      `${formUrl}\n\n` +
+      `It only takes a minute. Thank you!`
+    );
+  };
+
+  const shareFormViaWhatsApp = (existingPhone?: string, greetName?: string) => {
+    const raw = (existingPhone || "").replace(/\D/g, "");
+    const phone = raw || window.prompt("Enter WhatsApp number (with country code, digits only):", "91")?.replace(/\D/g, "") || "";
+    if (!phone) { toast.error("Phone number required"); return; }
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildFormMessage(greetName))}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const copyFormUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(formUrl);
+      toast.success("Enquiry form link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -126,6 +156,8 @@ export default function CrmEnquiries() {
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_enquiry_report_columns").select("column_key,label,show_in_list,show_in_export,sort_order").order("sort_order")
       .then(({ data }) => setReportCols((data ?? []) as never));
+    supabase.from("crm_institute_settings").select("name").maybeSingle()
+      .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
   }, []);
 
   const counsellors = useMemo(() => {
@@ -196,6 +228,19 @@ export default function CrmEnquiries() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => navigate("/crm/enquiries/new")}>
               <Plus className="w-4 h-4 mr-2" /> New Enquiry
+            </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => shareFormViaWhatsApp()}
+              title="Send the public enquiry form link on WhatsApp"
+            >
+              <Send className="w-4 h-4 mr-2" /> Share Form on WhatsApp
+            </Button>
+            <Button variant="outline" onClick={copyFormUrl} title={formUrl}>
+              <Copy className="w-4 h-4 mr-2" /> Copy Form Link
+            </Button>
+            <Button variant="outline" onClick={() => window.open("/enquire", "_blank", "noopener,noreferrer")}>
+              <ExternalLink className="w-4 h-4 mr-2" /> Open Form
             </Button>
             <Button variant="outline" onClick={() => navigate("/crm/import-export")}>
               <Upload className="w-4 h-4 mr-2" /> Import
@@ -298,13 +343,21 @@ export default function CrmEnquiries() {
                   <TableCell className="text-sm">{e.follow_up_date || "—"}</TableCell>
                   <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
                     <div className="inline-flex gap-1">
-                      <Button size="icon" variant="ghost" asChild>
+                      <Button size="icon" variant="ghost" asChild title="Call">
                         <a href={`tel:${e.phone}`}><Phone className="w-4 h-4" /></a>
                       </Button>
-                      <Button size="icon" variant="ghost" asChild>
+                      <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
                         <a href={`https://wa.me/${e.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
                           <MessageSquare className="w-4 h-4" />
                         </a>
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Send public enquiry form link on WhatsApp"
+                        onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
+                      >
+                        <Send className="w-4 h-4 text-emerald-600" />
                       </Button>
                     </div>
                   </TableCell>
