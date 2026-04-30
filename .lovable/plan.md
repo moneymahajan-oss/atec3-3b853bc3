@@ -1,84 +1,59 @@
-
 ## Goal
 
-When sharing a course (from CRM Enquiry panel, CRM Courses page, or website), the WhatsApp message should:
+1. Guarantee that **every** student created in the CRM (direct entry, import, or any other path) also appears in the Enquiry panel.
+2. Make the **photo upload** in the Student form clearly visible, with preview, replace, and remove controls.
 
-1. **Show a preview image** for the brochure (PDF) — not just a raw PDF URL.
-2. **Show a video thumbnail** instead of a bare YouTube/video URL.
-3. **Use short, course-named links** (e.g. `https://atec.../c/tally-prime`) instead of long Supabase storage URLs.
+## Current state (what already exists)
 
-WhatsApp auto-renders a rich preview card (image + title + description) for any link whose page returns proper Open Graph meta tags. We'll use that mechanism rather than uploading raw images/PDFs.
+- DB trigger `trg_crm_students_auto_enquiry` already auto-creates a `crm_enquiries` row (source = `crm_walk_in`, status = `converted`) whenever a student is inserted without a `source_enquiry_id`. ✅
+- A photo file input already exists in `CrmStudentForm.tsx` (Documents card, right column). ⚠ Functional but minimal.
 
----
+## Gaps to fix
 
-## What will change
+### A. Enquiry sync — make it bullet-proof and visible
 
-### 1. New public course landing page — `src/pages/CoursePublic.tsx`
-- Route: `/c/:slug` (added in `src/App.tsx`).
-- Loads course from `crm_courses` by `slug`.
-- Renders course name, image (`og_image_url` or generated thumbnail), short syllabus, fee, duration, "Download Brochure" (links to `brochure_url`), "Watch Video" (embeds YouTube), and an Enquire button → `/enquire?course=<slug>`.
-- **Outputs OG meta tags** via `SEO` component:
-  - `og:title` = course name
-  - `og:description` = concise syllabus (first 160 chars)
-  - `og:image` = `og_image_url` OR auto-derived YouTube thumbnail (`https://img.youtube.com/vi/<id>/maxresdefault.jpg`) OR a default course banner.
-  - `og:type` = website
-- This is what makes WhatsApp render an image card when the link is shared.
+1. **Migration — harden the trigger** in `crm_auto_create_enquiry_for_student()`:
+   - Run `BEFORE INSERT` (already) AND also handle `UPDATE` when a student gets created without `source_enquiry_id` later.
+   - Catch exceptions so a failure to create the enquiry never blocks the student insert (log a warning instead).
+   - Ensure `phone` is normalized to last 10 digits before insert (matches the public-form RLS regex pattern used elsewhere).
 
-### 2. New helper — `src/lib/courseLinks.ts`
-- `coursePublicUrl(slug)` → `${origin}/c/${slug}` (short, human-readable).
-- `youtubeThumb(url)` → extracts video ID, returns `https://img.youtube.com/vi/<id>/hqdefault.jpg`.
-- `brochureShareUrl(slug)` → uses `/c/${slug}#brochure` so WhatsApp shows the OG image card; the brochure PDF is downloadable from that page.
-- `videoShareUrl(slug)` → `/c/${slug}#video`.
+2. **Backfill** any existing students missing `source_enquiry_id`:
+   ```sql
+   -- run in migration: for each student with NULL source_enquiry_id, insert a matching enquiry and link it
+   ```
 
-### 3. Update WhatsApp templates (DB migration)
-Replace raw `{brochure_url}` / `{video_url}` placeholders with new short-link placeholders that point to the public course page so WhatsApp generates a rich preview:
+3. **Enquiry list filter** (`src/crm/pages/CrmEnquiries.tsx`):
+   - Add `crm_walk_in` to the Source filter dropdown options so direct-entry enquiries are easy to find.
+   - Add a small "Auto from student" badge next to the source icon when `source = 'crm_walk_in'` and `converted_student_id IS NOT NULL`.
 
-- `SEND_BROCHURE_IMAGE.body` → use `{brochure_share_link}` (which is `/c/<slug>`) so the message shows a card with the course image + title.
-- `COURSE_MEDIA.body` → use `{video_share_link}` (also `/c/<slug>`) — WhatsApp will render the YouTube thumbnail via OG tags.
-- `COURSE_INFO.body` → replace `{brochure_link}` and `{video_link}` with the short `{course_share_link}` so a single image-card preview is shown.
+4. **CSV/Excel import path** (`src/crm/pages/CrmImportExport.tsx`): no code change needed — the DB trigger covers it automatically. Add a one-line note in the import success toast: "Enquiry records auto-created for each student."
 
-Migration also adds an alias on the templates so old keys still resolve.
+### B. Photo upload — better UX
 
-### 4. Wire new vars into builders
-- `src/crm/lib/enquiryWa.ts` → in `buildVars`, add:
-  - `course_share_link` = `coursePublicUrl(course.slug)`
-  - `brochure_share_link` = same (anchor `#brochure`)
-  - `video_share_link` = same (anchor `#video`)
-  - Keep old `brochure_url` / `video_url` working for backward compat.
-- Update `CourseCtx` to include `slug`, and update the SELECT in `SendWhatsAppCard` / `SendAllModal` / `CrmEnquiryForm` queries to fetch `slug`.
-- `src/crm/components/SendCourseDrawer.tsx` → fetch `slug`, add `course_share_link` to template vars.
-- `src/components/CoursesSection.tsx` (website "Share Course Details") → use `coursePublicUrl(course.slug)` in the `syllabus_share` template vars instead of raw `syllabus_pdf_url` / `brochure_pdf_url`. Also update the public `whatsapp_templates.syllabus_share` body.
+In `src/crm/pages/CrmStudentForm.tsx` Documents card:
 
-### 5. Backfill `og_image_url` where missing
-- For courses with a `youtube_url` but no `og_image_url`, the public page falls back to the YouTube thumbnail at runtime (no migration needed).
-- For PDF-only courses, `og_image_url` is used as-is; if empty we fall back to a default `/og-course-default.png` (added to `public/`).
+- Move the **Photo** block to the **top** of the right column and make it more prominent (rounded avatar preview ~ 128px, dashed drop area, camera icon).
+- Add three controls:
+  - **Upload / Replace** (file input, also accepts camera capture on mobile via `capture="user"`).
+  - **Remove photo** button (clears `photo_url`).
+  - File-size guard: reject > 5 MB, accept only `image/jpeg`, `image/png`, `image/webp`.
+- Show inline error if upload fails; show success toast.
+- Use the public bucket `crm-course-media` under path `students/photos/<studentId-or-uuid>/<timestamp>.<ext>` (already public, so the URL works in lists, certificates, receipts).
+- Display the photo thumbnail in the **Students list** (`CrmStudents.tsx`) next to the name (small avatar, falls back to initials).
 
----
+## Technical details
 
-## Result for the user
+**Files to edit**
+- `supabase/migrations/<new>.sql` — update trigger function + backfill.
+- `src/crm/pages/CrmStudentForm.tsx` — refined Photo card with preview, validation, replace, remove, mobile camera capture.
+- `src/crm/pages/CrmEnquiries.tsx` — add `crm_walk_in` to Source filter; "Auto from student" hint.
+- `src/crm/pages/CrmStudents.tsx` — small avatar column using `photo_url`.
 
-A WhatsApp message will look like:
+**No new tables, no new buckets.** Uses existing `crm-course-media` (public) and existing schema columns (`crm_students.photo_url`, `crm_students.source_enquiry_id`, `crm_enquiries.converted_student_id`).
 
-```text
-Hi Rahul, here is *Tally Prime* 📘
-https://ateceducationinnew.lovable.app/c/tally-prime
-Fee: ₹6,000 • Duration: 2 months
-```
+## Out of scope
 
-…and WhatsApp will display below it a rich card with the course image/video thumbnail, course name, and short description — exactly what you asked for. The link itself shows just the course name (`/c/tally-prime`), not the long PDF/storage path.
+- Cropping / image editing (kept simple — replace to change).
+- Changing the existing trigger's enquiry source value (`crm_walk_in`) — it stays so historical filters keep working.
 
----
-
-## Files to create / edit
-
-- **create** `src/pages/CoursePublic.tsx`
-- **create** `src/lib/courseLinks.ts`
-- **create** `public/og-course-default.png` (simple fallback banner)
-- **edit** `src/App.tsx` (add route `/c/:slug`)
-- **edit** `src/crm/lib/enquiryWa.ts` (new vars, slug in CourseCtx)
-- **edit** `src/crm/components/SendWhatsAppCard.tsx`, `SendAllModal.tsx`, `SendCourseDrawer.tsx` (fetch slug, pass new vars)
-- **edit** `src/components/CoursesSection.tsx` (use short link in share)
-- **edit** `src/components/SEO.tsx` if needed to support per-page OG image override
-- **migration**: update `crm_whatsapp_templates` bodies for `SEND_BROCHURE_IMAGE`, `COURSE_MEDIA`, `COURSE_INFO`; update `whatsapp_templates.syllabus_share` body.
-
-No schema changes required (slug + og_image_url already exist on `crm_courses`).
+Approve to implement.

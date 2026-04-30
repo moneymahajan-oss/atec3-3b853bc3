@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Plus, Search, Filter, Phone } from "lucide-react";
+import { Plus, Search, Filter, Phone, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ type Student = {
   enrolment_date: string;
   status: string;
   total_fee: number;
+  photo_url: string | null;
 };
 
 const statusColors: Record<string, string> = {
@@ -43,7 +45,7 @@ export default function CrmStudents() {
     (async () => {
       const { data, error } = await supabase
         .from("crm_students")
-        .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee")
+        .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee,photo_url")
         .order("created_at", { ascending: false });
       if (error) toast.error(error.message);
       setItems((data ?? []) as Student[]);
@@ -112,10 +114,20 @@ export default function CrmStudents() {
               <TableRow><TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                 No students yet. <Link to="/crm/students/new" className="underline">Add one</Link>.
               </TableCell></TableRow>
-            ) : filtered.map((s) => (
+            ) : filtered.map((s) => {
+              const initials = s.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+              return (
               <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/crm/students/${s.id}`)}>
                 <TableCell className="font-mono text-xs">{s.enrolment_no ?? "—"}</TableCell>
-                <TableCell className="font-medium">{s.full_name}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      {s.photo_url ? <AvatarImage src={s.photo_url} alt={s.full_name} /> : null}
+                      <AvatarFallback className="text-xs">{initials || <User className="w-4 h-4" />}</AvatarFallback>
+                    </Avatar>
+                    <span>{s.full_name}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="font-mono text-sm flex items-center gap-1">
                   <Phone className="w-3 h-3 text-muted-foreground" /> {s.phone}
                 </TableCell>
@@ -126,7 +138,8 @@ export default function CrmStudents() {
                 </TableCell>
                 <TableCell className="text-right font-mono text-sm">₹{s.total_fee.toLocaleString("en-IN")}</TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>
