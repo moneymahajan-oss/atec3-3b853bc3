@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
+import { StudentAttendanceCard } from "../components/StudentAttendanceCard";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
@@ -597,6 +598,8 @@ export default function CrmStudentForm() {
               )}
             </CardContent>
           </Card>
+
+          {!isNew && id && <StudentAttendanceCard studentId={id} />}
         </div>
 
         <div className="space-y-6">
