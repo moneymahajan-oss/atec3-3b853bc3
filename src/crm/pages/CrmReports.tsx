@@ -370,6 +370,82 @@ export default function CrmReports() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Students handled by faculty ({facultyStats.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Lifetime and currently active student counts grouped by the faculty assigned to each batch</p>
+        </CardHeader>
+        <CardContent>
+          {facultyStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No batches with faculty yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Faculty</TableHead>
+                  <TableHead className="text-right">Batches</TableHead>
+                  <TableHead className="text-right">Running</TableHead>
+                  <TableHead className="text-right">Active students</TableHead>
+                  <TableHead className="text-right">Total students (lifetime)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {facultyStats.map((f) => (
+                  <TableRow key={f.faculty}>
+                    <TableCell className="font-medium">{f.faculty}</TableCell>
+                    <TableCell className="text-right font-mono">{f.batches}</TableCell>
+                    <TableCell className="text-right font-mono">{f.runningBatches}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">{f.active}</TableCell>
+                    <TableCell className="text-right font-mono">{f.total}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Live students batch-wise ({liveBatchStats.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Currently active students in each running batch</p>
+        </CardHeader>
+        <CardContent>
+          {liveBatchStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No running batches.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batch</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Faculty</TableHead>
+                  <TableHead className="text-right">Live / Capacity</TableHead>
+                  <TableHead className="text-right">Fill</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {liveBatchStats.map((b) => {
+                  const fillCls = b.pct >= 100 ? "text-rose-600 dark:text-rose-400" : b.pct >= 80 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
+                  return (
+                    <TableRow key={b.id} className="cursor-pointer" onClick={() => window.location.assign(`/crm/batches/${b.id}/report`)}>
+                      <TableCell className="font-medium">
+                        {b.name}
+                        {b.schedule && <div className="text-xs text-muted-foreground">{b.schedule}</div>}
+                      </TableCell>
+                      <TableCell className="text-sm">{b.course}</TableCell>
+                      <TableCell className="text-sm">{b.faculty}</TableCell>
+                      <TableCell className="text-right font-mono">{b.live} / {b.capacity || "—"}</TableCell>
+                      <TableCell className={`text-right font-mono ${fillCls}`}>{b.capacity > 0 ? `${b.pct.toFixed(0)}%` : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       {isAdmin && expenseBreakdown.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Expense breakdown by category</CardTitle></CardHeader>
