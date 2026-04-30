@@ -19,6 +19,7 @@ interface CourseRow {
   brochure_url: string | null;
   youtube_url: string | null;
   video_url: string | null;
+  instagram_url: string | null;
   og_image_url: string | null;
   concise_syllabus: string | null;
   detailed_syllabus_html: string | null;
@@ -130,13 +131,19 @@ export default function CoursePublic() {
                 </a>
               </Button>
             )}
-            {(course.youtube_url || course.video_url) && (
+            {(course.youtube_url || course.video_url) ? (
               <Button asChild variant="outline" id="video">
                 <a href={course.youtube_url || course.video_url || "#"} target="_blank" rel="noreferrer">
                   <Play className="w-4 h-4 mr-2" /> Watch Course Video
                 </a>
               </Button>
-            )}
+            ) : course.instagram_url ? (
+              <Button asChild variant="outline" id="video">
+                <a href={course.instagram_url} target="_blank" rel="noreferrer">
+                  <Play className="w-4 h-4 mr-2" /> Watch on Instagram
+                </a>
+              </Button>
+            ) : null}
           </div>
 
           {ytId && (
