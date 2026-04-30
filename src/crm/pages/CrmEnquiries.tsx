@@ -92,6 +92,36 @@ export default function CrmEnquiries() {
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
   const [reportCols, setReportCols] = useState<{ column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number }[]>([]);
+  const [instituteName, setInstituteName] = useState<string>("ATEC Education");
+
+  const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
+
+  const buildFormMessage = (greetName?: string) => {
+    const who = (greetName || "").trim() || "there";
+    return (
+      `Hi ${who}, this is ${instituteName}.\n\n` +
+      `Please fill out our quick enquiry form so we can share course details, fees, and batch timings with you:\n` +
+      `${formUrl}\n\n` +
+      `It only takes a minute. Thank you!`
+    );
+  };
+
+  const shareFormViaWhatsApp = (existingPhone?: string, greetName?: string) => {
+    const raw = (existingPhone || "").replace(/\D/g, "");
+    const phone = raw || window.prompt("Enter WhatsApp number (with country code, digits only):", "91")?.replace(/\D/g, "") || "";
+    if (!phone) { toast.error("Phone number required"); return; }
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildFormMessage(greetName))}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const copyFormUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(formUrl);
+      toast.success("Enquiry form link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
 
   const load = async () => {
     setLoading(true);
