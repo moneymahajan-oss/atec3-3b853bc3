@@ -187,9 +187,20 @@ export default function CrmStudentForm() {
   };
 
   const upload = async (file: File, kind: "photo" | "id" | "addr") => {
+    if (kind === "photo") {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        toast.error("Photo must be JPG, PNG or WebP");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Photo must be under 5 MB");
+        return;
+      }
+    }
     setUploading(kind);
     const bucket = kind === "photo" ? "crm-course-media" : "crm-student-docs";
-    const path = `students/${user?.id ?? "anon"}/${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
+    const folder = kind === "photo" ? `students/photos/${id ?? "new"}` : `students/${user?.id ?? "anon"}`;
+    const path = `${folder}/${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
     if (error) { toast.error(error.message); setUploading(null); return; }
     if (kind === "photo") {
@@ -202,6 +213,11 @@ export default function CrmStudentForm() {
     }
     setUploading(null);
     toast.success("Uploaded");
+  };
+
+  const removePhoto = () => {
+    set("photo_url", "");
+    toast.success("Photo removed. Don't forget to Save.");
   };
 
   const netPayable = Math.max(0, (Number(form.total_fee) || 0) - (Number(form.discount_amount) || 0));
