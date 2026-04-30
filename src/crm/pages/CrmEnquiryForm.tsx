@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Trash2, MessageSquare, UserPlus, Plus, Lock } from "lucide-react";
+import { ArrowLeft, Save, Trash2, MessageSquare, UserPlus, Plus, Lock, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,9 +250,30 @@ export default function CrmEnquiryForm() {
               : `Phone: ${form.phone}`
         }
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => navigate("/crm/enquiries")}>
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const rawPhone = (form.phone || "").replace(/\D/g, "");
+                const phone = rawPhone || window.prompt("Enter the person's WhatsApp number (with country code, digits only):", "91")?.replace(/\D/g, "") || "";
+                if (!phone) { toast.error("Phone number required"); return; }
+                const formUrl = `${window.location.origin}/enquire`;
+                const instName = institute?.name || "ATEC Education";
+                const greetName = form.name?.trim() || "there";
+                const msg =
+                  `Hi ${greetName}, this is ${instName}.\n\n` +
+                  `Please fill out our quick enquiry form so we can share course details, fees, and batch timings with you:\n` +
+                  `${formUrl}\n\n` +
+                  `It only takes a minute. Thank you!`;
+                const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                window.open(url, "_blank", "noopener,noreferrer");
+              }}
+              title="Send the public enquiry form link to this person on WhatsApp"
+            >
+              <Send className="w-4 h-4 mr-2" /> Send Form Link
             </Button>
             {!isNew && form.status !== "converted" && (
               <Button variant="secondary" onClick={convertToStudent}>
