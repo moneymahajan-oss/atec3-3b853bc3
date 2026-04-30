@@ -343,13 +343,21 @@ export default function CrmEnquiries() {
                   <TableCell className="text-sm">{e.follow_up_date || "—"}</TableCell>
                   <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
                     <div className="inline-flex gap-1">
-                      <Button size="icon" variant="ghost" asChild>
+                      <Button size="icon" variant="ghost" asChild title="Call">
                         <a href={`tel:${e.phone}`}><Phone className="w-4 h-4" /></a>
                       </Button>
-                      <Button size="icon" variant="ghost" asChild>
+                      <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
                         <a href={`https://wa.me/${e.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
                           <MessageSquare className="w-4 h-4" />
                         </a>
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Send public enquiry form link on WhatsApp"
+                        onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
+                      >
+                        <Send className="w-4 h-4 text-emerald-600" />
                       </Button>
                     </div>
                   </TableCell>
