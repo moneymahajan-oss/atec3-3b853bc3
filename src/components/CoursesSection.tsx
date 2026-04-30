@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink, whatsAppLinkSync } from "@/lib/whatsapp";
+import { coursePublicUrl, brochureShareUrl, videoShareUrl } from "@/lib/courseLinks";
 import { useToast } from "@/hooks/use-toast";
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -72,14 +73,17 @@ export default function CoursesSection() {
       priority: "medium",
       notes: "Auto-created from website course card (Share / Enroll)",
     } as never);
-    // Build WhatsApp message addressed to the student from ATEC's number
+    // Build WhatsApp message — pass SHORT course-named links
+    // (legacy `courses` table has no slug; helper falls back to slugified name)
     const link = await buildWhatsAppLink(
       "syllabus_share",
       {
         student_name: studentName,
         course_name: shareCourse.name,
-        syllabus_pdf_url: shareCourse.syllabus_pdf_url || "",
-        brochure_pdf_url: shareCourse.brochure_pdf_url || "",
+        course_link: coursePublicUrl(null, shareCourse.name),
+        syllabus_pdf_url: brochureShareUrl(null, shareCourse.name),
+        brochure_pdf_url: brochureShareUrl(null, shareCourse.name),
+        video_link: videoShareUrl(null, shareCourse.name),
       },
       waNumber
     );
