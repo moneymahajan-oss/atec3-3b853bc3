@@ -38,6 +38,7 @@ import CrmReminders from "./crm/pages/CrmReminders.tsx";
 import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
 import Enquire from "./pages/Enquire.tsx";
+import CoursePublic from "./pages/CoursePublic.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/enquire" element={<Enquire />} />
+                <Route path="/c/:slug" element={<CoursePublic />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/site-content" element={<AdminSiteContent />} />
