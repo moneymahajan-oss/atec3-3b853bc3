@@ -336,9 +336,22 @@ export default function CrmStudentFees() {
                     <div className="inline-flex gap-1">
                       {!p.is_void && (
                         <>
-                          <Button size="icon" variant="ghost" title="Send on WhatsApp" onClick={() => sendReceiptOnWa(p)}>
-                            <MessageSquare className="w-4 h-4" />
-                          </Button>
+                          <StudentWhatsAppButton
+                            section="payment"
+                            student={{
+                              id: student.id,
+                              full_name: student.full_name,
+                              phone: student.phone,
+                              enrolment_no: student.enrolment_no,
+                              course_name_snapshot: student.course_name_snapshot,
+                              total_fee: totalBilled,
+                              total_paid: totalPaid,
+                            }}
+                            extraVars={{
+                              last_payment_amount: p.amount.toLocaleString("en-IN"),
+                              last_receipt_no: p.receipt_no ?? "",
+                            }}
+                          />
                           <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
                             <Printer className="w-4 h-4" />
                           </Button>
