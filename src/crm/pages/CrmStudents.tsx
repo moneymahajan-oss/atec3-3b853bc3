@@ -40,6 +40,9 @@ export default function CrmStudents() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [rangePreset, setRangePreset] = useState("all");
 
   useEffect(() => {
     (async () => {
@@ -53,8 +56,22 @@ export default function CrmStudents() {
     })();
   }, []);
 
+  const applyPreset = (preset: string) => {
+    setRangePreset(preset);
+    const today = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    if (preset === "all") { setFrom(""); setTo(""); return; }
+    if (preset === "today") { setFrom(iso(today)); setTo(iso(today)); return; }
+    if (preset === "7d") { const d = new Date(today); d.setDate(d.getDate() - 6); setFrom(iso(d)); setTo(iso(today)); return; }
+    if (preset === "30d") { const d = new Date(today); d.setDate(d.getDate() - 29); setFrom(iso(d)); setTo(iso(today)); return; }
+    if (preset === "this_month") { setFrom(iso(new Date(today.getFullYear(), today.getMonth(), 1))); setTo(iso(today)); return; }
+    if (preset === "this_year") { setFrom(iso(new Date(today.getFullYear(), 0, 1))); setTo(iso(today)); return; }
+  };
+
   const filtered = useMemo(() => items.filter((s) => {
     if (status !== "all" && s.status !== status) return false;
+    if (from && s.enrolment_date && s.enrolment_date < from) return false;
+    if (to && s.enrolment_date && s.enrolment_date > to) return false;
     if (!q) return true;
     const t = q.toLowerCase();
     return (
@@ -63,7 +80,9 @@ export default function CrmStudents() {
       (s.enrolment_no ?? "").toLowerCase().includes(t) ||
       (s.course_name_snapshot ?? "").toLowerCase().includes(t)
     );
-  }), [items, q, status]);
+  }), [items, q, status, from, to]);
+
+  const reset = () => { setQ(""); setStatus("all"); setFrom(""); setTo(""); setRangePreset("all"); };
 
   return (
     <div className="space-y-6">
