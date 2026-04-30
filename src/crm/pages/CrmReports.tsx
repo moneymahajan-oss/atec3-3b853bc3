@@ -282,7 +282,41 @@ export default function CrmReports() {
         </CardContent>
       </Card>
 
-      {isAdmin && expenseBreakdown.length > 0 && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Multi-course students ({multiCourse.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Students whose phone appears across 2+ different courses (lifetime)</p>
+        </CardHeader>
+        <CardContent>
+          {multiCourse.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No students enrolled in multiple courses yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Courses</TableHead>
+                  <TableHead className="text-right">Enrolments</TableHead>
+                  <TableHead className="text-right">Total fees</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {multiCourse.map((m) => (
+                  <TableRow key={m.phone} className="cursor-pointer" onClick={() => window.location.assign(`/crm/students/${m.firstId}`)}>
+                    <TableCell className="font-medium">{m.name}</TableCell>
+                    <TableCell className="font-mono text-sm">{m.phone}</TableCell>
+                    <TableCell className="text-sm">{m.courses}</TableCell>
+                    <TableCell className="text-right font-mono">{m.count}</TableCell>
+                    <TableCell className="text-right font-mono">₹{m.totalFee.toLocaleString("en-IN")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
         <Card>
           <CardHeader><CardTitle>Expense breakdown by category</CardTitle></CardHeader>
           <CardContent>
