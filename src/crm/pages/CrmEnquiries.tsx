@@ -156,6 +156,8 @@ export default function CrmEnquiries() {
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_enquiry_report_columns").select("column_key,label,show_in_list,show_in_export,sort_order").order("sort_order")
       .then(({ data }) => setReportCols((data ?? []) as never));
+    supabase.from("crm_institute_settings").select("name").maybeSingle()
+      .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
   }, []);
 
   const counsellors = useMemo(() => {
