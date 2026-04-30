@@ -48,6 +48,22 @@ export default function ContactSection() {
       message,
     });
 
+    // Also create a CRM enquiry so it appears in the Enquiry panel
+    if (name && phone) {
+      await supabase.from("crm_enquiries").insert({
+        name,
+        phone: phone.replace(/\D/g, ""),
+        whatsapp: phone.replace(/\D/g, ""),
+        email: email || null,
+        course_name_snapshot: courseInterest || null,
+        source: "website_form",
+        status: "new",
+        priority: "medium",
+        any_message: message || null,
+        notes: "Auto-created from website Contact form",
+      } as never);
+    }
+
     setLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
