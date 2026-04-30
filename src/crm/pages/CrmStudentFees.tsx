@@ -264,9 +264,21 @@ export default function CrmStudentFees() {
                   <TableCell className="text-right">
                     <div className="inline-flex gap-1">
                       {!p.is_void && p.status !== "paid" && (
-                        <Button size="icon" variant="ghost" title="Send reminder" onClick={() => sendReminderOnWa(p)}>
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
+                        <StudentWhatsAppButton
+                          section="plan"
+                          student={{
+                            id: student.id,
+                            full_name: student.full_name,
+                            phone: student.phone,
+                            enrolment_no: student.enrolment_no,
+                            course_name_snapshot: student.course_name_snapshot,
+                            total_fee: totalBilled,
+                            total_paid: totalPaid,
+                            next_due_date: p.due_date,
+                            next_due_amount: p.amount - p.amount_paid,
+                          }}
+                          extraVars={{ installment_no: p.installment_no }}
+                        />
                       )}
                       {!p.is_void && (
                         <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
