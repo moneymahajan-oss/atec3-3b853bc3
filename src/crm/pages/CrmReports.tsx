@@ -160,12 +160,60 @@ export default function CrmReports() {
       .sort((a, b) => b.count - a.count);
   }, [allStuds]);
 
+  // Faculty-wise student load
+  const facultyStats = useMemo(() => {
+    const byBatch: Record<string, Batch> = {};
+    batches.forEach((b) => { byBatch[b.id] = b; });
+    const map: Record<string, { faculty: string; batchIds: Set<string>; runningBatchIds: Set<string>; total: number; active: number }> = {};
+    allStuds.forEach((s) => {
+      if (!s.batch_id) return;
+      const b = byBatch[s.batch_id];
+      if (!b) return;
+      const key = (b.faculty_name || "").trim() || "Unassigned";
+      const row = (map[key] ||= { faculty: key, batchIds: new Set(), runningBatchIds: new Set(), total: 0, active: 0 });
+      row.batchIds.add(b.id);
+      if (b.status === "running") row.runningBatchIds.add(b.id);
+      row.total += 1;
+      if (s.status === "active") row.active += 1;
+    });
+    // Include batches with zero students so faculty still shows
+    batches.forEach((b) => {
+      const key = (b.faculty_name || "").trim() || "Unassigned";
+      const row = (map[key] ||= { faculty: key, batchIds: new Set(), runningBatchIds: new Set(), total: 0, active: 0 });
+      row.batchIds.add(b.id);
+      if (b.status === "running") row.runningBatchIds.add(b.id);
+    });
+    return Object.values(map)
+      .map((r) => ({ faculty: r.faculty, batches: r.batchIds.size, runningBatches: r.runningBatchIds.size, total: r.total, active: r.active }))
+      .sort((a, b) => b.active - a.active || b.total - a.total);
+  }, [allStuds, batches]);
+
+  // Live students per running batch
+  const liveBatchStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allStuds.forEach((s) => {
+      if (s.status !== "active" || !s.batch_id) return;
+      counts[s.batch_id] = (counts[s.batch_id] || 0) + 1;
+    });
+    return batches
+      .filter((b) => b.status === "running")
+      .map((b) => {
+        const live = counts[b.id] || 0;
+        const cap = b.capacity || 0;
+        const pct = cap > 0 ? (live / cap) * 100 : 0;
+        return { id: b.id, name: b.name, course: b.course_name_snapshot || "—", faculty: b.faculty_name || "—", schedule: [b.schedule, b.timing].filter(Boolean).join(" · "), live, capacity: cap, pct };
+      })
+      .sort((a, b) => b.pct - a.pct || b.live - a.live);
+  }, [allStuds, batches]);
+
   const exportFullReport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthly), "Monthly P&L");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(funnel), "Enquiry Funnel");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sources), "Sources");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(courseRevenue), "Course Revenue");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(facultyStats), "Faculty Load");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(liveBatchStats.map(({ id, ...r }) => r)), "Live Batches");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseBreakdown), "Expense Breakdown");
     XLSX.writeFile(wb, `atec-report-${from}-to-${to}.xlsx`);
   };
