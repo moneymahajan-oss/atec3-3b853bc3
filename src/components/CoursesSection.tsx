@@ -41,10 +41,10 @@ export default function CoursesSection() {
   const filtered = active === "All" ? courses : courses.filter((c) => c.category === active);
   const waNumber = settings.whatsapp_number || "917009933289";
 
-  const handleEnroll = async (course: any) => {
-    const tplKey = course.whatsapp_template_key || "enroll_button";
-    const link = await buildWhatsAppLink(tplKey, { course_name: course.name }, waNumber);
-    window.open(link, "_blank", "noopener,noreferrer");
+  // Enroll now also captures the visitor as an enquiry — route through the
+  // Share form so we collect name + phone before opening WhatsApp.
+  const handleEnroll = (course: any) => {
+    setShareCourse(course);
   };
 
   const handleShareSubmit = async () => {
@@ -54,13 +54,24 @@ export default function CoursesSection() {
       return;
     }
     setSubmitting(true);
-    // Save lead
+    // Save lead (legacy)
     await supabase.from("leads").insert({
       source: "syllabus_request",
       student_name: studentName,
       phone: studentPhone,
       course_name: shareCourse.name,
     });
+    // Also create a CRM enquiry so it appears in the Enquiry panel
+    await supabase.from("crm_enquiries").insert({
+      name: studentName,
+      phone: studentPhone.replace(/\D/g, ""),
+      whatsapp: studentPhone.replace(/\D/g, ""),
+      course_name_snapshot: shareCourse.name,
+      source: "website_course_page",
+      status: "new",
+      priority: "medium",
+      notes: "Auto-created from website course card (Share / Enroll)",
+    } as never);
     // Build WhatsApp message addressed to the student from ATEC's number
     const link = await buildWhatsAppLink(
       "syllabus_share",
