@@ -20,7 +20,8 @@ type Pay = { id: string; paid_on: string; amount: number; mode: string; student_
 type Exp = { id: string; spent_on: string; amount: number; category_name_snapshot: string | null };
 type Enq = { id: string; status: string; source: string; created_at: string };
 type Stud = { id: string; course_name_snapshot: string | null; total_fee: number; created_at: string };
-type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string };
+type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string; batch_id: string | null };
+type Batch = { id: string; name: string; faculty_name: string | null; status: string; capacity: number; course_name_snapshot: string | null; schedule: string | null; timing: string | null };
 
 const monthKey = (d: string) => d?.slice(0, 7);
 const monthLabel = (k: string) => {
