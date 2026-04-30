@@ -195,8 +195,23 @@ export default function CrmStudentFees() {
         title={`Fees · ${student.full_name}`}
         description={`${student.enrolment_no ?? student.phone} — ${student.course_name_snapshot ?? "No course"}`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Button asChild variant="outline"><Link to="/crm/fees"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Link></Button>
+            <StudentWhatsAppButton
+              section="fees"
+              size="default"
+              variant="outline"
+              label="WhatsApp"
+              student={{
+                id: student.id,
+                full_name: student.full_name,
+                phone: student.phone,
+                enrolment_no: student.enrolment_no,
+                course_name_snapshot: student.course_name_snapshot,
+                total_fee: totalBilled,
+                total_paid: totalPaid,
+              }}
+            />
             <Button onClick={() => setPayOpen(true)}><Receipt className="w-4 h-4 mr-2" /> Record Payment</Button>
           </div>
         }
