@@ -24,6 +24,7 @@ type Student = {
   enrolment_date: string;
   status: string;
   total_fee: number;
+  photo_url: string | null;
 };
 
 const statusColors: Record<string, string> = {
