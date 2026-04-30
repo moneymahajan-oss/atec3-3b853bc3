@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageHeader } from "../components/PageHeader";
 import { VoidDialog } from "../components/VoidDialog";
+import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
