@@ -229,6 +229,19 @@ export default function CrmEnquiries() {
             <Button onClick={() => navigate("/crm/enquiries/new")}>
               <Plus className="w-4 h-4 mr-2" /> New Enquiry
             </Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => shareFormViaWhatsApp()}
+              title="Send the public enquiry form link on WhatsApp"
+            >
+              <Send className="w-4 h-4 mr-2" /> Share Form on WhatsApp
+            </Button>
+            <Button variant="outline" onClick={copyFormUrl} title={formUrl}>
+              <Copy className="w-4 h-4 mr-2" /> Copy Form Link
+            </Button>
+            <Button variant="outline" onClick={() => window.open("/enquire", "_blank", "noopener,noreferrer")}>
+              <ExternalLink className="w-4 h-4 mr-2" /> Open Form
+            </Button>
             <Button variant="outline" onClick={() => navigate("/crm/import-export")}>
               <Upload className="w-4 h-4 mr-2" /> Import
             </Button>
