@@ -20,7 +20,8 @@ type Pay = { id: string; paid_on: string; amount: number; mode: string; student_
 type Exp = { id: string; spent_on: string; amount: number; category_name_snapshot: string | null };
 type Enq = { id: string; status: string; source: string; created_at: string };
 type Stud = { id: string; course_name_snapshot: string | null; total_fee: number; created_at: string };
-type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string };
+type AllStud = { id: string; full_name: string; phone: string; course_id: string | null; course_name_snapshot: string | null; total_fee: number; status: string; batch_id: string | null };
+type Batch = { id: string; name: string; faculty_name: string | null; status: string; capacity: number; course_name_snapshot: string | null; schedule: string | null; timing: string | null };
 
 const monthKey = (d: string) => d?.slice(0, 7);
 const monthLabel = (k: string) => {
@@ -42,6 +43,7 @@ export default function CrmReports() {
   const [enqs, setEnqs] = useState<Enq[]>([]);
   const [studs, setStuds] = useState<Stud[]>([]);
   const [allStuds, setAllStuds] = useState<AllStud[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,9 +61,12 @@ export default function CrmReports() {
       setExps((e ?? []) as Exp[]);
       setEnqs((en ?? []) as Enq[]);
       setStuds((s ?? []) as Stud[]);
-      const { data: all } = await supabase.from("crm_students")
-        .select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status");
+      const [{ data: all }, { data: b }] = await Promise.all([
+        supabase.from("crm_students").select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status,batch_id"),
+        supabase.from("crm_batches").select("id,name,faculty_name,status,capacity,course_name_snapshot,schedule,timing"),
+      ]);
       setAllStuds((all ?? []) as AllStud[]);
+      setBatches((b ?? []) as Batch[]);
       setLoading(false);
     })();
   }, [from, to, isAdmin]);
@@ -155,12 +160,60 @@ export default function CrmReports() {
       .sort((a, b) => b.count - a.count);
   }, [allStuds]);
 
+  // Faculty-wise student load
+  const facultyStats = useMemo(() => {
+    const byBatch: Record<string, Batch> = {};
+    batches.forEach((b) => { byBatch[b.id] = b; });
+    const map: Record<string, { faculty: string; batchIds: Set<string>; runningBatchIds: Set<string>; total: number; active: number }> = {};
+    allStuds.forEach((s) => {
+      if (!s.batch_id) return;
+      const b = byBatch[s.batch_id];
+      if (!b) return;
+      const key = (b.faculty_name || "").trim() || "Unassigned";
+      const row = (map[key] ||= { faculty: key, batchIds: new Set(), runningBatchIds: new Set(), total: 0, active: 0 });
+      row.batchIds.add(b.id);
+      if (b.status === "running") row.runningBatchIds.add(b.id);
+      row.total += 1;
+      if (s.status === "active") row.active += 1;
+    });
+    // Include batches with zero students so faculty still shows
+    batches.forEach((b) => {
+      const key = (b.faculty_name || "").trim() || "Unassigned";
+      const row = (map[key] ||= { faculty: key, batchIds: new Set(), runningBatchIds: new Set(), total: 0, active: 0 });
+      row.batchIds.add(b.id);
+      if (b.status === "running") row.runningBatchIds.add(b.id);
+    });
+    return Object.values(map)
+      .map((r) => ({ faculty: r.faculty, batches: r.batchIds.size, runningBatches: r.runningBatchIds.size, total: r.total, active: r.active }))
+      .sort((a, b) => b.active - a.active || b.total - a.total);
+  }, [allStuds, batches]);
+
+  // Live students per running batch
+  const liveBatchStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allStuds.forEach((s) => {
+      if (s.status !== "active" || !s.batch_id) return;
+      counts[s.batch_id] = (counts[s.batch_id] || 0) + 1;
+    });
+    return batches
+      .filter((b) => b.status === "running")
+      .map((b) => {
+        const live = counts[b.id] || 0;
+        const cap = b.capacity || 0;
+        const pct = cap > 0 ? (live / cap) * 100 : 0;
+        return { id: b.id, name: b.name, course: b.course_name_snapshot || "—", faculty: b.faculty_name || "—", schedule: [b.schedule, b.timing].filter(Boolean).join(" · "), live, capacity: cap, pct };
+      })
+      .sort((a, b) => b.pct - a.pct || b.live - a.live);
+  }, [allStuds, batches]);
+
   const exportFullReport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthly), "Monthly P&L");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(funnel), "Enquiry Funnel");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sources), "Sources");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(courseRevenue), "Course Revenue");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(facultyStats), "Faculty Load");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(liveBatchStats.map(({ id, ...r }) => r)), "Live Batches");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseBreakdown), "Expense Breakdown");
     XLSX.writeFile(wb, `atec-report-${from}-to-${to}.xlsx`);
   };
@@ -311,6 +364,82 @@ export default function CrmReports() {
                     <TableCell className="text-right font-mono">₹{m.totalFee.toLocaleString("en-IN")}</TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Students handled by faculty ({facultyStats.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Lifetime and currently active student counts grouped by the faculty assigned to each batch</p>
+        </CardHeader>
+        <CardContent>
+          {facultyStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No batches with faculty yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Faculty</TableHead>
+                  <TableHead className="text-right">Batches</TableHead>
+                  <TableHead className="text-right">Running</TableHead>
+                  <TableHead className="text-right">Active students</TableHead>
+                  <TableHead className="text-right">Total students (lifetime)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {facultyStats.map((f) => (
+                  <TableRow key={f.faculty}>
+                    <TableCell className="font-medium">{f.faculty}</TableCell>
+                    <TableCell className="text-right font-mono">{f.batches}</TableCell>
+                    <TableCell className="text-right font-mono">{f.runningBatches}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">{f.active}</TableCell>
+                    <TableCell className="text-right font-mono">{f.total}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Live students batch-wise ({liveBatchStats.length})</CardTitle>
+          <p className="text-xs text-muted-foreground">Currently active students in each running batch</p>
+        </CardHeader>
+        <CardContent>
+          {liveBatchStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No running batches.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batch</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Faculty</TableHead>
+                  <TableHead className="text-right">Live / Capacity</TableHead>
+                  <TableHead className="text-right">Fill</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {liveBatchStats.map((b) => {
+                  const fillCls = b.pct >= 100 ? "text-rose-600 dark:text-rose-400" : b.pct >= 80 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
+                  return (
+                    <TableRow key={b.id} className="cursor-pointer" onClick={() => window.location.assign(`/crm/batches/${b.id}/report`)}>
+                      <TableCell className="font-medium">
+                        {b.name}
+                        {b.schedule && <div className="text-xs text-muted-foreground">{b.schedule}</div>}
+                      </TableCell>
+                      <TableCell className="text-sm">{b.course}</TableCell>
+                      <TableCell className="text-sm">{b.faculty}</TableCell>
+                      <TableCell className="text-right font-mono">{b.live} / {b.capacity || "—"}</TableCell>
+                      <TableCell className={`text-right font-mono ${fillCls}`}>{b.capacity > 0 ? `${b.pct.toFixed(0)}%` : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
