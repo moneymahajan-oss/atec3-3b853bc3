@@ -43,6 +43,7 @@ export default function CrmReports() {
   const [enqs, setEnqs] = useState<Enq[]>([]);
   const [studs, setStuds] = useState<Stud[]>([]);
   const [allStuds, setAllStuds] = useState<AllStud[]>([]);
+  const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,9 +61,12 @@ export default function CrmReports() {
       setExps((e ?? []) as Exp[]);
       setEnqs((en ?? []) as Enq[]);
       setStuds((s ?? []) as Stud[]);
-      const { data: all } = await supabase.from("crm_students")
-        .select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status");
+      const [{ data: all }, { data: b }] = await Promise.all([
+        supabase.from("crm_students").select("id,full_name,phone,course_id,course_name_snapshot,total_fee,status,batch_id"),
+        supabase.from("crm_batches").select("id,name,faculty_name,status,capacity,course_name_snapshot,schedule,timing"),
+      ]);
       setAllStuds((all ?? []) as AllStud[]);
+      setBatches((b ?? []) as Batch[]);
       setLoading(false);
     })();
   }, [from, to, isAdmin]);
