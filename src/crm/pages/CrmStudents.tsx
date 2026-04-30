@@ -45,7 +45,7 @@ export default function CrmStudents() {
     (async () => {
       const { data, error } = await supabase
         .from("crm_students")
-        .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee")
+        .select("id,enrolment_no,full_name,phone,course_name_snapshot,enrolment_date,status,total_fee,photo_url")
         .order("created_at", { ascending: false });
       if (error) toast.error(error.message);
       setItems((data ?? []) as Student[]);
