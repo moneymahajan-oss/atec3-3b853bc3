@@ -45,6 +45,8 @@ export default function CrmBatches() {
   const { isAdmin, user } = useCrmAuth();
   const [items, setItems] = useState<Batch[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
+  const [workingDays, setWorkingDays] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
@@ -53,12 +55,26 @@ export default function CrmBatches() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: b }, { data: c }] = await Promise.all([
+    const [{ data: b }, { data: c }, { data: ls }, { data: at }] = await Promise.all([
       supabase.from("crm_batches").select("*").order("created_at", { ascending: false }),
       supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("crm_students").select("batch_id").eq("status", "active"),
+      supabase.from("crm_attendance").select("batch_id,attended_on"),
     ]);
     setItems((b ?? []) as Batch[]);
     setCourses((c ?? []) as Course[]);
+    const lc: Record<string, number> = {};
+    (ls ?? []).forEach((r: { batch_id: string | null }) => {
+      if (r.batch_id) lc[r.batch_id] = (lc[r.batch_id] || 0) + 1;
+    });
+    setLiveCounts(lc);
+    const wd: Record<string, Set<string>> = {};
+    (at ?? []).forEach((r: { batch_id: string; attended_on: string }) => {
+      (wd[r.batch_id] ||= new Set()).add(r.attended_on);
+    });
+    const wdMap: Record<string, number> = {};
+    Object.entries(wd).forEach(([k, v]) => { wdMap[k] = v.size; });
+    setWorkingDays(wdMap);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
