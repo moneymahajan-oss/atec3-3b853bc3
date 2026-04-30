@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Save, Trash2, Upload, Lock, Plus, MessageSquare } from "lucide-react";
+import { ArrowLeft, Save, Trash2, Upload, Lock, Plus, MessageSquare, Camera, X, User } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
