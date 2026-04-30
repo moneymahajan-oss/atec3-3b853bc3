@@ -122,6 +122,7 @@ export default function CrmStudents() {
             <SelectTrigger className="sm:w-48"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="live">🟢 Live (active + running batch)</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="on_hold">On hold</SelectItem>
