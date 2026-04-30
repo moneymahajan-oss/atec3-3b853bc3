@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Receipt, Ban, Printer, MessageSquare } from "lucide-react";
+import { ArrowLeft, Plus, Receipt, Ban, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ import { VoidDialog } from "../components/VoidDialog";
 import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
-import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
+
 import { toast } from "sonner";
 
 type Student = {
