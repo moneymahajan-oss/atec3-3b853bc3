@@ -317,6 +317,7 @@ export default function CrmReports() {
         </CardContent>
       </Card>
 
+      {isAdmin && expenseBreakdown.length > 0 && (
         <Card>
           <CardHeader><CardTitle>Expense breakdown by category</CardTitle></CardHeader>
           <CardContent>
