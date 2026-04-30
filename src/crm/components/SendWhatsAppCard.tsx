@@ -8,6 +8,7 @@ import {
   ENQUIRY_BUTTONS, EnquiryCtx, CourseCtx, InstituteCtx,
   EnquiryTemplateKey, sendWhatsAppForEnquiry,
 } from "../lib/enquiryWa";
+import { brochureShareUrl } from "@/lib/courseLinks";
 import { SendAllModal } from "./SendAllModal";
 
 interface Props {
@@ -66,11 +67,11 @@ export function SendWhatsAppCard({ enquiry, course, institute }: Props) {
   };
 
   const copyBrochureImage = async () => {
-    const url = course?.brochure_url;
-    if (!url) { toast.error("No catalogue image set on this course"); return; }
+    if (!course) { toast.error("No course selected"); return; }
+    const url = brochureShareUrl(course.slug, course.name);
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Image copied — paste in WhatsApp after opening the link");
+      toast.success("Course link copied — paste in WhatsApp for image preview");
     } catch {
       toast.error("Could not copy");
     }

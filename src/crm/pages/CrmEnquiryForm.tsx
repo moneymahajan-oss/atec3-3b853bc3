@@ -130,7 +130,7 @@ export default function CrmEnquiryForm() {
   useEffect(() => {
     if (!form.course_id) { setCourseDetails(null); return; }
     supabase.from("crm_courses")
-      .select("id, name, total_fee, duration, mode, brochure_url, video_url, instagram_url, concise_syllabus, detailed_syllabus_html, next_batch_date")
+      .select("id, name, slug, total_fee, duration, mode, brochure_url, video_url, youtube_url, instagram_url, concise_syllabus, detailed_syllabus_html, next_batch_date")
       .eq("id", form.course_id).maybeSingle()
       .then(({ data }) => setCourseDetails((data as never) ?? null));
   }, [form.course_id]);

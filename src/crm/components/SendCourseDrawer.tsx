@@ -6,12 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { fillTemplate, buildWaLink, logWaSend } from "../lib/whatsapp";
+import { coursePublicUrl, brochureShareUrl, videoShareUrl } from "@/lib/courseLinks";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 
 interface Course {
   id: string;
   name: string;
+  slug?: string | null;
   category: string;
   duration: string | null;
   mode: string;
@@ -46,6 +48,7 @@ export default function SendCourseDrawer({ course, onClose }: { course: Course |
   }, [course]);
 
   function buildPreview(body: string, c: Course, cfg: { phone?: string; address?: string; website?: string }, name: string) {
+    const shareLink = coursePublicUrl(c.slug, c.name);
     return fillTemplate(body, {
       name: name || "there",
       course_name: c.name,
@@ -54,8 +57,12 @@ export default function SendCourseDrawer({ course, onClose }: { course: Course |
       course_fee: c.total_fee?.toLocaleString("en-IN") ?? "",
       next_batch_date: c.next_batch_date ?? "Coming soon",
       mode: c.mode,
-      brochure_link: c.brochure_url ?? "",
-      video_link: c.youtube_url ?? c.video_url ?? "",
+      // Short, course-named links — WhatsApp will render image preview
+      brochure_link: brochureShareUrl(c.slug, c.name),
+      video_link: videoShareUrl(c.slug, c.name),
+      course_share_link: shareLink,
+      brochure_share_link: brochureShareUrl(c.slug, c.name),
+      video_share_link: videoShareUrl(c.slug, c.name),
       phone: cfg.phone ?? "",
       website_link: cfg.website ?? "",
       institute_address: cfg.address ?? "",
