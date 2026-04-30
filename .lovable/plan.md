@@ -1,34 +1,84 @@
-# Make Enquiries Columns Configurable (incl. Referred By)
+## Goal
 
-## The Problem
+Add 6 attendance & student-tracking enhancements across the CRM Batches, Attendance, Students and Reports pages.
 
-The Enquiries page (`/crm/enquiries`) currently renders a **hardcoded** list of columns: Name, Phone, Days, Course, Source, Stage, WA Sent, Follow-up, Actions. The database table `crm_enquiry_report_columns` already has a `show_in_list` flag (and `referred_by` is already set to `show_in_list = true`), but `CrmEnquiries.tsx` ignores it for the on-screen table — it only uses it for Excel export.
+## Features
 
-That's why "Referred By" doesn't appear even though it's enabled in settings.
+### 1. Student-by-student attendance (history view)
+- On the Student profile page (`CrmStudentForm`), add an **Attendance** card/tab.
+- Lists every `attended_on` row from `crm_attendance` for that student across all batches.
+- Shows: Date, Batch, Status badge (present/absent/late/excused), Notes.
+- Summary chips: total classes, present, absent, % attendance.
+- Filterable by date range and batch.
 
-## What Will Change
+### 2. Batch working days
+- A "working day" = any date for which at least one attendance row exists for that batch (so cancelled/holidays don't count).
+- On `CrmBatches` table add a **Working Days** column (count of `DISTINCT attended_on`).
+- On `CrmAttendance` page, when a batch is selected show: "Working days so far: N" next to the date picker.
+- Add an **"Add holiday / off day"** small action that opens a date input — but instead of a new table, we simply skip; working days remain attendance-driven. (No schema change needed.)
 
-### 1. Render the table from `crm_enquiry_report_columns`
-In `src/crm/pages/CrmEnquiries.tsx`:
-- Build the `<TableHeader>` columns dynamically from `reportCols.filter(c => c.show_in_list)` ordered by `sort_order`.
-- Build each `<TableRow>` cell using a `renderCell(columnKey, enquiry)` helper that maps every `column_key` (name, mobile, whatsapp, email, city, state, qualification, college_name, class_year, stream, current_status, company_name, course, category, preferred_timing, budget_range, source, stage, counsellor, follow_up_date, how_heard, wa_sent, **referred_by**, created_at, days_since, enquiry_id) to the right value with the existing badge/formatting styles.
-- Keep the Actions column (Call / WhatsApp / Share Form) pinned at the right — it's not part of the configurable list.
+### 3. Batch date-range attendance report
+- New page `/crm/batches/:id/report` (linked from the Batches row "Report" button next to Attendance).
+- Inputs: From date, To date (defaults: batch start → today).
+- Renders a matrix table: rows = students of the batch, columns = each working day in range, cell = P/A/L/E with color.
+- Footer row: per-day totals.
+- Right side panel per student: total working days, present count, %.
+- Export to XLSX button (uses existing `xlsx` lib pattern from `CrmEnquiries`).
 
-### 2. Add a "Columns" picker on the Enquiries toolbar
-- New `<Button variant="outline">` with a Columns icon next to Import/Export.
-- Opens a `Popover` (or `DropdownMenu`) listing every row from `crm_enquiry_report_columns` with a checkbox bound to `show_in_list`.
-- Toggling a checkbox updates that row in Supabase (`update crm_enquiry_report_columns set show_in_list = ? where id = ?`) and refreshes local state so the table re-renders immediately.
-- Includes a small "Reorder hint" link to the full settings page if we add one later.
+### 4. Live number of students in each batch
+- On `CrmBatches` page: replace the static "Capacity" column with `Live / Capacity` (e.g. `18 / 30`), where Live = count of `crm_students` where `batch_id = b.id` AND `status = 'active'`.
+- Color the cell amber when ≥ 80% full, rose when full.
+- On `CrmDashboard`, add a small "Live batches" widget listing running batches with their live count.
 
-### 3. Confirm Referred By appears
-After the change, since `referred_by` already has `show_in_list = true` and `show_in_export = true` in the DB, it will show up in the table automatically with no further action.
+### 5. Share attendance report on WhatsApp to students
+- On the new Batch Report page, an **"Send to students"** button.
+- For each student in the batch with a phone: build a personalized WhatsApp link using a new template `attendance_report` with vars: `{name}`, `{batch}`, `{from}`, `{to}`, `{working_days}`, `{present}`, `{absent}`, `{percent}`.
+- Reuse existing `crm/lib/whatsapp.ts` + `crm_whatsapp_logs` logging pattern (same as enquiry/student WA flows already in `enquiryWa.ts` / `studentWa.ts`).
+- Two modes: **single student** (button on the student row in the matrix) and **bulk** (sequential `wa.me` link generator with progress, same UX as `SendAllModal`).
+- Seed the new template via migration insert.
 
-## Files Touched
-- `src/crm/pages/CrmEnquiries.tsx` — dynamic header/cells, Columns popover, helper `renderCell`.
+### 6. List of currently studying (live) students
+- On `CrmStudents` page add a quick filter chip "Live only" (filters `status = active` AND `batch.status = 'running'`).
+- Add a stat card at the top: **Live students: N** (across all running batches).
 
-## Out of Scope
-- Drag-to-reorder columns (sort order stays as-is in DB).
-- Per-user column preferences (settings remain global to the institute).
-- Changes to the Excel export logic (already honors `show_in_export`).
+### 7. Students who joined more than one course
+- New section on `CrmReports` page: **"Multi-course students"**.
+- Computed by grouping `crm_students` by normalized phone (last 10 digits) and listing rows where the same phone appears with ≥ 2 distinct `course_id` values.
+- Table: Name, Phone, Courses (comma list), Total fees, Total paid, Outstanding.
+- Click row → opens first student profile.
 
-After this lands you can open Enquiries → click **Columns** → tick/untick anything (Referred By, City, Counsellor, etc.) and the table updates instantly.
+## Technical details
+
+**No schema changes required.** All features can be derived from existing tables (`crm_attendance`, `crm_batches`, `crm_students`, `crm_payments`, `crm_whatsapp_logs`, `crm_whatsapp_templates`).
+
+**Files to create**
+- `src/crm/pages/CrmBatchReport.tsx` — date-range matrix + WA share
+- `src/crm/components/StudentAttendanceCard.tsx` — used in `CrmStudentForm`
+- `src/crm/lib/attendanceWa.ts` — builds attendance-report WA links + logs
+
+**Files to edit**
+- `src/App.tsx` — add `/crm/batches/:id/report` route
+- `src/crm/pages/CrmBatches.tsx` — Live/Capacity column, "Report" button, working days column
+- `src/crm/pages/CrmAttendance.tsx` — show working-days count for selected batch
+- `src/crm/pages/CrmStudents.tsx` — Live filter + Live stat card
+- `src/crm/pages/CrmStudentForm.tsx` — mount `StudentAttendanceCard`
+- `src/crm/pages/CrmReports.tsx` — "Multi-course students" section
+- `src/crm/pages/CrmDashboard.tsx` — Live batches widget
+
+**Migration (insert-only via insert tool)**
+- Insert `attendance_report` row into `crm_whatsapp_templates` with body:
+  ```
+  Hi {name}, here is your attendance for {batch} ({from} to {to}):
+  Working days: {working_days}
+  Present: {present}
+  Absent: {absent}
+  Attendance: {percent}%
+  — ATEC Education
+  ```
+
+**Performance**
+- Batch report: single query `select student_id, attended_on, status from crm_attendance where batch_id=? and attended_on between ? and ?` then build matrix client-side.
+- Live counts on Batches list: one aggregate query `select batch_id, count(*) from crm_students where status='active' group by batch_id`.
+- Multi-course report: load all `crm_students(id, full_name, phone, course_id, course_name_snapshot, total_fee, net_payable_fee, registration_fee_paid)` and all non-void payments, group in JS by normalized phone.
+
+Approve to implement.
