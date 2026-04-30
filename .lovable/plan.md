@@ -1,40 +1,62 @@
-## Problem
+# Fix: Overdue Payments Not Showing in Reminders
 
-The public enquiry form share-on-WhatsApp action exists, but it is hidden inside individual enquiry detail pages (`/crm/enquiries/:id` → "Send Form Link" button) and inside Enquiry Settings → Self-Fill tab. From the main **Enquiries list page** (`/crm/enquiries`), there is no visible way to:
+## Root Cause
 
-- Copy the public enquiry form URL (`/enquire`)
-- Share the form link on WhatsApp to any number
-- Open the public form for a quick preview
+I queried the database and found this fee plan that **should** appear as overdue but doesn't:
 
-So when staff land on the Enquiries panel, the share option appears "missing".
+| Amount | Paid | Due Date | Status |
+|---|---|---|---|
+| ₹3000 | ₹0 | 2026-04-29 (yesterday) | **paid** |
 
-## Fix
+The installment is past due and unpaid (₹0 collected of ₹3000), but its `status` column is incorrectly set to `paid`. This appears to be stale/wrong data — likely a payment was recorded against it then voided, or the status was set manually, leaving `amount_paid = 0` but `status = 'paid'`.
 
-Add a **"Share Enquiry Form"** action group at the top of `src/crm/pages/CrmEnquiries.tsx`, right next to the existing `New Enquiry / Import / Export` buttons in the page header.
+The reminder loader in `src/crm/lib/reminders.ts` (`fetchPendingFeePlansWithStudent`) only fetches plans with `status IN ('pending','partial','overdue')`. Because this plan's status is `paid`, it is filtered out — even though the actual unpaid balance proves it is overdue.
 
-It will include three small buttons:
+The system has two sources of truth for "is this fee paid?" — the `status` field and the `amount` vs `amount_paid` math — and they have drifted apart.
 
-1. **Share on WhatsApp** (primary, green)  
-   Prompts for a WhatsApp number (with country code) and opens `https://wa.me/<number>?text=...` with a friendly message containing the public form URL (`{origin}/enquire`) and the institute name pulled from `crm_institute_settings`.
+## Fix Plan
 
-2. **Copy Link**  
-   Copies `{origin}/enquire` to clipboard with a toast confirmation.
+### 1. Make the overdue/due-soon loaders trust the money, not the status
 
-3. **Open Form**  
-   Opens `/enquire` in a new tab so staff can preview what the student sees.
+In `src/crm/lib/reminders.ts`, change `fetchPendingFeePlansWithStudent` to fetch **any non-void plan with an outstanding balance**, regardless of status:
 
-Additionally, add the same **"Share on WhatsApp"** quick action to each row in the Enquiries table actions column, so staff can re-send the form link to an existing contact in one click (re-using the already-stored phone number, no prompt needed).
+- Drop the `status IN (pending, partial, overdue)` filter
+- Filter in JS for `amount_paid < amount` (already done downstream)
+- This way a wrongly-flagged "paid" plan with ₹0 collected still surfaces as overdue
 
-## Technical details
+### 2. Auto-correct the status when we detect drift
 
-- File edited: `src/crm/pages/CrmEnquiries.tsx`
-- Fetch institute name once on mount: `supabase.from("crm_institute_settings").select("name").maybeSingle()`
-- Reuse the same message template already used in `CrmEnquiryForm.tsx` (lines 263–271) so wording stays consistent across the app
-- Use `Send` and `Link` / `Copy` icons from `lucide-react`
-- Use existing `toast` from `sonner` for copy confirmation
-- No DB changes, no new routes, no new components needed
+When `loadOverdue` / `loadDueSoon` find a plan where `amount_paid < amount` but `status = 'paid'`, also display it correctly in the reminders UI. Optionally trigger a one-time backfill to set status to `pending` / `overdue` so dashboards stay consistent.
 
-## Out of scope
+### 3. Backfill migration to repair existing bad data
 
-- Changing the public form itself (`/enquire`) — already working
-- Editing message text per-staff (already configurable via the message string; can be templated later if requested)
+Add a SQL migration that fixes any current row where status disagrees with the math:
+
+```text
+UPDATE crm_fee_plans
+SET status = CASE
+  WHEN amount_paid >= amount THEN 'paid'
+  WHEN amount_paid > 0 AND amount_paid < amount THEN 'partial'
+  WHEN due_date < CURRENT_DATE THEN 'overdue'
+  ELSE 'pending'
+END
+WHERE COALESCE(is_void,false) = false;
+```
+
+This will immediately reclassify the ₹3000/2026-04-29 plan as `overdue` and it will appear in the reminders panel.
+
+### 4. Strengthen the payment trigger so this can't recur
+
+The existing `crm_apply_payment_to_plan()` trigger only updates status to `paid` or `partial`. It never demotes back to `pending` when a payment is voided (since voided payments are excluded from the SUM, `total_paid` becomes 0 but status stays `paid`). Update the trigger so when `total_paid = 0`, status returns to `pending` (or `overdue` if past due date).
+
+## Files to Change
+
+- `src/crm/lib/reminders.ts` — remove `status IN (...)` filter in `fetchPendingFeePlansWithStudent`
+- New migration — backfill `crm_fee_plans.status` from amount math + patch the `crm_apply_payment_to_plan` trigger
+
+## Result
+
+After this fix:
+- The ₹3000 installment due 2026-04-29 will show in the **Overdue** reminders list immediately
+- Future void/refund operations will correctly demote status back to pending/overdue
+- The reminders panel will always reflect actual unpaid balances, not stale status flags
