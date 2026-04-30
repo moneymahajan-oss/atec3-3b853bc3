@@ -25,6 +25,7 @@ import CrmEnquiryForm from "./crm/pages/CrmEnquiryForm.tsx";
 import CrmStudents from "./crm/pages/CrmStudents.tsx";
 import CrmStudentForm from "./crm/pages/CrmStudentForm.tsx";
 import CrmBatches from "./crm/pages/CrmBatches.tsx";
+import CrmBatchReport from "./crm/pages/CrmBatchReport.tsx";
 import CrmFees from "./crm/pages/CrmFees.tsx";
 import CrmStudentFees from "./crm/pages/CrmStudentFees.tsx";
 import CrmAttendance from "./crm/pages/CrmAttendance.tsx";
@@ -84,6 +85,7 @@ const App = () => (
                   <Route path="fees" element={<CrmFees />} />
                   <Route path="fees/:studentId" element={<CrmStudentFees />} />
                   <Route path="batches" element={<CrmBatches />} />
+                  <Route path="batches/:id/report" element={<CrmBatchReport />} />
                   <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmCertificates />} />
                   <Route path="expenses" element={<CrmExpenses />} />
