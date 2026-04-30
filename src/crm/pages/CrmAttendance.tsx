@@ -149,6 +149,13 @@ export default function CrmAttendance() {
       </Card>
 
       {batchId && (
+        <div className="flex items-center justify-between text-sm bg-muted/40 border rounded-lg px-4 py-2">
+          <div>📅 Working days marked so far: <span className="font-bold">{workingDaysCount}</span></div>
+          <a className="text-primary hover:underline text-xs" href={`/crm/batches/${batchId}/report`}>View full report →</a>
+        </div>
+      )}
+
+      {batchId && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {STATUSES.map((s) => (
