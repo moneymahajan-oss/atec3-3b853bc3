@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fillTemplate, buildWaLink } from "./whatsapp";
+import { coursePublicUrl, brochureShareUrl, videoShareUrl } from "@/lib/courseLinks";
 
 export const ENQUIRY_TEMPLATE_KEYS = [
   "ENQUIRY_WELCOME",
@@ -42,11 +43,13 @@ export interface EnquiryCtx {
 export interface CourseCtx {
   id: string;
   name: string;
+  slug?: string | null;
   total_fee?: number | null;
   duration?: string | null;
   mode?: string | null;
   brochure_url?: string | null;
   video_url?: string | null;
+  youtube_url?: string | null;
   instagram_url?: string | null;
   concise_syllabus?: string | null;
   detailed_syllabus_html?: string | null;
@@ -72,18 +75,24 @@ export function buildVars(e: EnquiryCtx, course: CourseCtx | null, inst: Institu
   const concise = course?.concise_syllabus || "";
   const brochure = course?.brochure_url || "";
   const video = course?.video_url || "";
+  const courseShareLink = course ? coursePublicUrl(course.slug, course.name) : "";
+  const brochureLink = course ? brochureShareUrl(course.slug, course.name) : "";
+  const videoLink = course ? videoShareUrl(course.slug, course.name) : "";
   return {
     name: e.name,
-    // Enquiry contact phone (the lead). Note: templates that say {phone} for the
-    // institute's contact number are aliased to institute phone below via overwrite.
     course_name: course?.name || e.course_name_snapshot || "our course",
     course_fee: course?.total_fee ?? "",
     course_duration: duration,
     course_mode: mode,
     course_short_syllabus: concise,
     course_long_syllabus: longSyl,
-    brochure_url: brochure,
-    video_url: video,
+    // NEW: short, course-named share links → WhatsApp renders an image card
+    course_share_link: courseShareLink,
+    brochure_share_link: brochureLink,
+    video_share_link: videoLink,
+    // Backward-compat: old templates may still reference these — now point to short links
+    brochure_url: brochureLink || brochure,
+    video_url: videoLink || video,
     instagram_url: course?.instagram_url || "",
     next_batch_date: course?.next_batch_date || "soon",
     institute_name: inst.name || "ATEC Education",
@@ -98,8 +107,8 @@ export function buildVars(e: EnquiryCtx, course: CourseCtx | null, inst: Institu
     duration,
     mode,
     concise_syllabus: concise,
-    brochure_link: brochure,
-    video_link: video,
+    brochure_link: brochureLink || brochure,
+    video_link: videoLink || video,
   };
 }
 
