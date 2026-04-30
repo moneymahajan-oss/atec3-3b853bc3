@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink } from "lucide-react";
+import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink, Columns3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -19,17 +21,31 @@ type Enquiry = {
   id: string;
   name: string;
   phone: string;
+  whatsapp: string | null;
   email: string | null;
   city: string | null;
+  state: string | null;
+  qualification: string | null;
+  college_name: string | null;
+  class_year: string | null;
+  stream: string | null;
+  current_status: string | null;
+  company_name: string | null;
   course_id: string | null;
   course_name_snapshot: string | null;
+  preferred_timing: string | null;
+  budget_range: string | null;
   source: string;
   status: string;
   priority: string;
   follow_up_date: string | null;
   assigned_to_name: string | null;
+  hear_about_us: string | null;
+  referred_by: string | null;
   created_at: string;
 };
+
+type ReportCol = { id?: string; column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number };
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
@@ -91,7 +107,7 @@ export default function CrmEnquiries() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
-  const [reportCols, setReportCols] = useState<{ column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number }[]>([]);
+  const [reportCols, setReportCols] = useState<ReportCol[]>([]);
   const [instituteName, setInstituteName] = useState<string>("ATEC Education");
 
   const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
@@ -127,7 +143,7 @@ export default function CrmEnquiries() {
     setLoading(true);
     const { data, error } = await supabase
       .from("crm_enquiries")
-      .select("id,name,phone,email,city,course_id,course_name_snapshot,source,status,priority,follow_up_date,assigned_to_name,created_at")
+      .select("id,name,phone,whatsapp,email,city,state,qualification,college_name,class_year,stream,current_status,company_name,course_id,course_name_snapshot,preferred_timing,budget_range,source,status,priority,follow_up_date,assigned_to_name,hear_about_us,referred_by,created_at")
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     const list = (data ?? []) as Enquiry[];
@@ -150,15 +166,35 @@ export default function CrmEnquiries() {
     setLoading(false);
   };
 
+  const loadCols = async () => {
+    const { data } = await supabase
+      .from("crm_enquiry_report_columns")
+      .select("id,column_key,label,show_in_list,show_in_export,sort_order")
+      .order("sort_order");
+    setReportCols((data ?? []) as ReportCol[]);
+  };
+
   useEffect(() => {
     load();
+    loadCols();
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
-    supabase.from("crm_enquiry_report_columns").select("column_key,label,show_in_list,show_in_export,sort_order").order("sort_order")
-      .then(({ data }) => setReportCols((data ?? []) as never));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
   }, []);
+
+  const toggleColumnVisibility = async (col: ReportCol, next: boolean) => {
+    if (!col.id) return;
+    setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: next } : c)));
+    const { error } = await supabase
+      .from("crm_enquiry_report_columns")
+      .update({ show_in_list: next })
+      .eq("id", col.id);
+    if (error) {
+      toast.error(error.message);
+      setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: !next } : c)));
+    }
+  };
 
   const counsellors = useMemo(() => {
     const set = new Set<string>();
@@ -179,13 +215,65 @@ export default function CrmEnquiries() {
         if (!(e.name.toLowerCase().includes(t)
           || e.phone.includes(t)
           || (e.email ?? "").toLowerCase().includes(t)
-          || (e.course_name_snapshot ?? "").toLowerCase().includes(t))) return false;
+          || (e.course_name_snapshot ?? "").toLowerCase().includes(t)
+          || (e.referred_by ?? "").toLowerCase().includes(t))) return false;
       }
       return true;
     });
   }, [items, q, status, source, course, counsellor, from, to]);
 
   const reset = () => { setQ(""); setStatus("all"); setSource("all"); setCourse("all"); setCounsellor("all"); setFrom(""); setTo(""); };
+
+  const visibleCols = useMemo(
+    () => reportCols.filter((c) => c.show_in_list).sort((a, b) => a.sort_order - b.sort_order),
+    [reportCols]
+  );
+
+  const renderCell = (key: string, e: Enquiry) => {
+    const wa = waMap[e.id];
+    const d = daysSince(e.created_at);
+    switch (key) {
+      case "enquiry_id": return <span className="font-mono text-xs">{e.id.slice(0, 8)}</span>;
+      case "days_since": return <Badge variant="secondary" className={daysBadgeClass(d)}>{daysSinceLabel(d)}</Badge>;
+      case "name": return (
+        <div>
+          <div className="font-medium">{e.name}</div>
+          {e.email && <div className="text-xs text-muted-foreground">{e.email}</div>}
+        </div>
+      );
+      case "mobile": return <span className="font-mono text-sm">{e.phone}</span>;
+      case "whatsapp": return <span className="font-mono text-sm">{e.whatsapp || "—"}</span>;
+      case "email": return <span className="text-sm">{e.email || "—"}</span>;
+      case "city": return <span className="text-sm">{e.city || "—"}</span>;
+      case "state": return <span className="text-sm">{e.state || "—"}</span>;
+      case "qualification": return <span className="text-sm">{e.qualification || "—"}</span>;
+      case "college_name": return <span className="text-sm">{e.college_name || "—"}</span>;
+      case "class_year": return <span className="text-sm">{e.class_year || "—"}</span>;
+      case "stream": return <span className="text-sm">{e.stream || "—"}</span>;
+      case "current_status": return <span className="text-sm">{e.current_status || "—"}</span>;
+      case "company_name": return <span className="text-sm">{e.company_name || "—"}</span>;
+      case "course": return <span className="text-sm">{e.course_name_snapshot || "—"}</span>;
+      case "category": return <span className="text-sm">—</span>;
+      case "preferred_timing": return <span className="text-sm">{e.preferred_timing || "—"}</span>;
+      case "budget_range": return <span className="text-sm">{e.budget_range || "—"}</span>;
+      case "source": return (
+        <span className="text-xs">
+          <span className="mr-1">{SOURCE_ICON[e.source] || "•"}</span>
+          <span className="uppercase text-muted-foreground">{e.source.replace(/_/g, " ")}</span>
+        </span>
+      );
+      case "stage": return <Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status.replace("_", " ")}</Badge>;
+      case "counsellor": return <span className="text-sm">{e.assigned_to_name || "—"}</span>;
+      case "follow_up_date": return <span className="text-sm">{e.follow_up_date || "—"}</span>;
+      case "how_heard": return <span className="text-sm">{e.hear_about_us || "—"}</span>;
+      case "referred_by": return <span className="text-sm">{e.referred_by || "—"}</span>;
+      case "wa_sent": return wa ? (
+        <span className={`text-xs ${waColor(wa.created_at)}`}>{wa.template_key} · {daysSinceLabel(daysSince(wa.created_at))}</span>
+      ) : <span className="text-xs text-muted-foreground">—</span>;
+      case "created_at": return <span className="text-xs">{new Date(e.created_at).toLocaleString()}</span>;
+      default: return <span className="text-sm text-muted-foreground">—</span>;
+    }
+  };
 
   const exportXlsx = () => {
     const cols = reportCols.filter((c) => c.show_in_export);
@@ -198,13 +286,25 @@ export default function CrmEnquiries() {
           case "days_since": row[c.label] = daysSince(e.created_at); break;
           case "name": row[c.label] = e.name; break;
           case "mobile": row[c.label] = e.phone; break;
+          case "whatsapp": row[c.label] = e.whatsapp ?? ""; break;
           case "email": row[c.label] = e.email ?? ""; break;
           case "city": row[c.label] = e.city ?? ""; break;
+          case "state": row[c.label] = e.state ?? ""; break;
+          case "qualification": row[c.label] = e.qualification ?? ""; break;
+          case "college_name": row[c.label] = e.college_name ?? ""; break;
+          case "class_year": row[c.label] = e.class_year ?? ""; break;
+          case "stream": row[c.label] = e.stream ?? ""; break;
+          case "current_status": row[c.label] = e.current_status ?? ""; break;
+          case "company_name": row[c.label] = e.company_name ?? ""; break;
           case "course": row[c.label] = e.course_name_snapshot ?? ""; break;
+          case "preferred_timing": row[c.label] = e.preferred_timing ?? ""; break;
+          case "budget_range": row[c.label] = e.budget_range ?? ""; break;
           case "source": row[c.label] = e.source; break;
           case "stage": row[c.label] = e.status; break;
           case "counsellor": row[c.label] = e.assigned_to_name ?? ""; break;
           case "follow_up_date": row[c.label] = e.follow_up_date ?? ""; break;
+          case "how_heard": row[c.label] = e.hear_about_us ?? ""; break;
+          case "referred_by": row[c.label] = e.referred_by ?? ""; break;
           case "wa_sent": row[c.label] = wa ? `${wa.template_key} · ${new Date(wa.created_at).toLocaleString()}` : ""; break;
           case "created_at": row[c.label] = new Date(e.created_at).toLocaleString(); break;
           default: row[c.label] = "";
@@ -242,6 +342,30 @@ export default function CrmEnquiries() {
             <Button variant="outline" onClick={() => window.open("/enquire", "_blank", "noopener,noreferrer")}>
               <ExternalLink className="w-4 h-4 mr-2" /> Open Form
             </Button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" title="Show / hide table columns">
+                  <Columns3 className="w-4 h-4 mr-2" /> Columns
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 max-h-96 overflow-y-auto p-3">
+                <div className="text-sm font-medium mb-2">Visible columns</div>
+                <div className="space-y-1.5">
+                  {reportCols.map((c) => (
+                    <label key={c.column_key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 px-2 py-1 rounded">
+                      <Checkbox
+                        checked={c.show_in_list}
+                        onCheckedChange={(v) => toggleColumnVisibility(c, !!v)}
+                      />
+                      <span>{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2 pt-2 border-t">
+                  Changes apply to everyone in your team.
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" onClick={() => navigate("/crm/import-export")}>
               <Upload className="w-4 h-4 mr-2" /> Import
             </Button>
@@ -290,80 +414,48 @@ export default function CrmEnquiries() {
         <Button variant="ghost" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Reset</Button>
       </div>
 
-      <div className="rounded-lg border bg-card overflow-hidden">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Days</TableHead>
-              <TableHead>Course</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>WA Sent</TableHead>
-              <TableHead>Follow-up</TableHead>
+              {visibleCols.map((c) => <TableHead key={c.column_key}>{c.label}</TableHead>)}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={visibleCols.length + 1} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+              <TableRow><TableCell colSpan={visibleCols.length + 1} className="text-center py-12 text-muted-foreground">
                 No enquiries found. <Link to="/crm/enquiries/new" className="underline">Add your first one</Link>.
               </TableCell></TableRow>
-            ) : filtered.map((e) => {
-              const d = daysSince(e.created_at);
-              const wa = waMap[e.id];
-              return (
-                <TableRow key={e.id} className="cursor-pointer" onClick={() => navigate(`/crm/enquiries/${e.id}`)}>
-                  <TableCell>
-                    <div className="font-medium">{e.name}</div>
-                    {e.email && <div className="text-xs text-muted-foreground">{e.email}</div>}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">{e.phone}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={daysBadgeClass(d)}>{daysSinceLabel(d)}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{e.course_name_snapshot || "—"}</TableCell>
-                  <TableCell className="text-xs">
-                    <span className="mr-1">{SOURCE_ICON[e.source] || "•"}</span>
-                    <span className="uppercase text-muted-foreground">{e.source.replace(/_/g," ")}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status.replace("_"," ")}</Badge>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {wa ? (
-                      <span className={waColor(wa.created_at)}>
-                        {wa.template_key} · {daysSinceLabel(daysSince(wa.created_at))}
-                      </span>
-                    ) : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-sm">{e.follow_up_date || "—"}</TableCell>
-                  <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
-                    <div className="inline-flex gap-1">
-                      <Button size="icon" variant="ghost" asChild title="Call">
-                        <a href={`tel:${e.phone}`}><Phone className="w-4 h-4" /></a>
-                      </Button>
-                      <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
-                        <a href={`https://wa.me/${e.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
-                          <MessageSquare className="w-4 h-4" />
-                        </a>
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        title="Send public enquiry form link on WhatsApp"
-                        onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
-                      >
-                        <Send className="w-4 h-4 text-emerald-600" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            ) : filtered.map((e) => (
+              <TableRow key={e.id} className="cursor-pointer" onClick={() => navigate(`/crm/enquiries/${e.id}`)}>
+                {visibleCols.map((c) => (
+                  <TableCell key={c.column_key}>{renderCell(c.column_key, e)}</TableCell>
+                ))}
+                <TableCell className="text-right" onClick={(ev) => ev.stopPropagation()}>
+                  <div className="inline-flex gap-1">
+                    <Button size="icon" variant="ghost" asChild title="Call">
+                      <a href={`tel:${e.phone}`}><Phone className="w-4 h-4" /></a>
+                    </Button>
+                    <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
+                      <a href={`https://wa.me/${e.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                        <MessageSquare className="w-4 h-4" />
+                      </a>
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Send public enquiry form link on WhatsApp"
+                      onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
+                    >
+                      <Send className="w-4 h-4 text-emerald-600" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>

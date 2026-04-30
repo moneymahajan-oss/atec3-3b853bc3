@@ -1,51 +1,34 @@
-# Why "Video / Instagram" doesn't work for Tally Prime
+# Make Enquiries Columns Configurable (incl. Referred By)
 
-## Root cause
+## The Problem
 
-For the **Tally Prime** course in `crm_courses`:
-- `video_url` = NULL
-- `youtube_url` = NULL
-- `instagram_url` = `https://www.instagram.com/p/DVOFj8Ik6rd/` ✅ (set)
+The Enquiries page (`/crm/enquiries`) currently renders a **hardcoded** list of columns: Name, Phone, Days, Course, Source, Stage, WA Sent, Follow-up, Actions. The database table `crm_enquiry_report_columns` already has a `show_in_list` flag (and `referred_by` is already set to `show_in_list = true`), but `CrmEnquiries.tsx` ignores it for the on-screen table — it only uses it for Excel export.
 
-The `COURSE_MEDIA` WhatsApp template body is:
-```
-Hi {name}, watch our {course_name} students in action 🎬
-{video_share_link}
-Ready to start? Reply YES.
-```
+That's why "Referred By" doesn't appear even though it's enabled in settings.
 
-It only uses `{video_share_link}` (which points to `/c/tally-prime#video`). Two problems:
+## What Will Change
 
-1. **Template never references `{instagram_url}`** — so even though we set the variable, the Instagram link never appears in the message.
-2. **The public course page (`CoursePublic.tsx`) only renders the `#video` button/embed when `youtube_url` or `video_url` exists.** Since Tally Prime has neither, the link opens a page with no video — making it look like "nothing was sent / nothing to watch."
+### 1. Render the table from `crm_enquiry_report_columns`
+In `src/crm/pages/CrmEnquiries.tsx`:
+- Build the `<TableHeader>` columns dynamically from `reportCols.filter(c => c.show_in_list)` ordered by `sort_order`.
+- Build each `<TableRow>` cell using a `renderCell(columnKey, enquiry)` helper that maps every `column_key` (name, mobile, whatsapp, email, city, state, qualification, college_name, class_year, stream, current_status, company_name, course, category, preferred_timing, budget_range, source, stage, counsellor, follow_up_date, how_heard, wa_sent, **referred_by**, created_at, days_since, enquiry_id) to the right value with the existing badge/formatting styles.
+- Keep the Actions column (Call / WhatsApp / Share Form) pinned at the right — it's not part of the configurable list.
 
-So the WhatsApp link *is* generated and opens, but the recipient sees a page with no video and the message text has no Instagram link either.
+### 2. Add a "Columns" picker on the Enquiries toolbar
+- New `<Button variant="outline">` with a Columns icon next to Import/Export.
+- Opens a `Popover` (or `DropdownMenu`) listing every row from `crm_enquiry_report_columns` with a checkbox bound to `show_in_list`.
+- Toggling a checkbox updates that row in Supabase (`update crm_enquiry_report_columns set show_in_list = ? where id = ?`) and refreshes local state so the table re-renders immediately.
+- Includes a small "Reorder hint" link to the full settings page if we add one later.
 
-## Fix (3 small changes)
+### 3. Confirm Referred By appears
+After the change, since `referred_by` already has `show_in_list = true` and `show_in_export = true` in the DB, it will show up in the table automatically with no further action.
 
-### 1. Update the `COURSE_MEDIA` template body (DB)
-Migration to seed/update the template so it includes Instagram when present:
-```
-Hi {name}, here are some glimpses of our {course_name} 🎬
+## Files Touched
+- `src/crm/pages/CrmEnquiries.tsx` — dynamic header/cells, Columns popover, helper `renderCell`.
 
-🎥 Video: {video_share_link}
-📸 Instagram: {instagram_url}
+## Out of Scope
+- Drag-to-reorder columns (sort order stays as-is in DB).
+- Per-user column preferences (settings remain global to the institute).
+- Changes to the Excel export logic (already honors `show_in_export`).
 
-Ready to start? Reply YES.
-```
-The existing `fillTemplate` already strips lines that become empty if a variable is blank, so courses with only video or only Instagram still render cleanly.
-
-### 2. `src/crm/lib/enquiryWa.ts` — make `video_share_link` smarter
-If the course has no `video_url`/`youtube_url` but has `instagram_url`, fall back `video_share_link` to the Instagram URL directly (so the line still resolves to a clickable media link). Also keep `instagram_url` populated as today.
-
-### 3. `src/pages/CoursePublic.tsx` — render Instagram on the public page
-In the media buttons row and `#video-embed` block, also handle `instagram_url`:
-- Add an "Watch on Instagram" button (anchor id `video` if no YouTube/video) so the existing `#video` deep-link from WhatsApp still scrolls to something useful.
-- Fallback ordering: youtube_url → video_url → instagram_url.
-
-## Files touched
-- New SQL migration: update `crm_whatsapp_templates` body for `COURSE_MEDIA`.
-- `src/crm/lib/enquiryWa.ts` — fallback for `video_share_link` / `video_link`.
-- `src/pages/CoursePublic.tsx` — render Instagram when video is missing.
-
-No schema changes, no breaking changes to other courses (they keep working as-is).
+After this lands you can open Enquiries → click **Columns** → tick/untick anything (Referred By, City, Counsellor, etc.) and the table updates instantly.
