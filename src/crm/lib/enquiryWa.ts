@@ -77,7 +77,13 @@ export function buildVars(e: EnquiryCtx, course: CourseCtx | null, inst: Institu
   const video = course?.video_url || "";
   const courseShareLink = course ? coursePublicUrl(course.slug, course.name) : "";
   const brochureLink = course ? brochureShareUrl(course.slug, course.name) : "";
-  const videoLink = course ? videoShareUrl(course.slug, course.name) : "";
+  // If course has no hosted video/youtube, fall back to Instagram URL directly
+  // so the {video_share_link} placeholder still resolves to a real, clickable
+  // media link in WhatsApp messages.
+  const hasVideo = !!(course?.video_url || course?.youtube_url);
+  const videoLink = course
+    ? (hasVideo ? videoShareUrl(course.slug, course.name) : (course.instagram_url || ""))
+    : "";
   return {
     name: e.name,
     course_name: course?.name || e.course_name_snapshot || "our course",
