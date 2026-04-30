@@ -101,7 +101,6 @@ async function fetchPendingFeePlansWithStudent() {
       id, student_id, installment_no, amount, amount_paid, due_date, status, is_void,
       crm_students:student_id ( full_name, phone, course_name_snapshot )
     `)
-    .in("status", ["pending", "partial", "overdue"])
     .or("is_void.is.null,is_void.eq.false");
   if (error) throw error;
   return data ?? [];
