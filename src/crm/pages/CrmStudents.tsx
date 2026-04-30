@@ -112,6 +112,26 @@ export default function CrmStudents() {
         }
       />
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total students</div>
+          <div className="text-2xl font-bold">{items.length}</div>
+        </div>
+        <div className="rounded-lg border bg-emerald-500/10 p-3">
+          <div className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-300">🟢 Live (studying now)</div>
+          <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{liveCount}</div>
+          <button onClick={() => setStatus("live")} className="text-[10px] text-emerald-700/70 hover:underline mt-1">Filter →</button>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Active</div>
+          <div className="text-2xl font-bold">{items.filter((s) => s.status === "active").length}</div>
+        </div>
+        <div className="rounded-lg border bg-card p-3">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Completed</div>
+          <div className="text-2xl font-bold">{items.filter((s) => s.status === "completed").length}</div>
+        </div>
+      </div>
+
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
