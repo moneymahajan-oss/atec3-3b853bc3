@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Save, Trash2, MessageSquare, UserPlus, Plus, Lock } from "lucide-react";
+import { ArrowLeft, Save, Trash2, MessageSquare, UserPlus, Plus, Lock, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
