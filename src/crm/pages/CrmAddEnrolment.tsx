@@ -54,11 +54,30 @@ export default function CrmAddEnrolment() {
       ]);
       setStudent((stu.data ?? null) as Student | null);
       setExisting(enr);
-      setCourses((crs.data ?? []) as Course[]);
+      const courseList = (crs.data ?? []) as Course[];
+      setCourses(courseList);
       setBatches((bts.data ?? []) as Batch[]);
+
+      // Pre-fill from source enquiry (when coming from "Convert enquiry")
+      if (fromEnquiry) {
+        const { data: enq } = await supabase
+          .from("crm_enquiries")
+          .select("course_id")
+          .eq("id", fromEnquiry)
+          .maybeSingle();
+        if (enq?.course_id) {
+          const c = courseList.find((x) => x.id === enq.course_id);
+          setForm((f) => ({
+            ...f,
+            course_id: enq.course_id!,
+            total_fee: c?.total_fee ?? 0,
+            registration_fee_paid: c?.registration_fee ?? 0,
+          }));
+        }
+      }
       setLoading(false);
     })();
-  }, [studentId]);
+  }, [studentId, fromEnquiry]);
 
   const onCourse = (cid: string) => {
     const c = courses.find((c) => c.id === cid);
