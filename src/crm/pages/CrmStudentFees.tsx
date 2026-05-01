@@ -90,8 +90,17 @@ export default function CrmStudentFees() {
   const totalBilled = student?.total_fee ?? 0;
   const due = totalBilled - totalPaid;
 
+  // Auto-select sole active enrolment for new plans/payments
+  const activeEnrolments = useMemo(() => enrolments.filter((e) => e.status === "active"), [enrolments]);
+  const defaultEnrolmentId = activeEnrolments.length === 1 ? activeEnrolments[0].id : "";
+
   const savePlan = async () => {
     if (!editingPlan.amount || editingPlan.amount <= 0) { toast.error("Amount required"); return; }
+    const enrolmentId = editingPlan.enrolment_id ?? (editingPlan.id ? null : defaultEnrolmentId || null);
+    if (!editingPlan.id && enrolments.length > 1 && !enrolmentId) {
+      toast.error("Please choose which course this installment is for");
+      return;
+    }
     const payload = {
       student_id: studentId!,
       installment_no: Number(editingPlan.installment_no || 1),
@@ -99,6 +108,7 @@ export default function CrmStudentFees() {
       due_date: editingPlan.due_date || null,
       amount: Number(editingPlan.amount),
       status: (editingPlan.status || "pending") as never,
+      enrolment_id: enrolmentId || null,
     };
     if (editingPlan.id) {
       const { error } = await supabase.from("crm_fee_plans").update(payload).eq("id", editingPlan.id);
@@ -134,6 +144,17 @@ export default function CrmStudentFees() {
 
   const savePayment = async () => {
     if (!pay.amount || pay.amount <= 0) { toast.error("Amount required"); return; }
+    // Resolve enrolment_id: explicit selection, fall back to the linked plan's enrolment, then sole-active
+    let enrolmentId = pay.enrolment_id || "";
+    if (!enrolmentId && pay.fee_plan_id) {
+      const linkedPlan = plans.find((pl) => pl.id === pay.fee_plan_id);
+      if (linkedPlan?.enrolment_id) enrolmentId = linkedPlan.enrolment_id;
+    }
+    if (!enrolmentId) enrolmentId = defaultEnrolmentId;
+    if (enrolments.length > 1 && !enrolmentId) {
+      toast.error("Please choose which course this payment is for");
+      return;
+    }
     const payload = {
       student_id: studentId!,
       fee_plan_id: pay.fee_plan_id || null,
@@ -144,13 +165,14 @@ export default function CrmStudentFees() {
       notes: pay.notes || null,
       collected_by: user?.id,
       collected_by_name: user?.user_metadata?.full_name || user?.email || null,
+      enrolment_id: enrolmentId || null,
     };
     const { data, error } = await supabase.from("crm_payments").insert(payload).select("id,receipt_no").maybeSingle();
     if (error) { toast.error(error.message); return; }
     await logAudit("crm_payments", "create", data?.id, payload);
     toast.success(`Receipt ${data?.receipt_no} recorded`);
     setPayOpen(false);
-    setPay({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" });
+    setPay({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "", enrolment_id: "" });
     load();
   };
 
