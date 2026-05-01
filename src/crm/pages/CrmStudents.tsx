@@ -351,7 +351,15 @@ export default function CrmStudents() {
           <span className="text-xs text-muted-foreground text-center">to</span>
           <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setRangePreset("custom"); }} className="sm:w-40" />
           <Button variant="ghost" size="sm" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Reset</Button>
-          <span className="text-xs text-muted-foreground sm:ml-auto">{filtered.length} student{filtered.length === 1 ? "" : "s"}</span>
+          <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input type="checkbox" className="accent-primary" checked={groupByPerson} onChange={(e) => setGroupByPerson(e.target.checked)} />
+            Group by person
+          </label>
+          <span className="text-xs text-muted-foreground sm:ml-auto">
+            {groupByPerson
+              ? `${new Set(filtered.map((s) => s.phone)).size} people · ${filtered.length} enrolments`
+              : `${filtered.length} student${filtered.length === 1 ? "" : "s"}`}
+          </span>
         </div>
       </div>
 
