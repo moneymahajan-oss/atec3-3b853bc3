@@ -276,6 +276,42 @@ export default function CrmStudentFees() {
         </div>
       )}
 
+      {enrolments.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Per-course breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Course</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {courseBreakdown.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="text-sm">{row.course}</TableCell>
+                    <TableCell className="text-right font-mono">₹{row.fee.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{row.paid.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className={`text-right font-mono ${row.balance > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{row.balance.toLocaleString("en-IN")}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold bg-muted/40">
+                  <TableCell>TOTAL</TableCell>
+                  <TableCell className="text-right font-mono">₹{totalBilled.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{totalPaid.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className={`text-right font-mono ${due > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{Math.max(0, due).toLocaleString("en-IN")}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Installment plan</CardTitle>
