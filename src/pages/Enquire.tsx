@@ -151,7 +151,12 @@ export default function Enquire() {
       const { error: insErr } = await supabase.from("crm_enquiries").insert(payload as never);
       error = insErr as never;
     }
-
+    setSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setSubmitted(true);
   };
 
   if (loading) {
