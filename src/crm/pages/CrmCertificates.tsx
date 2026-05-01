@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { generateCertificatePdf } from "../lib/certificatePdf";
 import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
 import { useCrmAuth } from "../hooks/useCrmAuth";
+import { getStudentEnrolments, type Enrolment } from "../lib/enrolments";
 
 interface Cert {
   id: string;
@@ -52,9 +53,22 @@ export default function CrmCertificates() {
   const [issuing, setIssuing] = useState(false);
 
   const [studentId, setStudentId] = useState("");
+  const [studentEnrolments, setStudentEnrolments] = useState<Enrolment[]>([]);
+  const [enrolmentId, setEnrolmentId] = useState("");
   const [grade, setGrade] = useState("A");
   const [templateKind, setTemplateKind] = useState("computer");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Load enrolments whenever student changes (for issue dialog)
+  useEffect(() => {
+    if (!studentId) { setStudentEnrolments([]); setEnrolmentId(""); return; }
+    getStudentEnrolments(studentId).then((rows) => {
+      setStudentEnrolments(rows);
+      // Auto-select sole enrolment, otherwise leave empty so user must pick
+      if (rows.length === 1) setEnrolmentId(rows[0].id);
+      else setEnrolmentId("");
+    });
+  }, [studentId]);
 
   async function load() {
     setLoading(true);
@@ -82,21 +96,27 @@ export default function CrmCertificates() {
     if (!studentId) { toast.error("Select a student"); return; }
     const stu = students.find(s => s.id === studentId);
     if (!stu) return;
+    if (studentEnrolments.length > 1 && !enrolmentId) {
+      toast.error("Pick which course this certificate is for");
+      return;
+    }
+    const enr = studentEnrolments.find((e) => e.id === enrolmentId) || studentEnrolments[0] || null;
     setIssuing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase.from("crm_certificates").insert({
         student_id: stu.id,
-        course_id: stu.course_id,
-        course_name_snapshot: stu.course_name_snapshot,
+        course_id: enr?.course_id ?? stu.course_id,
+        course_name_snapshot: enr?.course_name_snapshot ?? stu.course_name_snapshot,
         student_name_snapshot: stu.full_name,
-        enrolment_no_snapshot: stu.enrolment_no,
+        enrolment_no_snapshot: enr?.enrolment_no ?? stu.enrolment_no,
+        enrolment_id: enr?.id ?? null,
         template_kind: templateKind,
         grade,
         issued_on: issueDate,
         issued_by: user?.id,
         issued_by_name: user?.user_metadata?.full_name || user?.email || null,
-      }).select("*").single();
+      } as never).select("*").single();
       if (error) throw error;
 
       // Generate PDF and upload
@@ -104,9 +124,10 @@ export default function CrmCertificates() {
       toast.success("Certificate issued");
       setOpenIssue(false);
       setStudentId("");
+      setEnrolmentId("");
       load();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to issue");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to issue");
     } finally {
       setIssuing(false);
     }
@@ -276,6 +297,22 @@ export default function CrmCertificates() {
                 </SelectContent>
               </Select>
             </div>
+            {studentId && studentEnrolments.length > 1 && (
+              <div>
+                <Label>Course (enrolment) *</Label>
+                <Select value={enrolmentId || "none"} onValueChange={(v) => setEnrolmentId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Choose course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— select —</SelectItem>
+                    {studentEnrolments.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Template</Label>

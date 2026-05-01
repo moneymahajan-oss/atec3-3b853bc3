@@ -69,6 +69,7 @@ export default function CrmStudents() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [rangePreset, setRangePreset] = useState("all");
+  const [groupByPerson, setGroupByPerson] = useState(false);
 
   const { cols, visibleCols, exportCols, toggleVisible } = useReportColumns("crm_student_report_columns");
 
@@ -350,7 +351,15 @@ export default function CrmStudents() {
           <span className="text-xs text-muted-foreground text-center">to</span>
           <Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setRangePreset("custom"); }} className="sm:w-40" />
           <Button variant="ghost" size="sm" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Reset</Button>
-          <span className="text-xs text-muted-foreground sm:ml-auto">{filtered.length} student{filtered.length === 1 ? "" : "s"}</span>
+          <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input type="checkbox" className="accent-primary" checked={groupByPerson} onChange={(e) => setGroupByPerson(e.target.checked)} />
+            Group by person
+          </label>
+          <span className="text-xs text-muted-foreground sm:ml-auto">
+            {groupByPerson
+              ? `${new Set(filtered.map((s) => s.phone)).size} people · ${filtered.length} enrolments`
+              : `${filtered.length} student${filtered.length === 1 ? "" : "s"}`}
+          </span>
         </div>
       </div>
 
@@ -369,37 +378,57 @@ export default function CrmStudents() {
               <TableRow><TableCell colSpan={visibleCols.length + 1} className="text-center py-12 text-muted-foreground">
                 No students match your filters. <Link to="/crm/students/new" className="underline">Add one</Link>.
               </TableCell></TableRow>
-            ) : filtered.map((s) => (
-              <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/crm/students/${s.id}`)}>
-                {visibleCols.map((c) => (
-                  <TableCell key={c.column_key}>{renderCell(c.column_key, s)}</TableCell>
-                ))}
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="inline-flex gap-1 items-center">
-                    <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
-                      <a
-                        href={`https://wa.me/${s.phone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Send className="w-4 h-4 text-emerald-600" />
-                      </a>
-                    </Button>
-                    <StudentWhatsAppButton
-                      section="students"
-                      student={{
-                        id: s.id,
-                        full_name: s.full_name,
-                        phone: s.phone,
-                        enrolment_no: s.enrolment_no,
-                        course_name_snapshot: s.course_name_snapshot,
-                        total_fee: s.total_fee,
-                      }}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            ) : (() => {
+              // When "Group by person" is on, collapse rows by phone (one row per person, latest enrolment kept)
+              const rowsToShow = groupByPerson
+                ? Object.values(
+                    filtered.reduce((acc: Record<string, Student & { _count: number }>, s) => {
+                      const key = s.phone || s.id;
+                      if (!acc[key]) acc[key] = { ...s, _count: 1 };
+                      else acc[key]._count += 1;
+                      return acc;
+                    }, {})
+                  )
+                : filtered.map((s) => ({ ...s, _count: 1 } as Student & { _count: number }));
+              return rowsToShow.map((s) => (
+                <TableRow key={s.id} className="cursor-pointer" onClick={() => navigate(`/crm/students/${s.id}`)}>
+                  {visibleCols.map((c) => (
+                    <TableCell key={c.column_key}>
+                      {c.column_key === "full_name" && groupByPerson && s._count > 1 ? (
+                        <span className="inline-flex items-center gap-2">
+                          {renderCell(c.column_key, s)}
+                          <Badge variant="secondary" className="text-[10px]">{s._count} courses</Badge>
+                        </span>
+                      ) : renderCell(c.column_key, s)}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex gap-1 items-center">
+                      <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
+                        <a
+                          href={`https://wa.me/${s.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Send className="w-4 h-4 text-emerald-600" />
+                        </a>
+                      </Button>
+                      <StudentWhatsAppButton
+                        section="students"
+                        student={{
+                          id: s.id,
+                          full_name: s.full_name,
+                          phone: s.phone,
+                          enrolment_no: s.enrolment_no,
+                          course_name_snapshot: s.course_name_snapshot,
+                          total_fee: s.total_fee,
+                        }}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ));
+            })()}
           </TableBody>
         </Table>
       </div>
