@@ -186,7 +186,13 @@ export default function CrmStudents() {
       case "phone": return s.phone;
       case "alt_phone": return s.alt_phone ?? "";
       case "email": return s.email ?? "";
-      case "course": return s.course_name_snapshot ?? "";
+      case "course": {
+        const enrols = enrolMap[s.id] ?? [];
+        if (enrols.length > 1) {
+          return enrols.map((e) => e.course_name_snapshot || "").filter(Boolean).join(", ");
+        }
+        return s.course_name_snapshot ?? "";
+      }
       case "batch": return b?.name ?? "";
       case "faculty": return b?.faculty_name ?? "";
       case "enrolment_date": return s.enrolment_date;
@@ -238,6 +244,19 @@ export default function CrmStudents() {
       case "balance": {
         const bal = Math.max(0, net - paid);
         return <span className={`font-mono text-sm ${bal > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{bal.toLocaleString("en-IN")}</span>;
+      }
+      case "course": {
+        const enrols = enrolMap[s.id] ?? [];
+        if (enrols.length > 1) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {enrols.map((e, i) => (
+                <Badge key={i} variant="secondary" className="text-[10px]">{e.course_name_snapshot || "—"}</Badge>
+              ))}
+            </div>
+          );
+        }
+        return <span className="text-sm">{s.course_name_snapshot ?? "—"}</span>;
       }
       default: {
         const v = valueOf(key, s);
