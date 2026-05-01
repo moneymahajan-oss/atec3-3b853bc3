@@ -22,6 +22,8 @@ type Batch = { id: string; name: string; course_id: string | null };
 export default function CrmAddEnrolment() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const fromEnquiry = search.get("from_enquiry");
   const { user } = useCrmAuth();
 
   const [student, setStudent] = useState<Student | null>(null);
