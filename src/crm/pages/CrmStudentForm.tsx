@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
 import { StudentAttendanceCard } from "../components/StudentAttendanceCard";
+import { EnrolmentsCard } from "../components/EnrolmentsCard";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { DuplicateAlert } from "../components/DuplicateAlert";
@@ -297,12 +298,31 @@ export default function CrmStudentForm() {
         ...payload,
         source_enquiry_id: linkedEnquiry || null,
         created_by: user?.id,
-      }).select("id").maybeSingle();
+      }).select("id, course_name_snapshot").maybeSingle();
       if (error) { toast.error(error.message); setSaving(false); return; }
       if (linkedEnquiry && data?.id) {
         await supabase.from("crm_enquiries")
           .update({ status: "converted" as never, converted_student_id: data.id })
           .eq("id", linkedEnquiry);
+      }
+      // Also create the matching enrolment row so this student has a course on the new enrolments table
+      if (data?.id && form.course_id) {
+        await supabase.from("crm_student_enrolments" as never).insert({
+          student_id: data.id,
+          course_id: form.course_id,
+          course_name_snapshot: payload.course_name_snapshot,
+          batch_id: form.batch_id || null,
+          enrolment_no: null,
+          enrolment_date: payload.enrolment_date,
+          status: "active",
+          total_fee: payload.total_fee,
+          discount_amount: payload.discount_amount,
+          discount_reason: payload.discount_reason,
+          registration_fee_paid: payload.registration_fee_paid,
+          source_enquiry_id: linkedEnquiry || null,
+          notes: payload.notes,
+          created_by: user?.id ?? null,
+        } as never);
       }
       await logAudit("crm_students", "create", data?.id, payload);
       toast.success(linkedEnquiry && !fromEnquiry ? "Student enrolled & linked to existing enquiry" : "Student enrolled");
@@ -618,6 +638,7 @@ export default function CrmStudentForm() {
             </CardContent>
           </Card>
 
+          {!isNew && id && <EnrolmentsCard studentId={id} />}
           {!isNew && id && <StudentAttendanceCard studentId={id} />}
         </div>
 

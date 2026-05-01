@@ -1,79 +1,79 @@
-# Mobile-Number-as-Identity: Duplicate Prevention & Cleanup
 
-## Why
-Today, names are free-text so "Manav Mahajan" and "VIJOHN" on the same number `9815122441` create two separate enquiries. There's no dedupe check on enquiry/student creation, and no way to merge. We'll make the **10-digit mobile number** the canonical identity, while keeping the name editable.
+# Multiple Courses Per Student — Re-enrolment Without Re-typing
 
-## Approach (3 layers)
+## The problem today
+`crm_students` is a **person + one course** record. Mary takes "Tally" today; six months later she wants "Advanced Excel". Right now staff have to either:
+- Create a second student row and re-type name, phone, address, parents, photo, ID proof — and she now appears as two "students" (inflating counts, breaking dedupe).
+- Overwrite her course → her Tally history (fees, certificate, attendance) gets orphaned or confusing.
 
-### Layer 1 — Normalisation (database)
-Both `crm_enquiries.phone` and `crm_students.phone` are already stored as 10-digit strings, but not enforced. Add:
-- A normalisation trigger on insert/update for both tables that strips non-digits and keeps the **last 10 digits** (also for `whatsapp`, `alt_phone`).
-- A non-unique **index** on `phone` for both tables (fast lookups).
-- A new helper view `crm_contact_index` that unions enquiries + students by phone, so we can answer "what do we know about this number?" in one query.
+The fix: keep **one student per person** (identified by phone, as we just built), and store **each course they take as a separate enrolment**.
 
-We will **not** add a UNIQUE constraint — the same number can legitimately have multiple enquiries (re-enquiry months later, different course interests). Instead we surface duplicates to the user.
+## Approach
 
-### Layer 2 — Live duplicate detection (UI, on entry)
-**A) Enquiry form** (`CrmEnquiryForm.tsx`) and **Student form** (`CrmStudentForm.tsx`)
-- When the user types a phone number (debounced, after 10 digits), query existing enquiries + students with that phone.
-- Show a yellow alert banner above the form:
-  > ⚠️ This number already exists:
-  > • **Manav Mahajan** — Enquiry (new) — Diploma in Computer App. — created 12 Apr
-  > • **Manav Mahajan** — Student (active) — Enrolment ATEC-2026-0007
-  >
-  > [Open existing] [Continue anyway — this is a different person] [Use this name & merge]
+### 1. New table `crm_student_enrolments`
+One row per (student × course). This becomes the unit of truth for fees, batch, attendance, certificate.
 
-- "Open existing" navigates to that record.
-- "Continue anyway" lets them save (genuine new person on shared number — e.g. parent's phone).
-- "Use this name & merge" updates the existing record's name to the new one and cancels the new insert.
+```text
+crm_student_enrolments
+  id, student_id, course_id, course_name_snapshot,
+  batch_id, enrolment_no (ATEC-2026-0007),
+  enrolment_date, status (active|completed|dropped|on_hold),
+  total_fee, discount_amount, discount_reason,
+  registration_fee_paid, net_payable_fee (computed),
+  source_enquiry_id, notes,
+  created_by, created_at, updated_at
+```
 
-**B) Public enquiry form** (`Enquire.tsx`) and contact form (`ContactSection.tsx`)
-- Silently dedupe: if a `crm_enquiries` row with the same phone exists in the last 30 days **and** same course, **update** it (refresh `updated_at`, append note "Re-submitted on website on …") instead of inserting. Otherwise insert a new enquiry as today. This stops accidental double-submits.
+- Unique enrolment_no per row (the existing trigger moves here).
+- The existing fee/attendance/certificate tables get an optional `enrolment_id` column added; old rows keep working via student_id + course_id fallback.
 
-**C) Name fuzzy match warning**
-- When a name is typed that closely matches an existing enquiry/student name (Levenshtein ≤ 2 OR same soundex) but on a *different* phone, warn:
-  > Similar name exists: "Manav Mahajan" (9815122441) — same person?
+### 2. Migrate existing data (one-off, in the migration)
+For every current `crm_students` row with a `course_id`, create a matching `crm_student_enrolments` row carrying over: course, batch, enrolment_no, enrolment_date, total_fee, discount, registration_fee_paid, source_enquiry_id, status. Backfill `enrolment_id` on existing fee_plans / payments / attendance / certificates by matching student_id + course_id. Nothing visible breaks.
 
-### Layer 3 — Duplicates Manager (CRM page)
-New page **`/crm/duplicates`** added to the sidebar under Operations.
+### 3. `crm_students` becomes the **person record**
+Keep: name, phone, alt_phone, email, dob, gender, address, photo, ID proof, father/mother, emergency contact, qualification, college, hear_about_us, referred_by — all the personal fields.
+Deprecate (but keep readable for back-compat): course_id, batch_id, enrolment_no, total_fee, discount_amount, enrolment_date on the student row. New code reads from enrolments; the columns stay so old reports don't break.
 
-- **Tab 1: By Phone** — lists every phone that appears in 2+ rows across `crm_enquiries` + `crm_students`. Shows all linked records side-by-side with: name, type (enquiry/student), course, status, created date.
-- **Tab 2: By Name** — fuzzy-grouped names (Levenshtein on `lower(trim(name))`) where phones differ — for human review.
-- Per group, three actions:
-  1. **Merge into one** — pick the canonical record; others' notes/timeline are appended to it; the duplicates are soft-deleted (status `voided`, kept for audit).
-  2. **Mark as distinct** — writes to a new `crm_duplicate_exceptions` table so this pair is never flagged again (e.g. confirmed two siblings on the same number).
-  3. **Update name** — quick rename without merging.
+### 4. Student form (`CrmStudentForm.tsx`) — two modes
+- **New student**: same form as today, but on save it creates 1 student row + 1 enrolment row.
+- **Phone already exists** (caught by the `DuplicateAlert` we just built): banner gets a new button **"Add another course for this person"** → opens a slim "Add enrolment" sheet pre-filled with the existing student. Only course, batch, fees, discount, registration paid are asked. Personal fields are not re-entered.
 
-- Export: "Duplicates report" XLSX.
+### 5. Student detail page — new "Enrolments" tab
+Every student profile gets a tab listing all their courses, each with: course name, batch, enrolment no, dates, fee status, attendance %, certificate. Click an enrolment → drills into fees/attendance for **that** course only. "Add another course" button at the top.
 
-### Auto-link enquiry → student
-When a student is created and there's an existing enquiry with the same phone, auto-set `source_enquiry_id` to that enquiry and set the enquiry's `status='converted'`, `converted_student_id`. (Today this only happens if the staff manually picks the enquiry.)
+### 6. Where else this shows up
+- **Students list** (`CrmStudents.tsx`): one row per **enrolment** by default (so a person who took 2 courses appears twice, once per course — which is correct for batch/course filters). Add a "Group by person" toggle that collapses to one row per phone with course count badge.
+- **Fees page**: pick the enrolment (not just the student) when adding a fee plan. If student has only one active enrolment, auto-select it.
+- **Attendance**: already batch-driven, so no change needed — batch still maps to one enrolment.
+- **Certificates**: issued against an enrolment (so a student can have a Tally cert and an Excel cert separately).
+- **Reports / column picker**: existing column keys keep working; add new keys `enrolment_no`, `enrolment_status`, `enrolment_date_per_course`.
+- **Auto-link enquiry → student** (built last step): now creates an **enrolment** when the enquiry's course matches a new course; if the person already exists with that exact course already enrolled and active, it just attaches the enquiry as a note instead of duplicating.
 
-## Technical details
+### 7. Re-enrolment flow (the main scenario)
+1. Staff types phone `9815122441`.
+2. `DuplicateAlert` shows: *"Mary Sharma — Student — already enrolled in Tally (active)."*
+3. Two buttons: **[Open Mary's profile]** **[Add another course for Mary]**.
+4. Clicking the second button opens a 6-field sheet (course, batch, total fee, discount, registration paid, notes) — all personal fields pre-filled & locked.
+5. On save: a new `crm_student_enrolments` row is created, a fresh enrolment_no is issued, fees/attendance/certificate now hang off this new enrolment. Mary stays one person.
 
-**New migration:**
-- Trigger `crm_normalise_phone()` on `crm_enquiries` and `crm_students` (BEFORE INSERT/UPDATE) — strips non-digits, takes last 10 chars.
-- Indexes `idx_crm_enquiries_phone`, `idx_crm_students_phone`.
-- New table `crm_duplicate_exceptions(id, key_type text, key_value text, related_ids uuid[], created_by, created_at)` with RLS for CRM admins.
-- Helper SQL function `crm_find_contact_by_phone(_phone text)` returning enquiries + students arrays — used by the live dedupe banner.
+## Technical bits
 
-**New files:**
-- `src/crm/pages/CrmDuplicates.tsx` — the manager UI (tabs, merge dialog, export).
-- `src/crm/lib/dedupe.ts` — `normalisePhone()`, `findByPhone()`, `mergeRecords()`, `levenshtein()`.
-- `src/crm/components/DuplicateAlert.tsx` — reusable banner shown on the two forms.
+**Migration file** creates the table + indexes + RLS (mirror of `crm_students` policies — staff insert/update/select, admin delete) + the enrolment_no trigger moved over + the data backfill + the optional `enrolment_id` columns on the four child tables.
 
-**Edits:**
-- `src/crm/pages/CrmEnquiryForm.tsx` — debounced phone lookup, render `DuplicateAlert`.
-- `src/crm/pages/CrmStudentForm.tsx` — same; plus auto-link enquiry on save.
-- `src/pages/Enquire.tsx` & `src/components/ContactSection.tsx` — 30-day same-course de-dupe upsert.
-- `src/crm/components/CrmSidebar.tsx` — add "Duplicates" link.
-- `src/App.tsx` — register `/crm/duplicates` route.
-
-**Cleanup of existing data**
-- Migration runs the normaliser once over existing rows (idempotent).
-- The Duplicates page lets staff resolve the one current pair (`Manav Mahajan` vs `VIJOHN` on `9815122441`) interactively — no destructive auto-merge.
+**New / edited files**
+- `src/crm/pages/CrmStudentForm.tsx` — split into person form + enrolment form; "Add another course" mode.
+- `src/crm/pages/CrmStudents.tsx` — query joins enrolments; add "Group by person" toggle.
+- `src/crm/pages/CrmStudentDetail.tsx` *(new — currently we don't have a dedicated detail page, profile lives inside the form; we'll add a proper detail page with tabs: Profile · Enrolments · Fees · Attendance · Documents)*.
+- `src/crm/components/DuplicateAlert.tsx` — add the "Add another course for this person" CTA.
+- `src/crm/pages/CrmFees.tsx` & `CrmStudentFees.tsx` — let user pick the enrolment.
+- `src/crm/pages/CrmCertificates.tsx` — issue against enrolment.
+- `src/crm/lib/enrolments.ts` *(new)* — helpers `getActiveEnrolments(studentId)`, `addEnrolment(studentId, payload)`, `getEnrolmentSummary()`.
 
 ## What stays the same
-- Name remains free-text and editable.
-- No UNIQUE constraint on phone — siblings/parents on a shared number still allowed via "Continue anyway" + duplicate-exception entry.
-- All existing reports, exports, WhatsApp templates and column-picker work unchanged.
+- Phone is still the person's identity.
+- All existing data keeps working — the migration backfills enrolments so no UI breaks on day one.
+- The column-picker / WhatsApp / export systems we just built carry over; they get one new column "Enrolment #".
+
+## What I'll build first vs later
+Phase 1 (this round): table + migration + backfill + "Add another course for this person" button on the duplicate alert + student form split + Enrolments tab on the student detail.
+Phase 2 (follow-up): wiring fees, certificates, attendance to enrolment_id; "Group by person" toggle on the students list.

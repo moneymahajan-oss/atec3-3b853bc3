@@ -229,6 +229,7 @@ export type Database = {
           attended_on: string
           batch_id: string
           created_at: string
+          enrolment_id: string | null
           id: string
           marked_by: string | null
           notes: string | null
@@ -239,6 +240,7 @@ export type Database = {
           attended_on: string
           batch_id: string
           created_at?: string
+          enrolment_id?: string | null
           id?: string
           marked_by?: string | null
           notes?: string | null
@@ -249,6 +251,7 @@ export type Database = {
           attended_on?: string
           batch_id?: string
           created_at?: string
+          enrolment_id?: string | null
           id?: string
           marked_by?: string | null
           notes?: string | null
@@ -553,6 +556,7 @@ export type Database = {
           course_id: string | null
           course_name_snapshot: string | null
           created_at: string
+          enrolment_id: string | null
           enrolment_no_snapshot: string | null
           grade: string | null
           id: string
@@ -571,6 +575,7 @@ export type Database = {
           course_id?: string | null
           course_name_snapshot?: string | null
           created_at?: string
+          enrolment_id?: string | null
           enrolment_no_snapshot?: string | null
           grade?: string | null
           id?: string
@@ -589,6 +594,7 @@ export type Database = {
           course_id?: string | null
           course_name_snapshot?: string | null
           created_at?: string
+          enrolment_id?: string | null
           enrolment_no_snapshot?: string | null
           grade?: string | null
           id?: string
@@ -1148,6 +1154,7 @@ export type Database = {
           amount_paid: number
           created_at: string
           due_date: string | null
+          enrolment_id: string | null
           id: string
           installment_no: number
           is_void: boolean
@@ -1167,6 +1174,7 @@ export type Database = {
           amount_paid?: number
           created_at?: string
           due_date?: string | null
+          enrolment_id?: string | null
           id?: string
           installment_no?: number
           is_void?: boolean
@@ -1186,6 +1194,7 @@ export type Database = {
           amount_paid?: number
           created_at?: string
           due_date?: string | null
+          enrolment_id?: string | null
           id?: string
           installment_no?: number
           is_void?: boolean
@@ -1339,6 +1348,7 @@ export type Database = {
           collected_by: string | null
           collected_by_name: string | null
           created_at: string
+          enrolment_id: string | null
           fee_plan_id: string | null
           id: string
           is_void: boolean
@@ -1359,6 +1369,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
+          enrolment_id?: string | null
           fee_plan_id?: string | null
           id?: string
           is_void?: boolean
@@ -1379,6 +1390,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
+          enrolment_id?: string | null
           fee_plan_id?: string | null
           id?: string
           is_void?: boolean
@@ -1449,6 +1461,69 @@ export type Database = {
           og_image_url?: string | null
           page_path?: string
           title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_student_enrolments: {
+        Row: {
+          batch_id: string | null
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          discount_reason: string | null
+          enrolment_date: string
+          enrolment_no: string | null
+          id: string
+          net_payable_fee: number | null
+          notes: string | null
+          registration_fee_paid: number
+          source_enquiry_id: string | null
+          status: Database["public"]["Enums"]["crm_enrolment_status"]
+          student_id: string
+          total_fee: number
+          updated_at: string
+        }
+        Insert: {
+          batch_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
+          enrolment_date?: string
+          enrolment_no?: string | null
+          id?: string
+          net_payable_fee?: number | null
+          notes?: string | null
+          registration_fee_paid?: number
+          source_enquiry_id?: string | null
+          status?: Database["public"]["Enums"]["crm_enrolment_status"]
+          student_id: string
+          total_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string | null
+          course_id?: string | null
+          course_name_snapshot?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          discount_reason?: string | null
+          enrolment_date?: string
+          enrolment_no?: string | null
+          id?: string
+          net_payable_fee?: number | null
+          notes?: string | null
+          registration_fee_paid?: number
+          source_enquiry_id?: string | null
+          status?: Database["public"]["Enums"]["crm_enrolment_status"]
+          student_id?: string
+          total_fee?: number
           updated_at?: string
         }
         Relationships: []
@@ -2209,6 +2284,35 @@ export type Database = {
         }[]
       }
       crm_flag_overdue_fee_plans: { Args: never; Returns: number }
+      crm_get_student_enrolments: {
+        Args: { _student_id: string }
+        Returns: {
+          batch_id: string | null
+          course_id: string | null
+          course_name_snapshot: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          discount_reason: string | null
+          enrolment_date: string
+          enrolment_no: string | null
+          id: string
+          net_payable_fee: number | null
+          notes: string | null
+          registration_fee_paid: number
+          source_enquiry_id: string | null
+          status: Database["public"]["Enums"]["crm_enrolment_status"]
+          student_id: string
+          total_fee: number
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "crm_student_enrolments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       crm_normalise_phone_value: { Args: { p: string }; Returns: string }
       has_any_crm_role: { Args: { _user_id: string }; Returns: boolean }
       has_crm_role: {
@@ -2278,6 +2382,7 @@ export type Database = {
         | "converted"
         | "lost"
         | "junk"
+      crm_enrolment_status: "active" | "completed" | "dropped" | "on_hold"
       crm_fee_plan_type:
         | "full"
         | "two_emi"
@@ -2499,6 +2604,7 @@ export const Constants = {
         "lost",
         "junk",
       ],
+      crm_enrolment_status: ["active", "completed", "dropped", "on_hold"],
       crm_fee_plan_type: ["full", "two_emi", "three_emi", "four_emi", "custom"],
       crm_fee_status: ["pending", "partial", "paid", "overdue", "waived"],
       crm_payment_mode: [

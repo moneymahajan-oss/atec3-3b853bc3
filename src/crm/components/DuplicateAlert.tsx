@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, ExternalLink, X } from "lucide-react";
+import { AlertTriangle, ExternalLink, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { findByPhone, isValid10Digit, type ContactMatch } from "../lib/dedupe";
@@ -62,7 +62,7 @@ export function DuplicateAlert({ phone, excludeId, onAcknowledge }: Props) {
           </div>
           <ul className="mt-2 space-y-1">
             {matches.slice(0, 5).map((m) => (
-              <li key={`${m.kind}-${m.id}`} className="flex items-center gap-2 text-sm">
+              <li key={`${m.kind}-${m.id}`} className="flex items-center gap-2 text-sm flex-wrap">
                 <Badge variant={m.kind === "student" ? "default" : "secondary"} className="capitalize text-[10px]">
                   {m.kind}
                 </Badge>
@@ -75,6 +75,15 @@ export function DuplicateAlert({ phone, excludeId, onAcknowledge }: Props) {
                 <Button type="button" size="sm" variant="ghost" className="h-6 px-2" onClick={() => open(m)}>
                   Open <ExternalLink className="w-3 h-3 ml-1" />
                 </Button>
+                {m.kind === "student" && (
+                  <Button
+                    type="button" size="sm" variant="secondary" className="h-6 px-2"
+                    onClick={() => navigate(`/crm/students/${m.id}/add-course`)}
+                    title="Add another course for this person without re-typing their details"
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Add course
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
