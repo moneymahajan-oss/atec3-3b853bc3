@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ type Batch = { id: string; name: string; course_id: string | null };
 export default function CrmAddEnrolment() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const fromEnquiry = search.get("from_enquiry");
   const { user } = useCrmAuth();
 
   const [student, setStudent] = useState<Student | null>(null);
@@ -52,11 +54,30 @@ export default function CrmAddEnrolment() {
       ]);
       setStudent((stu.data ?? null) as Student | null);
       setExisting(enr);
-      setCourses((crs.data ?? []) as Course[]);
+      const courseList = (crs.data ?? []) as Course[];
+      setCourses(courseList);
       setBatches((bts.data ?? []) as Batch[]);
+
+      // Pre-fill from source enquiry (when coming from "Convert enquiry")
+      if (fromEnquiry) {
+        const { data: enq } = await supabase
+          .from("crm_enquiries")
+          .select("course_id")
+          .eq("id", fromEnquiry)
+          .maybeSingle();
+        if (enq?.course_id) {
+          const c = courseList.find((x) => x.id === enq.course_id);
+          setForm((f) => ({
+            ...f,
+            course_id: enq.course_id!,
+            total_fee: c?.total_fee ?? 0,
+            registration_fee_paid: c?.registration_fee ?? 0,
+          }));
+        }
+      }
       setLoading(false);
     })();
-  }, [studentId]);
+  }, [studentId, fromEnquiry]);
 
   const onCourse = (cid: string) => {
     const c = courses.find((c) => c.id === cid);
@@ -102,6 +123,7 @@ export default function CrmAddEnrolment() {
       discount_reason: form.discount_reason || null,
       registration_fee_paid: Number(form.registration_fee_paid) || 0,
       notes: form.notes || null,
+      source_enquiry_id: fromEnquiry || null,
       created_by: user?.id ?? null,
     });
     if (error) {
@@ -113,7 +135,48 @@ export default function CrmAddEnrolment() {
       student_id: studentId,
       course_id: form.course_id,
     });
+
+    // Auto-create a default "full fee" pending plan so the enrolment shows up
+    // in the Fees module immediately. Staff can split into installments later.
+    const balance = (Number(form.total_fee) || 0)
+      - (Number(form.discount_amount) || 0)
+      - (Number(form.registration_fee_paid) || 0);
+    if (data?.id && balance > 0) {
+      const { error: planErr } = await supabase.from("crm_fee_plans").insert({
+        student_id: studentId,
+        enrolment_id: data.id,
+        installment_no: 1,
+        label: "Full fee",
+        amount: balance,
+        plan_type: "custom",
+        status: "pending",
+        notes: `Auto-created on enrolment in ${courseRow?.name ?? "course"}`,
+      });
+      if (planErr) {
+        // Non-blocking: tell user but still treat enrolment as saved
+        toast.warning(`Enrolment saved, but fee plan was not auto-created: ${planErr.message}`);
+      }
+    }
+
+    // If a registration fee was already collected, log it as a payment too.
+    if (data?.id && (Number(form.registration_fee_paid) || 0) > 0) {
+      await supabase.from("crm_payments").insert({
+        student_id: studentId,
+        enrolment_id: data.id,
+        amount: Number(form.registration_fee_paid) || 0,
+        mode: "cash",
+        notes: "Registration fee at enrolment",
+        collected_by: user?.id ?? null,
+      });
+    }
+
     toast.success(`Enrolled in ${courseRow?.name}. Enrolment #${data?.enrolment_no}`);
+    // If we came from an enquiry, mark it converted and link the student
+    if (fromEnquiry) {
+      await supabase.from("crm_enquiries")
+        .update({ status: "converted", converted_student_id: studentId })
+        .eq("id", fromEnquiry);
+    }
     navigate(`/crm/students/${studentId}`);
   };
 
