@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "../components/PageHeader";
 import { StudentAttendanceCard } from "../components/StudentAttendanceCard";
+import { EnrolmentsCard } from "../components/EnrolmentsCard";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { DuplicateAlert } from "../components/DuplicateAlert";
