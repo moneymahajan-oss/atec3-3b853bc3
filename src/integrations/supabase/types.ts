@@ -944,6 +944,72 @@ export type Database = {
           },
         ]
       }
+      crm_faculties: {
+        Row: {
+          bio: string | null
+          created_at: string
+          designation: string | null
+          display_order: number
+          email: string | null
+          experience_years: number | null
+          id: string
+          instagram_url: string | null
+          is_active: boolean
+          is_public: boolean
+          joined_on: string | null
+          linkedin_url: string | null
+          name: string
+          phone: string | null
+          photo_url: string | null
+          qualifications: string | null
+          slug: string | null
+          specialization: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          designation?: string | null
+          display_order?: number
+          email?: string | null
+          experience_years?: number | null
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          is_public?: boolean
+          joined_on?: string | null
+          linkedin_url?: string | null
+          name: string
+          phone?: string | null
+          photo_url?: string | null
+          qualifications?: string | null
+          slug?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          designation?: string | null
+          display_order?: number
+          email?: string | null
+          experience_years?: number | null
+          id?: string
+          instagram_url?: string | null
+          is_active?: boolean
+          is_public?: boolean
+          joined_on?: string | null
+          linkedin_url?: string | null
+          name?: string
+          phone?: string | null
+          photo_url?: string | null
+          qualifications?: string | null
+          slug?: string | null
+          specialization?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_fee_plans: {
         Row: {
           amount: number
