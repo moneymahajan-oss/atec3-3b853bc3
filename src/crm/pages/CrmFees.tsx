@@ -25,6 +25,7 @@ type Row = {
   next_due_date: string | null;
   next_due_amount: number;
   overdue_count: number;
+  flag?: FeeValidationIssue | null;
 };
 
 export default function CrmFees() {
