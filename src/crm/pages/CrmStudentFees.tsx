@@ -58,24 +58,28 @@ export default function CrmStudentFees() {
   const [student, setStudent] = useState<Student | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [enrolments, setEnrolments] = useState<Enrolment[]>([]);
+  const [enrolmentFilter, setEnrolmentFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [planOpen, setPlanOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0, status: "pending" });
   const [payOpen, setPayOpen] = useState(false);
-  const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string });
+  const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string, enrolment_id: "" as string });
   const [voidPlan, setVoidPlan] = useState<Plan | null>(null);
   const [voidPay, setVoidPay] = useState<Payment | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: s }, { data: p }, { data: pay }] = await Promise.all([
+    const [{ data: s }, { data: p }, { data: pay }, enr] = await Promise.all([
       supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee,registration_fee_paid").eq("id", studentId!).maybeSingle(),
       supabase.from("crm_fee_plans").select("*").eq("student_id", studentId!).order("installment_no"),
       supabase.from("crm_payments").select("*").eq("student_id", studentId!).order("paid_on", { ascending: false }),
+      getStudentEnrolments(studentId!),
     ]);
     setStudent(s as Student);
     setPlans((p ?? []) as Plan[]);
     setPayments((pay ?? []) as Payment[]);
+    setEnrolments(enr);
     setLoading(false);
   };
   useEffect(() => { load(); }, [studentId]);
