@@ -251,7 +251,7 @@ export default function CrmStudents() {
       case "batch": return <span className="text-sm">{b?.name ?? "—"}</span>;
       case "faculty": return <span className="text-sm">{b?.faculty_name ?? "—"}</span>;
       case "status": return <Badge variant="secondary" className={statusColors[s.status] || ""}>{s.status.replace("_", " ")}</Badge>;
-      case "total_fee": return <span className="font-mono text-sm">₹{s.total_fee.toLocaleString("en-IN")}</span>;
+      case "total_fee": return <span className="font-mono text-sm">₹{total.toLocaleString("en-IN")}</span>;
       case "net_payable_fee": return <span className="font-mono text-sm">₹{net.toLocaleString("en-IN")}</span>;
       case "paid_amount": return <span className="font-mono text-sm text-emerald-700 dark:text-emerald-400">₹{paid.toLocaleString("en-IN")}</span>;
       case "balance": {
