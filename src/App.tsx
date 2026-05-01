@@ -38,8 +38,11 @@ import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
 import CrmReminders from "./crm/pages/CrmReminders.tsx";
 import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
+import CrmFaculties from "./crm/pages/CrmFaculties.tsx";
 import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
+import FacultyList from "./pages/FacultyList.tsx";
+import FacultyDetail from "./pages/FacultyDetail.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient();
