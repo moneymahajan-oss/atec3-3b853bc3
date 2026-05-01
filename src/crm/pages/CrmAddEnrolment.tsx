@@ -123,6 +123,7 @@ export default function CrmAddEnrolment() {
       discount_reason: form.discount_reason || null,
       registration_fee_paid: Number(form.registration_fee_paid) || 0,
       notes: form.notes || null,
+      source_enquiry_id: fromEnquiry || null,
       created_by: user?.id ?? null,
     });
     if (error) {
