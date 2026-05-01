@@ -231,10 +231,33 @@ export default function CrmStudentFees() {
         <SmallStat label="Receipts" value={String(payments.length)} />
       </div>
 
+      {enrolments.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
+          <span className="text-xs font-medium text-muted-foreground">Course:</span>
+          <Select value={enrolmentFilter} onValueChange={setEnrolmentFilter}>
+            <SelectTrigger className="h-8 w-[280px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All courses ({enrolments.length})</SelectItem>
+              {enrolments.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Installment plan</CardTitle>
-          <Button size="sm" onClick={() => { setEditingPlan({ installment_no: plans.length + 1, amount: 0, status: "pending" }); setPlanOpen(true); }}>
+          <Button size="sm" onClick={() => {
+            setEditingPlan({
+              installment_no: plans.length + 1, amount: 0, status: "pending",
+              enrolment_id: enrolmentFilter !== "all" ? enrolmentFilter : (defaultEnrolmentId || undefined),
+            });
+            setPlanOpen(true);
+          }}>
             <Plus className="w-4 h-4 mr-1" /> Add installment
           </Button>
         </CardHeader>
