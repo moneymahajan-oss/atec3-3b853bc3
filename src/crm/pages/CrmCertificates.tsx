@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { generateCertificatePdf } from "../lib/certificatePdf";
 import { buildWaLink, fillTemplate, logWaSend } from "../lib/whatsapp";
 import { useCrmAuth } from "../hooks/useCrmAuth";
+import { getStudentEnrolments, type Enrolment } from "../lib/enrolments";
 
 interface Cert {
   id: string;
@@ -52,9 +53,22 @@ export default function CrmCertificates() {
   const [issuing, setIssuing] = useState(false);
 
   const [studentId, setStudentId] = useState("");
+  const [studentEnrolments, setStudentEnrolments] = useState<Enrolment[]>([]);
+  const [enrolmentId, setEnrolmentId] = useState("");
   const [grade, setGrade] = useState("A");
   const [templateKind, setTemplateKind] = useState("computer");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Load enrolments whenever student changes (for issue dialog)
+  useEffect(() => {
+    if (!studentId) { setStudentEnrolments([]); setEnrolmentId(""); return; }
+    getStudentEnrolments(studentId).then((rows) => {
+      setStudentEnrolments(rows);
+      // Auto-select sole enrolment, otherwise leave empty so user must pick
+      if (rows.length === 1) setEnrolmentId(rows[0].id);
+      else setEnrolmentId("");
+    });
+  }, [studentId]);
 
   async function load() {
     setLoading(true);
