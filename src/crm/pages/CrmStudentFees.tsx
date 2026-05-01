@@ -345,6 +345,7 @@ export default function CrmStudentFees() {
             <TableHeader>
               <TableRow>
                 <TableHead>Receipt №</TableHead>
+                {enrolments.length > 1 && <TableHead>Course</TableHead>}
                 <TableHead>Date</TableHead>
                 <TableHead>Mode</TableHead>
                 <TableHead>Reference</TableHead>
@@ -354,18 +355,25 @@ export default function CrmStudentFees() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payments.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No payments yet.</TableCell></TableRow>
-              ) : payments.map((p) => (
-                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
-                  <TableCell className="font-mono text-xs">
-                    {p.receipt_no}
-                    {p.is_void && (
-                      <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>
-                        VOID
-                      </Badge>
+              {(() => {
+                const filteredPayments = payments.filter((p) => enrolmentFilter === "all" || (p.enrolment_id ?? "") === enrolmentFilter);
+                return filteredPayments.length === 0 ? (
+                  <TableRow><TableCell colSpan={enrolments.length > 1 ? 8 : 7} className="text-center py-6 text-muted-foreground">No payments yet.</TableCell></TableRow>
+                ) : filteredPayments.map((p) => (
+                  <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
+                    <TableCell className="font-mono text-xs">
+                      {p.receipt_no}
+                      {p.is_void && (
+                        <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>
+                          VOID
+                        </Badge>
+                      )}
+                    </TableCell>
+                    {enrolments.length > 1 && (
+                      <TableCell className="text-xs text-muted-foreground">
+                        {enrolments.find((e) => e.id === p.enrolment_id)?.course_name_snapshot ?? "—"}
+                      </TableCell>
                     )}
-                  </TableCell>
                   <TableCell>{p.paid_on}</TableCell>
                   <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
                   <TableCell className="text-sm">{p.reference || "—"}</TableCell>
