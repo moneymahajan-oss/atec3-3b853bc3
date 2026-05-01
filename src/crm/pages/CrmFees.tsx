@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Receipt, AlertCircle, ArrowRight } from "lucide-react";
+import { Search, Receipt, AlertCircle, ArrowRight, AlertTriangle } from "lucide-react";
+import { validateStudentTotals, logFeeValidationReport, type FeeValidationIssue } from "../lib/validateFees";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -23,6 +25,7 @@ type Row = {
   next_due_date: string | null;
   next_due_amount: number;
   overdue_count: number;
+  flag?: FeeValidationIssue | null;
 };
 
 export default function CrmFees() {
@@ -50,11 +53,13 @@ export default function CrmFees() {
         (enrolByStudent[e.student_id] = enrolByStudent[e.student_id] || []).push(e);
       });
       const today = new Date().toISOString().slice(0, 10);
-      const plansBy: Record<string, { next?: { date: string; amount: number }; overdue: number }> = {};
+      const plansBy: Record<string, { next?: { date: string; amount: number }; overdue: number; total: number; paid: number }> = {};
       (plans ?? []).forEach((p) => {
         if (!p.student_id) return;
         if ((p as { is_void?: boolean }).is_void) return;
-        const bucket = plansBy[p.student_id] ||= { overdue: 0 };
+        const bucket = plansBy[p.student_id] ||= { overdue: 0, total: 0, paid: 0 };
+        bucket.total += p.amount ?? 0;
+        bucket.paid += p.amount_paid ?? 0;
         const remaining = (p.amount ?? 0) - (p.amount_paid ?? 0);
         if (remaining <= 0) return;
         if (p.due_date && p.due_date < today) bucket.overdue++;
@@ -62,14 +67,27 @@ export default function CrmFees() {
           bucket.next = { date: p.due_date, amount: remaining };
         }
       });
+      const issues: FeeValidationIssue[] = [];
       const built: Row[] = (students ?? []).map((s) => {
         const enrols = enrolByStudent[s.id] ?? [];
-        const totalFee = enrols.length > 0
-          ? enrols.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0)
-          : (s.total_fee ?? 0);
+        const enrolmentTotal = enrols.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0);
+        const totalFee = enrols.length > 0 ? enrolmentTotal : (s.total_fee ?? 0);
         const courseLabel = enrols.length > 0
           ? enrols.map((e) => e.course_name_snapshot || "").filter(Boolean).join(", ") || s.course_name_snapshot
           : s.course_name_snapshot;
+        const planBucket = plansBy[s.id];
+        const flag = validateStudentTotals({
+          student_id: s.id,
+          full_name: s.full_name,
+          enrolment_no: s.enrolment_no,
+          enrolment_total: enrolmentTotal,
+          legacy_total: s.total_fee ?? 0,
+          registration_fee_paid: s.registration_fee_paid ?? 0,
+          payments_total: paidByStudent[s.id] || 0,
+          plans_total: planBucket?.total ?? 0,
+          plans_paid: planBucket?.paid ?? 0,
+        });
+        if (flag) issues.push(flag);
         return {
           id: s.id,
           full_name: s.full_name,
@@ -81,8 +99,15 @@ export default function CrmFees() {
           next_due_date: plansBy[s.id]?.next?.date ?? null,
           next_due_amount: plansBy[s.id]?.next?.amount ?? 0,
           overdue_count: plansBy[s.id]?.overdue ?? 0,
+          flag,
         };
       });
+      logFeeValidationReport(issues);
+      if (issues.length > 0) {
+        toast.warning(`Fee mismatch detected for ${issues.length} student${issues.length === 1 ? "" : "s"}`, {
+          description: "See console for details. Hover the ⚠ badge on flagged rows.",
+        });
+      }
       setRows(built);
       setLoading(false);
     })();
@@ -145,7 +170,26 @@ export default function CrmFees() {
               return (
                 <TableRow key={r.id}>
                   <TableCell>
-                    <div className="font-medium">{r.full_name}</div>
+                    <div className="font-medium flex items-center gap-1.5">
+                      {r.full_name}
+                      {r.flag && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-amber-600 dark:text-amber-400 cursor-help">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <div className="font-semibold mb-1">Fee mismatch</div>
+                              <ul className="text-xs space-y-1 list-disc pl-4">
+                                {r.flag.reasons.map((reason, i) => <li key={i}>{reason}</li>)}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground font-mono">{r.enrolment_no || r.phone}</div>
                   </TableCell>
                   <TableCell className="text-sm">{r.course_name_snapshot || "—"}</TableCell>
