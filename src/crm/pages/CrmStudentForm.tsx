@@ -16,6 +16,8 @@ import { PageHeader } from "../components/PageHeader";
 import { StudentAttendanceCard } from "../components/StudentAttendanceCard";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
+import { DuplicateAlert } from "../components/DuplicateAlert";
+import { normalisePhone } from "../lib/dedupe";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string; total_fee: number; registration_fee: number };
@@ -348,6 +350,7 @@ export default function CrmStudentForm() {
           <Card>
             <CardHeader><CardTitle>Personal details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <DuplicateAlert phone={form.phone} excludeId={isNew ? undefined : id} />
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Full name *</Label>

@@ -16,6 +16,7 @@ import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { SendWhatsAppCard } from "../components/SendWhatsAppCard";
 import { EnquiryTimeline } from "../components/EnquiryTimeline";
+import { DuplicateAlert } from "../components/DuplicateAlert";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string };
@@ -292,6 +293,7 @@ export default function CrmEnquiryForm() {
           <Card>
             <CardHeader><CardTitle>Basic info</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <DuplicateAlert phone={form.phone} excludeId={isNew ? undefined : id} />
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Full name *</Label>
