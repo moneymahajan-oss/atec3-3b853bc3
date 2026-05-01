@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Receipt, AlertCircle, ArrowRight } from "lucide-react";
+import { Search, Receipt, AlertCircle, ArrowRight, AlertTriangle } from "lucide-react";
+import { validateStudentTotals, logFeeValidationReport, type FeeValidationIssue } from "../lib/validateFees";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
