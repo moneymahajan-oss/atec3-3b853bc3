@@ -176,10 +176,22 @@ export default function CrmStudents() {
     setFrom(""); setTo(""); setRangePreset("all");
   };
 
+  const effectiveTotal = (s: Student): number => {
+    const enrols = enrolMap[s.id];
+    if (enrols && enrols.length > 0) return enrols.reduce((a, e) => a + (e.total_fee || 0), 0);
+    return s.total_fee || 0;
+  };
+  const effectiveNet = (s: Student): number => {
+    const enrols = enrolMap[s.id];
+    if (enrols && enrols.length > 0) return enrols.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0);
+    return s.net_payable_fee ?? s.total_fee ?? 0;
+  };
+
   const valueOf = (key: string, s: Student): string | number => {
     const b = s.batch_id ? batchMap.get(s.batch_id) : null;
     const paid = paidMap[s.id] || 0;
-    const net = s.net_payable_fee ?? s.total_fee;
+    const net = effectiveNet(s);
+    const total = effectiveTotal(s);
     switch (key) {
       case "enrolment_no": return s.enrolment_no ?? "";
       case "full_name": return s.full_name;
@@ -197,7 +209,7 @@ export default function CrmStudents() {
       case "faculty": return b?.faculty_name ?? "";
       case "enrolment_date": return s.enrolment_date;
       case "status": return s.status;
-      case "total_fee": return s.total_fee;
+      case "total_fee": return total;
       case "net_payable_fee": return net;
       case "paid_amount": return paid;
       case "balance": return Math.max(0, net - paid);
@@ -217,7 +229,8 @@ export default function CrmStudents() {
   const renderCell = (key: string, s: Student) => {
     const b = s.batch_id ? batchMap.get(s.batch_id) : null;
     const paid = paidMap[s.id] || 0;
-    const net = s.net_payable_fee ?? s.total_fee;
+    const net = effectiveNet(s);
+    const total = effectiveTotal(s);
     switch (key) {
       case "photo": {
         const initials = s.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
@@ -238,7 +251,7 @@ export default function CrmStudents() {
       case "batch": return <span className="text-sm">{b?.name ?? "—"}</span>;
       case "faculty": return <span className="text-sm">{b?.faculty_name ?? "—"}</span>;
       case "status": return <Badge variant="secondary" className={statusColors[s.status] || ""}>{s.status.replace("_", " ")}</Badge>;
-      case "total_fee": return <span className="font-mono text-sm">₹{s.total_fee.toLocaleString("en-IN")}</span>;
+      case "total_fee": return <span className="font-mono text-sm">₹{total.toLocaleString("en-IN")}</span>;
       case "net_payable_fee": return <span className="font-mono text-sm">₹{net.toLocaleString("en-IN")}</span>;
       case "paid_amount": return <span className="font-mono text-sm text-emerald-700 dark:text-emerald-400">₹{paid.toLocaleString("en-IN")}</span>;
       case "balance": {
