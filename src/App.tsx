@@ -91,6 +91,7 @@ const App = () => (
                   <Route path="fees/:studentId" element={<CrmStudentFees />} />
                   <Route path="batches" element={<CrmBatches />} />
                   <Route path="batches/:id/report" element={<CrmBatchReport />} />
+                  <Route path="faculties" element={<CrmFaculties />} />
                   <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmCertificates />} />
                   <Route path="expenses" element={<CrmExpenses />} />
