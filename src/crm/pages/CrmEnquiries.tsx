@@ -45,7 +45,7 @@ type Enquiry = {
   created_at: string;
 };
 
-type ReportCol = { id?: string; column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number };
+
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
@@ -107,7 +107,7 @@ export default function CrmEnquiries() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
-  const { cols: reportCols, visibleCols, exportCols, toggleVisible: toggleColumnVisibility } = useReportColumns("crm_enquiry_report_columns");
+  const { cols: reportCols, visibleCols, toggleVisible: toggleColumnVisibility } = useReportColumns("crm_enquiry_report_columns");
   const [instituteName, setInstituteName] = useState<string>("ATEC Education");
 
   const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
