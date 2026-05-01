@@ -277,19 +277,35 @@ export default function CrmStudentForm() {
       address_proof_url: form.address_proof_url || null,
     };
     if (isNew) {
+      // Auto-link to existing enquiry if no explicit fromEnquiry, by matching phone
+      let linkedEnquiry: string | null = fromEnquiry;
+      if (!linkedEnquiry) {
+        const norm = normalisePhone(form.phone);
+        if (norm) {
+          const { data: existingEnq } = await supabase
+            .from("crm_enquiries")
+            .select("id")
+            .eq("phone", norm)
+            .neq("status", "converted" as never)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (existingEnq?.id) linkedEnquiry = existingEnq.id;
+        }
+      }
       const { data, error } = await supabase.from("crm_students").insert({
         ...payload,
-        source_enquiry_id: fromEnquiry || null,
+        source_enquiry_id: linkedEnquiry || null,
         created_by: user?.id,
       }).select("id").maybeSingle();
       if (error) { toast.error(error.message); setSaving(false); return; }
-      if (fromEnquiry && data?.id) {
+      if (linkedEnquiry && data?.id) {
         await supabase.from("crm_enquiries")
           .update({ status: "converted" as never, converted_student_id: data.id })
-          .eq("id", fromEnquiry);
+          .eq("id", linkedEnquiry);
       }
       await logAudit("crm_students", "create", data?.id, payload);
-      toast.success("Student enrolled");
+      toast.success(linkedEnquiry && !fromEnquiry ? "Student enrolled & linked to existing enquiry" : "Student enrolled");
       navigate(`/crm/students/${data?.id}`);
     } else {
       const { error } = await supabase.from("crm_students").update(payload).eq("id", id!);
