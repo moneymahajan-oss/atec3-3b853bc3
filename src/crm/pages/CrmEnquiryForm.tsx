@@ -218,8 +218,23 @@ export default function CrmEnquiryForm() {
     setNewNote("");
   };
 
-  const convertToStudent = () => {
+  const convertToStudent = async () => {
     if (isNew) return;
+    // If a student with this phone already exists, skip the new-student form
+    // and jump straight to "Add another course" — pre-filled from this enquiry.
+    const norm = (form.phone || "").replace(/\D/g, "").slice(-10);
+    if (norm.length === 10) {
+      const { data: existing } = await supabase
+        .from("crm_students")
+        .select("id, full_name")
+        .eq("phone", norm)
+        .maybeSingle();
+      if (existing?.id) {
+        toast.info(`${existing.full_name} already exists — adding this course to their profile.`);
+        navigate(`/crm/students/${existing.id}/add-course?from_enquiry=${id}`);
+        return;
+      }
+    }
     navigate(`/crm/students/new?from_enquiry=${id}`);
   };
 
