@@ -170,7 +170,26 @@ export default function CrmFees() {
               return (
                 <TableRow key={r.id}>
                   <TableCell>
-                    <div className="font-medium">{r.full_name}</div>
+                    <div className="font-medium flex items-center gap-1.5">
+                      {r.full_name}
+                      {r.flag && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-amber-600 dark:text-amber-400 cursor-help">
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <div className="font-semibold mb-1">Fee mismatch</div>
+                              <ul className="text-xs space-y-1 list-disc pl-4">
+                                {r.flag.reasons.map((reason, i) => <li key={i}>{reason}</li>)}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground font-mono">{r.enrolment_no || r.phone}</div>
                   </TableCell>
                   <TableCell className="text-sm">{r.course_name_snapshot || "—"}</TableCell>
