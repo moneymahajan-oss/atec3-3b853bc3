@@ -424,6 +424,25 @@ export default function CrmStudentFees() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPlan.id ? "Edit installment" : "Add installment"}</DialogTitle></DialogHeader>
           <div className="grid sm:grid-cols-2 gap-4">
+            {enrolments.length > 1 && (
+              <div className="sm:col-span-2">
+                <Label>Course (enrolment) *</Label>
+                <Select
+                  value={editingPlan.enrolment_id || "none"}
+                  onValueChange={(v) => setEditingPlan((p) => ({ ...p, enrolment_id: v === "none" ? null : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— select —</SelectItem>
+                    {enrolments.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div><Label>#</Label><Input type="number" value={editingPlan.installment_no ?? 1} onChange={(e) => setEditingPlan((p) => ({ ...p, installment_no: Number(e.target.value) }))} /></div>
             <div><Label>Status</Label>
               <Select value={editingPlan.status ?? "pending"} onValueChange={(v) => setEditingPlan((p) => ({ ...p, status: v }))}>
@@ -460,15 +479,40 @@ export default function CrmStudentFees() {
             </div>
             <div><Label>Reference / UTR</Label><Input value={pay.reference} onChange={(e) => setPay((p) => ({ ...p, reference: e.target.value }))} /></div>
             <div><Label>Paid on</Label><Input type="date" value={pay.paid_on} onChange={(e) => setPay((p) => ({ ...p, paid_on: e.target.value }))} /></div>
+            {enrolments.length > 1 && (
+              <div className="sm:col-span-2">
+                <Label>Course (enrolment) *</Label>
+                <Select
+                  value={pay.enrolment_id || defaultEnrolmentId || "none"}
+                  onValueChange={(v) => setPay((p) => ({ ...p, enrolment_id: v === "none" ? "" : v, fee_plan_id: "" }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— select —</SelectItem>
+                    {enrolments.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="sm:col-span-2">
               <Label>Apply to installment</Label>
               <Select value={pay.fee_plan_id || "none"} onValueChange={(v) => setPay((p) => ({ ...p, fee_plan_id: v === "none" ? "" : v }))}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Standalone —</SelectItem>
-                  {plans.filter((p) => p.status !== "paid" && !p.is_void).map((p) =>
-                    <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
-                  )}
+                  {plans
+                    .filter((p) => p.status !== "paid" && !p.is_void)
+                    .filter((p) => {
+                      const eid = pay.enrolment_id || defaultEnrolmentId;
+                      return enrolments.length <= 1 || !eid || (p.enrolment_id ?? "") === eid;
+                    })
+                    .map((p) =>
+                      <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
+                    )}
                 </SelectContent>
               </Select>
             </div>
