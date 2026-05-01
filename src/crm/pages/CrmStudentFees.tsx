@@ -22,6 +22,7 @@ import { VoidDialog } from "../components/VoidDialog";
 import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
+import { getStudentEnrolments, type Enrolment } from "../lib/enrolments";
 
 import { toast } from "sonner";
 
@@ -32,11 +33,13 @@ type Student = {
 type Plan = {
   id: string; installment_no: number; label: string | null;
   due_date: string | null; amount: number; amount_paid: number; status: string;
+  enrolment_id?: string | null;
   is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
 type Payment = {
   id: string; receipt_no: string | null; amount: number; mode: string;
   paid_on: string; reference: string | null; fee_plan_id: string | null;
+  enrolment_id?: string | null;
   collected_by_name: string | null;
   is_void?: boolean; void_reason?: string | null; voided_by_name?: string | null; voided_at?: string | null;
 };
