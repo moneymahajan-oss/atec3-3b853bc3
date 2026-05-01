@@ -55,24 +55,59 @@ export default function CoursesSection() {
       return;
     }
     setSubmitting(true);
+    const normPhone = studentPhone.replace(/\D/g, "").slice(-10);
+    if (normPhone.length < 10) {
+      setSubmitting(false);
+      toast({ title: "Invalid phone", description: "Please enter a 10-digit WhatsApp number.", variant: "destructive" });
+      return;
+    }
     // Save lead (legacy)
     await supabase.from("leads").insert({
       source: "syllabus_request",
       student_name: studentName,
-      phone: studentPhone,
+      phone: normPhone,
       course_name: shareCourse.name,
     });
-    // Also create a CRM enquiry so it appears in the Enquiry panel
-    await supabase.from("crm_enquiries").insert({
-      name: studentName,
-      phone: studentPhone.replace(/\D/g, ""),
-      whatsapp: studentPhone.replace(/\D/g, ""),
-      course_name_snapshot: shareCourse.name,
-      source: "website_course_page",
-      status: "new",
-      priority: "medium",
-      notes: "Auto-created from website course card (Share / Enroll)",
-    } as never);
+    // Silent dedupe: if same phone + same course in last 30 days, refresh existing enquiry
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: dupe } = await supabase
+      .from("crm_enquiries")
+      .select("id")
+      .eq("phone", normPhone)
+      .eq("course_name_snapshot", shareCourse.name)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let enquiryError: { message: string } | null = null;
+    if (dupe?.id) {
+      const { error } = await supabase
+        .from("crm_enquiries")
+        .update({
+          notes: `Re-shared from website course card on ${new Date().toLocaleString()}`,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", dupe.id);
+      enquiryError = error as never;
+    } else {
+      const { error } = await supabase.from("crm_enquiries").insert({
+        name: studentName,
+        phone: normPhone,
+        whatsapp: normPhone,
+        course_name_snapshot: shareCourse.name,
+        source: "website_course_page",
+        status: "new",
+        priority: "medium",
+        notes: "Auto-created from website course card (Share / Enroll)",
+      } as never);
+      enquiryError = error as never;
+    }
+    if (enquiryError) {
+      console.error("crm_enquiries insert failed", enquiryError);
+      toast({ title: "Could not record enquiry", description: enquiryError.message, variant: "destructive" });
+      // continue — still open WhatsApp so user gets the brochure
+    }
     // Build WhatsApp message — pass SHORT course-named links
     // (legacy `courses` table has no slug; helper falls back to slugified name)
     const link = await buildWhatsAppLink(

@@ -1,79 +1,104 @@
+# CRM Bug-Fix Audit — 6 fixes, no UI redesign
 
-# Multiple Courses Per Student — Re-enrolment Without Re-typing
+## Root causes found during audit
 
-## The problem today
-`crm_students` is a **person + one course** record. Mary takes "Tally" today; six months later she wants "Advanced Excel". Right now staff have to either:
-- Create a second student row and re-type name, phone, address, parents, photo, ID proof — and she now appears as two "students" (inflating counts, breaking dedupe).
-- Overwrite her course → her Tally history (fees, certificate, attendance) gets orphaned or confusing.
+### Bug 3 — Budget range (CONFIRMED enum mismatch)
+- DB enum `crm_budget_range` = `under_5k, 5k_10k, 10k_20k, 20k_plus, flexible`
+- Code `BUDGETS` in `CrmEnquiryForm.tsx` = `under_10k, 10k_25k, 25k_50k, 50k_plus, flexible`
+- Only `flexible` matches → every other value is silently rejected by Postgres enum cast → field shows blank after save. Exactly matches the reported symptom.
 
-The fix: keep **one student per person** (identified by phone, as we just built), and store **each course they take as a separate enrolment**.
+### Bug 4 — Qualification (CONFIRMED enum mismatch)
+- DB enum `crm_qualification` = `class_10, class_12, graduation, post_graduation, diploma, other`
+- Code `QUALIFICATIONS` in both `CrmEnquiryForm.tsx` and `CrmStudentForm.tsx` = `below_10th, 10th, 12th, diploma, graduate, post_graduate, other`
+- Only `diploma` and `other` match. Same symptom.
+- Public `/enquire` page lowercases/strips spaces — also produces values that don't match the enum.
 
-## Approach
+### Bug 1 — Course-section enquiry sync
+- `CoursesSection.tsx` already inserts into `crm_enquiries`, but: (a) no error handling, (b) no dedupe, (c) phone not normalised to last-10. RLS public policy requires `phone ~ '^[0-9]{10,15}$'` and a whitelisted source — both already satisfied, but if the user types `+91 …` it becomes 12 digits and may not match what the Enquiries list filters on. Fix by normalising and surfacing failures.
 
-### 1. New table `crm_student_enrolments`
-One row per (student × course). This becomes the unit of truth for fees, batch, attendance, certificate.
+### Bug 2 — WhatsApp on enquiry-form share
+- `CrmEnquiries.shareFormViaWhatsApp` opens `wa.me/...` but never calls `logWaSend` so no log row is created and the message body isn't recorded against the contact. `CrmEnquiryForm.tsx` has a "Share form" button at line 279 that does the same.
 
-```text
-crm_student_enrolments
-  id, student_id, course_id, course_name_snapshot,
-  batch_id, enrolment_no (ATEC-2026-0007),
-  enrolment_date, status (active|completed|dropped|on_hold),
-  total_fee, discount_amount, discount_reason,
-  registration_fee_paid, net_payable_fee (computed),
-  source_enquiry_id, notes,
-  created_by, created_at, updated_at
+### Bug 5 — Student profile not showing combined courses
+- `EnrolmentsCard` already queries `crm_student_enrolments` correctly and is mounted in `CrmStudentForm`. However on the **Students list** (`CrmStudents.tsx`) the row only reads `course_name_snapshot` from `crm_students` — so a student with 2 enrolments shows only the original course. We will fetch enrolments in bulk and render all course chips per row.
+
+### Bug 6 — Fees view with 2 courses
+- `CrmStudentFees.tsx` uses `student.total_fee` for the headline (single course) and the per-course filter is opt-in. With 2 enrolments we must compute totals from `crm_student_enrolments` (sum of `net_payable_fee`) and add a per-course breakdown table.
+
+---
+
+## Fixes
+
+### 1. `src/crm/pages/CrmEnquiryForm.tsx`
+- Replace `BUDGETS` array with DB enum values: `["under_5k","5k_10k","10k_20k","20k_plus","flexible"]`
+- Replace `QUALIFICATIONS` array with DB enum values: `["class_10","class_12","graduation","post_graduation","diploma","other"]`
+- Update display labels via a small `LABELS` map so UI still reads "Below ₹5k", "Class 10", etc. (no layout change).
+- Wire the "Share form" button (line ~279) to also call `logWaSend({ template_key: "enquiry_form_share", contact_number, contact_name, message_snapshot, entity_type: "enquiry", entity_id })` after opening `wa.me`.
+
+### 2. `src/crm/pages/CrmStudentForm.tsx`
+- Replace `QUALIFICATIONS` with the same DB enum values + labels map.
+- Migrate any existing student rows whose `qualification` is one of the legacy strings to the new enum value (data migration below).
+
+### 3. `src/pages/Enquire.tsx`
+- Map UI option text to enum values explicitly instead of `lowercase().replace(/\s+/g,"_")`. Provide value→enum lookup tables for `qualification`, `budget_range`, `current_status`, `preferred_timing`, `preferred_mode`. Reject/clear any unknown value before insert.
+
+### 4. `src/components/CoursesSection.tsx` (Bug 1 hardening)
+- Normalise phone with `.replace(/\D/g,"").slice(-10)` before insert.
+- Wrap insert with error toast so silent RLS rejections are visible.
+- Add 30-day same-phone+same-course dedupe (mirrors `Enquire.tsx`) so reshares update an existing row instead of creating duplicates.
+- Confirm `source: "website_course_page"` (already whitelisted in RLS).
+
+### 5. `src/crm/pages/CrmEnquiries.tsx` (Bug 2)
+- In `shareFormViaWhatsApp`, after `window.open`, call `logWaSend({ template_key: "enquiry_form_share", contact_number: phone, contact_name: greetName, message_snapshot: buildFormMessage(greetName), entity_type: "enquiry", entity_id })`. Validate phone is ≥10 digits before sending; toast on failure.
+
+### 6. `src/crm/pages/CrmStudents.tsx` (Bug 5 — list shows all courses)
+- After fetching students, fetch `crm_student_enrolments` for the visible student ids in one query and group by `student_id`.
+- In the row's "Course" cell, render all `course_name_snapshot` values as small chips (existing Badge component, no new styling). When only 1, behave as today.
+- `valueOf("course")` returns a comma-joined list so exports include all courses.
+
+### 7. `src/crm/pages/CrmStudentFees.tsx` (Bug 6 — combined fees breakdown)
+- Compute headline totals from enrolments, not `crm_students.total_fee`:
+  - `totalBilled = sum(enrolments.net_payable_fee ?? total_fee)`
+  - `totalPaid = sum(non-void payments) + sum(enrolments.registration_fee_paid)`
+  - `due = totalBilled − totalPaid`
+- Add a new "Per-course breakdown" card above the installment plan, only shown when `enrolments.length > 1`. Columns: Course | Fee | Paid | Balance, with a TOTAL row. Paid per-course = sum of non-void payments where `enrolment_id` matches.
+- Keep the existing course filter and installment/payment tables unchanged.
+
+### 8. Data migration (one-shot UPDATEs)
+Convert any historical mis-typed text values that were saved before the enum cast started rejecting them. Because Postgres rejected unknown enum values these columns are mostly NULL, but normalize `crm_students.qualification` legacy text values:
+```sql
+UPDATE public.crm_students SET qualification = 'class_10'        WHERE qualification IN ('10th','below_10th');
+UPDATE public.crm_students SET qualification = 'class_12'        WHERE qualification = '12th';
+UPDATE public.crm_students SET qualification = 'graduation'      WHERE qualification = 'graduate';
+UPDATE public.crm_students SET qualification = 'post_graduation' WHERE qualification = 'post_graduate';
 ```
+(`crm_students.qualification` is a free-text column today, so no enum cast issue — only label normalisation.)
 
-- Unique enrolment_no per row (the existing trigger moves here).
-- The existing fee/attendance/certificate tables get an optional `enrolment_id` column added; old rows keep working via student_id + course_id fallback.
+### 9. Silent audit pass
+- Grep every `<Select>` in `src/crm` and verify `value={form.x}` matches an enum allowed value. Flag any other mismatches found during the pass; fix in same commit.
+- Add a tiny shared helper `src/crm/lib/sendForm.ts` exporting `sendEnquiryFormViaWhatsApp(phone, name?)` so both `CrmEnquiries.tsx` and `CrmEnquiryForm.tsx` use one implementation (validates phone, opens wa.me, logs via `logWaSend`).
 
-### 2. Migrate existing data (one-off, in the migration)
-For every current `crm_students` row with a `course_id`, create a matching `crm_student_enrolments` row carrying over: course, batch, enrolment_no, enrolment_date, total_fee, discount, registration_fee_paid, source_enquiry_id, status. Backfill `enrolment_id` on existing fee_plans / payments / attendance / certificates by matching student_id + course_id. Nothing visible breaks.
+---
 
-### 3. `crm_students` becomes the **person record**
-Keep: name, phone, alt_phone, email, dob, gender, address, photo, ID proof, father/mother, emergency contact, qualification, college, hear_about_us, referred_by — all the personal fields.
-Deprecate (but keep readable for back-compat): course_id, batch_id, enrolment_no, total_fee, discount_amount, enrolment_date on the student row. New code reads from enrolments; the columns stay so old reports don't break.
+## Files touched
 
-### 4. Student form (`CrmStudentForm.tsx`) — two modes
-- **New student**: same form as today, but on save it creates 1 student row + 1 enrolment row.
-- **Phone already exists** (caught by the `DuplicateAlert` we just built): banner gets a new button **"Add another course for this person"** → opens a slim "Add enrolment" sheet pre-filled with the existing student. Only course, batch, fees, discount, registration paid are asked. Personal fields are not re-entered.
+- `src/crm/pages/CrmEnquiryForm.tsx`
+- `src/crm/pages/CrmStudentForm.tsx`
+- `src/crm/pages/CrmEnquiries.tsx`
+- `src/crm/pages/CrmStudents.tsx`
+- `src/crm/pages/CrmStudentFees.tsx`
+- `src/pages/Enquire.tsx`
+- `src/components/CoursesSection.tsx`
+- `src/crm/lib/sendForm.ts` (new)
+- one data migration for legacy `qualification` text
 
-### 5. Student detail page — new "Enrolments" tab
-Every student profile gets a tab listing all their courses, each with: course name, batch, enrolment no, dates, fee status, attendance %, certificate. Click an enrolment → drills into fees/attendance for **that** course only. "Add another course" button at the top.
+## Out of scope
+- No visual redesign, no color/layout/typography changes.
+- No new tables; existing `crm_student_enrolments`, `crm_fee_plans`, `crm_payments`, `crm_whatsapp_logs` are sufficient.
 
-### 6. Where else this shows up
-- **Students list** (`CrmStudents.tsx`): one row per **enrolment** by default (so a person who took 2 courses appears twice, once per course — which is correct for batch/course filters). Add a "Group by person" toggle that collapses to one row per phone with course count badge.
-- **Fees page**: pick the enrolment (not just the student) when adding a fee plan. If student has only one active enrolment, auto-select it.
-- **Attendance**: already batch-driven, so no change needed — batch still maps to one enrolment.
-- **Certificates**: issued against an enrolment (so a student can have a Tally cert and an Excel cert separately).
-- **Reports / column picker**: existing column keys keep working; add new keys `enrolment_no`, `enrolment_status`, `enrolment_date_per_course`.
-- **Auto-link enquiry → student** (built last step): now creates an **enrolment** when the enquiry's course matches a new course; if the person already exists with that exact course already enrolled and active, it just attaches the enquiry as a note instead of duplicating.
-
-### 7. Re-enrolment flow (the main scenario)
-1. Staff types phone `9815122441`.
-2. `DuplicateAlert` shows: *"Mary Sharma — Student — already enrolled in Tally (active)."*
-3. Two buttons: **[Open Mary's profile]** **[Add another course for Mary]**.
-4. Clicking the second button opens a 6-field sheet (course, batch, total fee, discount, registration paid, notes) — all personal fields pre-filled & locked.
-5. On save: a new `crm_student_enrolments` row is created, a fresh enrolment_no is issued, fees/attendance/certificate now hang off this new enrolment. Mary stays one person.
-
-## Technical bits
-
-**Migration file** creates the table + indexes + RLS (mirror of `crm_students` policies — staff insert/update/select, admin delete) + the enrolment_no trigger moved over + the data backfill + the optional `enrolment_id` columns on the four child tables.
-
-**New / edited files**
-- `src/crm/pages/CrmStudentForm.tsx` — split into person form + enrolment form; "Add another course" mode.
-- `src/crm/pages/CrmStudents.tsx` — query joins enrolments; add "Group by person" toggle.
-- `src/crm/pages/CrmStudentDetail.tsx` *(new — currently we don't have a dedicated detail page, profile lives inside the form; we'll add a proper detail page with tabs: Profile · Enrolments · Fees · Attendance · Documents)*.
-- `src/crm/components/DuplicateAlert.tsx` — add the "Add another course for this person" CTA.
-- `src/crm/pages/CrmFees.tsx` & `CrmStudentFees.tsx` — let user pick the enrolment.
-- `src/crm/pages/CrmCertificates.tsx` — issue against enrolment.
-- `src/crm/lib/enrolments.ts` *(new)* — helpers `getActiveEnrolments(studentId)`, `addEnrolment(studentId, payload)`, `getEnrolmentSummary()`.
-
-## What stays the same
-- Phone is still the person's identity.
-- All existing data keeps working — the migration backfills enrolments so no UI breaks on day one.
-- The column-picker / WhatsApp / export systems we just built carry over; they get one new column "Enrolment #".
-
-## What I'll build first vs later
-Phase 1 (this round): table + migration + backfill + "Add another course for this person" button on the duplicate alert + student form split + Enrolments tab on the student detail.
-Phase 2 (follow-up): wiring fees, certificates, attendance to enrolment_id; "Group by person" toggle on the students list.
+## Manual verification checklist
+1. Save an enquiry with Budget = "₹10k–20k" and Qualification = "Graduation"; reopen — values stay.
+2. Submit `/enquire` form with same fields — row in `crm_enquiries` has the enum values.
+3. Submit Course-section enquiry — appears in `/crm/enquiries` within seconds; toast on any RLS error.
+4. Click "Share Form on WhatsApp" — `crm_whatsapp_logs` gets a row with `template_key='enquiry_form_share'`.
+5. Add a 2nd course to a student via "Add another course" — Students list row shows both course chips; Fees page shows breakdown card with two rows + TOTAL matching headline.

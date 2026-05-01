@@ -71,7 +71,16 @@ const empty = {
   address_proof_url: "",
 };
 
-const QUALIFICATIONS = ["below_10th","10th","12th","diploma","graduate","post_graduate","other"];
+// Values must match Postgres enum crm_qualification exactly
+const QUALIFICATIONS = ["class_10","class_12","graduation","post_graduation","diploma","other"];
+const QUAL_LABELS: Record<string, string> = {
+  class_10: "Class 10",
+  class_12: "Class 12",
+  graduation: "Graduation",
+  post_graduation: "Post-graduation",
+  diploma: "Diploma",
+  other: "Other",
+};
 const CURRENT_STATUSES = ["student","working_professional","job_seeker","business_owner","homemaker","other"];
 
 export default function CrmStudentForm() {
@@ -490,7 +499,7 @@ export default function CrmStudentForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unset">—</SelectItem>
-                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{q.replace(/_/g, " ")}</SelectItem>)}
+                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{QUAL_LABELS[q] ?? q}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

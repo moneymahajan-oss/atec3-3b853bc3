@@ -15,6 +15,7 @@ import {
 import { PageHeader } from "../components/PageHeader";
 import { ColumnPickerPopover } from "../components/ColumnPickerPopover";
 import { useReportColumns } from "../hooks/useReportColumns";
+import { sendEnquiryFormViaWhatsApp } from "../lib/sendForm";
 import { toast } from "sonner";
 
 type Enquiry = {
@@ -122,12 +123,18 @@ export default function CrmEnquiries() {
     );
   };
 
-  const shareFormViaWhatsApp = (existingPhone?: string, greetName?: string) => {
+  const shareFormViaWhatsApp = async (existingPhone?: string, greetName?: string, enquiryId?: string) => {
     const raw = (existingPhone || "").replace(/\D/g, "");
     const phone = raw || window.prompt("Enter WhatsApp number (with country code, digits only):", "91")?.replace(/\D/g, "") || "";
-    if (!phone) { toast.error("Phone number required"); return; }
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(buildFormMessage(greetName))}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (!phone || phone.length < 10) { toast.error("Valid phone number required (10+ digits)"); return; }
+    const ok = await sendEnquiryFormViaWhatsApp({
+      phone,
+      name: greetName,
+      formUrl,
+      instituteName,
+      entityId: enquiryId,
+    });
+    if (ok) toast.success("Form link sent — logged to WhatsApp history");
   };
 
   const copyFormUrl = async () => {
@@ -401,7 +408,7 @@ export default function CrmEnquiries() {
                       size="icon"
                       variant="ghost"
                       title="Send public enquiry form link on WhatsApp"
-                      onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
+                      onClick={() => shareFormViaWhatsApp(e.phone, e.name, e.id)}
                     >
                       <Send className="w-4 h-4 text-emerald-600" />
                     </Button>

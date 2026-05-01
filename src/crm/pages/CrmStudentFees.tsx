@@ -86,9 +86,37 @@ export default function CrmStudentFees() {
 
   const regPaid = (student as unknown as { registration_fee_paid?: number } | null)?.registration_fee_paid ?? 0;
   const paymentsPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
-  const totalPaid = paymentsPaid + regPaid;
-  const totalBilled = student?.total_fee ?? 0;
+
+  // When multi-course, billed total = sum of enrolment net payable; otherwise fall back to student.total_fee
+  const enrolmentsBilled = enrolments.reduce(
+    (a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0),
+    0,
+  );
+  const enrolmentsRegPaid = enrolments.reduce((a, e) => a + (e.registration_fee_paid ?? 0), 0);
+
+  const totalBilled = enrolments.length > 0 ? enrolmentsBilled : (student?.total_fee ?? 0);
+  const totalPaid = enrolments.length > 0
+    ? paymentsPaid + enrolmentsRegPaid
+    : paymentsPaid + regPaid;
   const due = totalBilled - totalPaid;
+
+  // Per-course breakdown rows
+  const courseBreakdown = useMemo(() => {
+    return enrolments.map((e) => {
+      const fee = e.net_payable_fee ?? e.total_fee ?? 0;
+      const paidForCourse = payments
+        .filter((p) => !p.is_void && p.enrolment_id === e.id)
+        .reduce((a, p) => a + (p.amount || 0), 0)
+        + (e.registration_fee_paid ?? 0);
+      return {
+        id: e.id,
+        course: e.course_name_snapshot || "—",
+        fee,
+        paid: paidForCourse,
+        balance: Math.max(0, fee - paidForCourse),
+      };
+    });
+  }, [enrolments, payments]);
 
   // Auto-select sole active enrolment for new plans/payments
   const activeEnrolments = useMemo(() => enrolments.filter((e) => e.status === "active"), [enrolments]);
@@ -246,6 +274,42 @@ export default function CrmStudentFees() {
             </SelectContent>
           </Select>
         </div>
+      )}
+
+      {enrolments.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Per-course breakdown</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Course</TableHead>
+                  <TableHead className="text-right">Fee</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {courseBreakdown.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="text-sm">{row.course}</TableCell>
+                    <TableCell className="text-right font-mono">₹{row.fee.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{row.paid.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className={`text-right font-mono ${row.balance > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{row.balance.toLocaleString("en-IN")}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold bg-muted/40">
+                  <TableCell>TOTAL</TableCell>
+                  <TableCell className="text-right font-mono">₹{totalBilled.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{totalPaid.toLocaleString("en-IN")}</TableCell>
+                  <TableCell className={`text-right font-mono ${due > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{Math.max(0, due).toLocaleString("en-IN")}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

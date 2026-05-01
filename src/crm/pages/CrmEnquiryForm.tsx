@@ -17,6 +17,7 @@ import { logAudit } from "../lib/audit";
 import { SendWhatsAppCard } from "../components/SendWhatsAppCard";
 import { EnquiryTimeline } from "../components/EnquiryTimeline";
 import { DuplicateAlert } from "../components/DuplicateAlert";
+import { sendEnquiryFormViaWhatsApp } from "../lib/sendForm";
 import { toast } from "sonner";
 
 type Course = { id: string; name: string };
@@ -54,10 +55,26 @@ const empty = {
 };
 
 const SOURCES = ["walk_in","phone","whatsapp","website","instagram","facebook","referral","google","youtube","crm_walk_in","other"];
-const QUALIFICATIONS = ["below_10th","10th","12th","diploma","graduate","post_graduate","other"];
+// Values must match Postgres enums exactly (crm_qualification, crm_budget_range)
+const QUALIFICATIONS = ["class_10","class_12","graduation","post_graduation","diploma","other"];
+const QUAL_LABELS: Record<string, string> = {
+  class_10: "Class 10",
+  class_12: "Class 12",
+  graduation: "Graduation",
+  post_graduation: "Post-graduation",
+  diploma: "Diploma",
+  other: "Other",
+};
 const CURRENT_STATUSES = ["student","working_professional","job_seeker","business_owner","homemaker","other"];
 const TIMINGS = ["morning","afternoon","evening","weekend","flexible"];
-const BUDGETS = ["under_10k","10k_25k","25k_50k","50k_plus","flexible"];
+const BUDGETS = ["under_5k","5k_10k","10k_20k","20k_plus","flexible"];
+const BUDGET_LABELS: Record<string, string> = {
+  under_5k: "Below ₹5,000",
+  "5k_10k": "₹5,000 – ₹10,000",
+  "10k_20k": "₹10,000 – ₹20,000",
+  "20k_plus": "Above ₹20,000",
+  flexible: "Flexible",
+};
 
 export default function CrmEnquiryForm() {
   const { id } = useParams();
@@ -272,20 +289,18 @@ export default function CrmEnquiryForm() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
+              onClick={async () => {
                 const rawPhone = (form.phone || "").replace(/\D/g, "");
                 const phone = rawPhone || window.prompt("Enter the person's WhatsApp number (with country code, digits only):", "91")?.replace(/\D/g, "") || "";
-                if (!phone) { toast.error("Phone number required"); return; }
-                const formUrl = `${window.location.origin}/enquire`;
-                const instName = institute?.name || "ATEC Education";
-                const greetName = form.name?.trim() || "there";
-                const msg =
-                  `Hi ${greetName}, this is ${instName}.\n\n` +
-                  `Please fill out our quick enquiry form so we can share course details, fees, and batch timings with you:\n` +
-                  `${formUrl}\n\n` +
-                  `It only takes a minute. Thank you!`;
-                const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-                window.open(url, "_blank", "noopener,noreferrer");
+                if (!phone || phone.length < 10) { toast.error("Valid phone number required (10+ digits)"); return; }
+                const ok = await sendEnquiryFormViaWhatsApp({
+                  phone,
+                  name: form.name?.trim() || undefined,
+                  formUrl: `${window.location.origin}/enquire`,
+                  instituteName: institute?.name || "ATEC Education",
+                  entityId: isNew ? undefined : id,
+                });
+                if (ok) toast.success("Form link sent — logged to WhatsApp history");
               }}
               title="Send the public enquiry form link to this person on WhatsApp"
             >
@@ -348,7 +363,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unset">—</SelectItem>
-                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{q.replace(/_/g, " ")}</SelectItem>)}
+                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{QUAL_LABELS[q] ?? q}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -436,7 +451,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unset">—</SelectItem>
-                      {BUDGETS.map((b) => <SelectItem key={b} value={b}>{b.replace(/_/g, " ")}</SelectItem>)}
+                      {BUDGETS.map((b) => <SelectItem key={b} value={b}>{BUDGET_LABELS[b] ?? b}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

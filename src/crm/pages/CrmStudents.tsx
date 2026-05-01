@@ -59,6 +59,7 @@ export default function CrmStudents() {
   const [items, setItems] = useState<Student[]>([]);
   const [batches, setBatches] = useState<BatchInfo[]>([]);
   const [paidMap, setPaidMap] = useState<Record<string, number>>({});
+  const [enrolMap, setEnrolMap] = useState<Record<string, { course_name_snapshot: string | null; net_payable_fee: number | null; total_fee: number; status: string }[]>>({});
   const [loading, setLoading] = useState(true);
 
   const [q, setQ] = useState("");
@@ -75,13 +76,14 @@ export default function CrmStudents() {
 
   useEffect(() => {
     (async () => {
-      const [{ data, error }, { data: bs }, { data: pays }] = await Promise.all([
+      const [{ data, error }, { data: bs }, { data: pays }, { data: enr }] = await Promise.all([
         supabase
           .from("crm_students")
           .select("id,enrolment_no,full_name,phone,alt_phone,email,course_id,course_name_snapshot,enrolment_date,status,total_fee,net_payable_fee,photo_url,batch_id,city,state,qualification,college_name,referred_by,hear_about_us,father_name,father_phone,created_at")
           .order("created_at", { ascending: false }),
         supabase.from("crm_batches").select("id,name,faculty_name,status"),
         supabase.from("crm_payments").select("student_id,amount,is_void"),
+        supabase.from("crm_student_enrolments" as never).select("student_id,course_name_snapshot,net_payable_fee,total_fee,status"),
       ]);
       if (error) toast.error(error.message);
       setItems((data ?? []) as Student[]);
@@ -92,6 +94,11 @@ export default function CrmStudents() {
         pm[p.student_id] = (pm[p.student_id] || 0) + (p.amount || 0);
       });
       setPaidMap(pm);
+      const em: Record<string, { course_name_snapshot: string | null; net_payable_fee: number | null; total_fee: number; status: string }[]> = {};
+      ((enr ?? []) as unknown as { student_id: string; course_name_snapshot: string | null; net_payable_fee: number | null; total_fee: number; status: string }[]).forEach((e) => {
+        (em[e.student_id] = em[e.student_id] || []).push(e);
+      });
+      setEnrolMap(em);
       setLoading(false);
     })();
   }, []);
@@ -179,7 +186,13 @@ export default function CrmStudents() {
       case "phone": return s.phone;
       case "alt_phone": return s.alt_phone ?? "";
       case "email": return s.email ?? "";
-      case "course": return s.course_name_snapshot ?? "";
+      case "course": {
+        const enrols = enrolMap[s.id] ?? [];
+        if (enrols.length > 1) {
+          return enrols.map((e) => e.course_name_snapshot || "").filter(Boolean).join(", ");
+        }
+        return s.course_name_snapshot ?? "";
+      }
       case "batch": return b?.name ?? "";
       case "faculty": return b?.faculty_name ?? "";
       case "enrolment_date": return s.enrolment_date;
@@ -231,6 +244,19 @@ export default function CrmStudents() {
       case "balance": {
         const bal = Math.max(0, net - paid);
         return <span className={`font-mono text-sm ${bal > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{bal.toLocaleString("en-IN")}</span>;
+      }
+      case "course": {
+        const enrols = enrolMap[s.id] ?? [];
+        if (enrols.length > 1) {
+          return (
+            <div className="flex flex-wrap gap-1">
+              {enrols.map((e, i) => (
+                <Badge key={i} variant="secondary" className="text-[10px]">{e.course_name_snapshot || "—"}</Badge>
+              ))}
+            </div>
+          );
+        }
+        return <span className="text-sm">{s.course_name_snapshot ?? "—"}</span>;
       }
       default: {
         const v = valueOf(key, s);
