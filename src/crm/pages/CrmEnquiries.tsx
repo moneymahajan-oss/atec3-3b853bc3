@@ -408,7 +408,7 @@ export default function CrmEnquiries() {
                       size="icon"
                       variant="ghost"
                       title="Send public enquiry form link on WhatsApp"
-                      onClick={() => shareFormViaWhatsApp(e.phone, e.name)}
+                      onClick={() => shareFormViaWhatsApp(e.phone, e.name, e.id)}
                     >
                       <Send className="w-4 h-4 text-emerald-600" />
                     </Button>
