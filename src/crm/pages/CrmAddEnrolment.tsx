@@ -172,11 +172,10 @@ export default function CrmAddEnrolment() {
 
     toast.success(`Enrolled in ${courseRow?.name}. Enrolment #${data?.enrolment_no}`);
     // If we came from an enquiry, mark it converted and link the student
-    const fromEnq = new URLSearchParams(window.location.search).get("from_enquiry");
-    if (fromEnq) {
+    if (fromEnquiry) {
       await supabase.from("crm_enquiries")
         .update({ status: "converted", converted_student_id: studentId })
-        .eq("id", fromEnq);
+        .eq("id", fromEnquiry);
     }
     navigate(`/crm/students/${studentId}`);
   };
