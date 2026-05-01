@@ -7,6 +7,7 @@ import CoursesSection from "@/components/CoursesSection";
 import AboutSection from "@/components/AboutSection";
 import GallerySection from "@/components/GallerySection";
 import TestimonialsSection from "@/components/TestimonialsSection";
+import FacultySection from "@/components/FacultySection";
 import AIUseCasesSection from "@/components/AIUseCasesSection";
 import MockTestSection from "@/components/MockTestSection";
 import VideosSection from "@/components/VideosSection";
