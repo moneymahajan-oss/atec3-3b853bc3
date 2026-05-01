@@ -76,7 +76,7 @@ const overlapsRange = (b: Batch, from: string, to: string) => {
 
 export default function CrmFaculties() {
   const navigate = useNavigate();
-  const { isAdmin, user } = useCrmAuth();
+  const { isAdmin } = useCrmAuth();
   const [params, setParams] = useSearchParams();
 
   const [faculties, setFaculties] = useState<Faculty[]>([]);
