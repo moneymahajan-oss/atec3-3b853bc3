@@ -38,8 +38,11 @@ import CrmCampaigns from "./crm/pages/CrmCampaigns.tsx";
 import CrmReminders from "./crm/pages/CrmReminders.tsx";
 import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
+import CrmFaculties from "./crm/pages/CrmFaculties.tsx";
 import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
+import FacultyList from "./pages/FacultyList.tsx";
+import FacultyDetail from "./pages/FacultyDetail.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient();
@@ -63,6 +66,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/enquire" element={<Enquire />} />
                 <Route path="/c/:slug" element={<CoursePublic />} />
+                <Route path="/faculty" element={<FacultyList />} />
+                <Route path="/faculty/:slug" element={<FacultyDetail />} />
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/site-content" element={<AdminSiteContent />} />
@@ -86,6 +91,7 @@ const App = () => (
                   <Route path="fees/:studentId" element={<CrmStudentFees />} />
                   <Route path="batches" element={<CrmBatches />} />
                   <Route path="batches/:id/report" element={<CrmBatchReport />} />
+                  <Route path="faculties" element={<CrmFaculties />} />
                   <Route path="attendance" element={<CrmAttendance />} />
                   <Route path="certificates" element={<CrmCertificates />} />
                   <Route path="expenses" element={<CrmExpenses />} />

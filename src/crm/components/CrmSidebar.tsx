@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
   Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing, Ban,
-  AlertTriangle,
+  AlertTriangle, UserCog,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -26,6 +26,7 @@ type NavItem = {
 const ops: NavItem[] = [
   { title: "Fees", url: "/crm/fees", icon: Wallet },
   { title: "Batches", url: "/crm/batches", icon: CalendarDays },
+  { title: "Faculties", url: "/crm/faculties", icon: UserCog },
   { title: "Attendance", url: "/crm/attendance", icon: ClipboardCheck },
   { title: "Certificates", url: "/crm/certificates", icon: Award },
   { title: "Expenses", url: "/crm/expenses", icon: Receipt, adminOnly: true },

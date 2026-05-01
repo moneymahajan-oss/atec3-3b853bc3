@@ -371,9 +371,12 @@ export default function CrmReports() {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Students handled by faculty ({facultyStats.length})</CardTitle>
-          <p className="text-xs text-muted-foreground">Lifetime and currently active student counts grouped by the faculty assigned to each batch</p>
+        <CardHeader className="flex flex-row items-start justify-between gap-2">
+          <div>
+            <CardTitle>Students handled by faculty ({facultyStats.length})</CardTitle>
+            <p className="text-xs text-muted-foreground">Lifetime and currently active student counts grouped by the faculty assigned to each batch</p>
+          </div>
+          <a href="/crm/faculties" className="text-xs text-primary hover:underline whitespace-nowrap">Open Faculties page →</a>
         </CardHeader>
         <CardContent>
           {facultyStats.length === 0 ? (
