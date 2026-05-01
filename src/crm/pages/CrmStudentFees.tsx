@@ -331,7 +331,8 @@ export default function CrmStudentFees() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                ));
+              })()}
             </TableBody>
           </Table>
         </CardContent>
