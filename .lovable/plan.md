@@ -1,137 +1,79 @@
-## Goal
+# Mobile-Number-as-Identity: Duplicate Prevention & Cleanup
 
-Bring the **same column-picker + admin-managed columns** experience from Enquiries to **Students** (primary ask), and extend the same pattern to other relevant list pages so all sections feel consistent. Also add the missing **Batch + Faculty filters** and a **WhatsApp message button** on every row in the Students list, matching what is shown in the screenshot.
+## Why
+Today, names are free-text so "Manav Mahajan" and "VIJOHN" on the same number `9815122441` create two separate enquiries. There's no dedupe check on enquiry/student creation, and no way to merge. We'll make the **10-digit mobile number** the canonical identity, while keeping the name editable.
 
-## Where the pattern is reused
+## Approach (3 layers)
 
-Apply the same Enquiries-style "Columns" popover + persistent admin config to:
+### Layer 1 — Normalisation (database)
+Both `crm_enquiries.phone` and `crm_students.phone` are already stored as 10-digit strings, but not enforced. Add:
+- A normalisation trigger on insert/update for both tables that strips non-digits and keeps the **last 10 digits** (also for `whatsapp`, `alt_phone`).
+- A non-unique **index** on `phone` for both tables (fast lookups).
+- A new helper view `crm_contact_index` that unions enquiries + students by phone, so we can answer "what do we know about this number?" in one query.
 
-1. **Students** (`/crm/students`) — primary ask in this message
-2. **Batches** (`/crm/batches`)
-3. **Fees** (`/crm/fees`)
-4. **Attendance** (`/crm/attendance`) — column-picker for the roster table
-5. **Certificates** (`/crm/certificates`)
+We will **not** add a UNIQUE constraint — the same number can legitimately have multiple enquiries (re-enquiry months later, different course interests). Instead we surface duplicates to the user.
 
-(Faculties, Reports, Dashboard stay as-is — they are aggregate dashboards, not row tables.)
+### Layer 2 — Live duplicate detection (UI, on entry)
+**A) Enquiry form** (`CrmEnquiryForm.tsx`) and **Student form** (`CrmStudentForm.tsx`)
+- When the user types a phone number (debounced, after 10 digits), query existing enquiries + students with that phone.
+- Show a yellow alert banner above the form:
+  > ⚠️ This number already exists:
+  > • **Manav Mahajan** — Enquiry (new) — Diploma in Computer App. — created 12 Apr
+  > • **Manav Mahajan** — Student (active) — Enrolment ATEC-2026-0007
+  >
+  > [Open existing] [Continue anyway — this is a different person] [Use this name & merge]
 
-## 1. Students page — full redesign of filters + table
+- "Open existing" navigates to that record.
+- "Continue anyway" lets them save (genuine new person on shared number — e.g. parent's phone).
+- "Use this name & merge" updates the existing record's name to the new one and cancels the new insert.
 
-### New filters (above the table)
+**B) Public enquiry form** (`Enquire.tsx`) and contact form (`ContactSection.tsx`)
+- Silently dedupe: if a `crm_enquiries` row with the same phone exists in the last 30 days **and** same course, **update** it (refresh `updated_at`, append note "Re-submitted on website on …") instead of inserting. Otherwise insert a new enquiry as today. This stops accidental double-submits.
 
-- Search (existing)
-- **Batch** dropdown (new) — all batches, grouped: Running first, then Planned, then Completed
-- **Faculty** dropdown (new) — distinct `faculty_name` from `crm_batches` (joined via student.batch_id)
-- **Course** dropdown (new) — distinct active courses
-- Status (existing, incl. 🟢 Live)
-- Joined-date preset + custom range (existing)
-- Reset (existing)
-- **Columns** popover (new) — same UI as Enquiries
-- **Export** button (new) — XLSX of currently-filtered rows using export-flagged columns
+**C) Name fuzzy match warning**
+- When a name is typed that closely matches an existing enquiry/student name (Levenshtein ≤ 2 OR same soundex) but on a *different* phone, warn:
+  > Similar name exists: "Manav Mahajan" (9815122441) — same person?
 
-### Per-row WhatsApp button
+### Layer 3 — Duplicates Manager (CRM page)
+New page **`/crm/duplicates`** added to the sidebar under Operations.
 
-Already present via `StudentWhatsAppButton`. We will:
-- Keep it as the right-most action.
-- Also add a **direct "Send" icon** that opens `wa.me/<phone>` with a default greeting (mirrors the green ✈ icon shown for enquiries in the screenshot).
-- Add a **bulk "Send WhatsApp"** action when multiple students are selected (using existing `SendAllModal`).
+- **Tab 1: By Phone** — lists every phone that appears in 2+ rows across `crm_enquiries` + `crm_students`. Shows all linked records side-by-side with: name, type (enquiry/student), course, status, created date.
+- **Tab 2: By Name** — fuzzy-grouped names (Levenshtein on `lower(trim(name))`) where phones differ — for human review.
+- Per group, three actions:
+  1. **Merge into one** — pick the canonical record; others' notes/timeline are appended to it; the duplicates are soft-deleted (status `voided`, kept for audit).
+  2. **Mark as distinct** — writes to a new `crm_duplicate_exceptions` table so this pair is never flagged again (e.g. confirmed two siblings on the same number).
+  3. **Update name** — quick rename without merging.
 
-### Selectable column set (stored in DB)
+- Export: "Duplicates report" XLSX.
 
-Default columns shown out of the box: Photo, Enrolment №, Name, Phone, Course, Batch, Faculty, Joined, Status, Fee.
+### Auto-link enquiry → student
+When a student is created and there's an existing enquiry with the same phone, auto-set `source_enquiry_id` to that enquiry and set the enquiry's `status='converted'`, `converted_student_id`. (Today this only happens if the staff manually picks the enquiry.)
 
-Full pickable set (toggleable in popover, persisted to DB so it applies team-wide — same model as enquiries):
+## Technical details
 
-| key | label | default in list | default in export |
-|---|---|---|---|
-| photo | Photo | yes | no |
-| enrolment_no | Enrolment № | yes | yes |
-| full_name | Name | yes | yes |
-| phone | Phone | yes | yes |
-| alt_phone | Alt Phone | no | yes |
-| email | Email | no | yes |
-| course | Course | yes | yes |
-| batch | Batch | yes | yes |
-| faculty | Faculty | yes | yes |
-| enrolment_date | Joined | yes | yes |
-| status | Status | yes | yes |
-| total_fee | Total Fee | yes | yes |
-| net_payable_fee | Net Payable | no | yes |
-| paid_amount | Paid | no | yes |
-| balance | Balance | no | yes |
-| city | City | no | yes |
-| state | State | no | yes |
-| qualification | Qualification | no | yes |
-| college_name | College | no | yes |
-| referred_by | Referred By | no | yes |
-| hear_about_us | How Did You Hear | no | yes |
-| father_name | Father Name | no | yes |
-| father_phone | Father Phone | no | yes |
-| created_at | Created At | no | yes |
+**New migration:**
+- Trigger `crm_normalise_phone()` on `crm_enquiries` and `crm_students` (BEFORE INSERT/UPDATE) — strips non-digits, takes last 10 chars.
+- Indexes `idx_crm_enquiries_phone`, `idx_crm_students_phone`.
+- New table `crm_duplicate_exceptions(id, key_type text, key_value text, related_ids uuid[], created_by, created_at)` with RLS for CRM admins.
+- Helper SQL function `crm_find_contact_by_phone(_phone text)` returning enquiries + students arrays — used by the live dedupe banner.
 
-## 2. Batches page columns
+**New files:**
+- `src/crm/pages/CrmDuplicates.tsx` — the manager UI (tabs, merge dialog, export).
+- `src/crm/lib/dedupe.ts` — `normalisePhone()`, `findByPhone()`, `mergeRecords()`, `levenshtein()`.
+- `src/crm/components/DuplicateAlert.tsx` — reusable banner shown on the two forms.
 
-Pickable: Name, Course, Faculty, Schedule, Timing, Start Date, End Date, Capacity, Enrolled, Seats Left, Status, Created.
+**Edits:**
+- `src/crm/pages/CrmEnquiryForm.tsx` — debounced phone lookup, render `DuplicateAlert`.
+- `src/crm/pages/CrmStudentForm.tsx` — same; plus auto-link enquiry on save.
+- `src/pages/Enquire.tsx` & `src/components/ContactSection.tsx` — 30-day same-course de-dupe upsert.
+- `src/crm/components/CrmSidebar.tsx` — add "Duplicates" link.
+- `src/App.tsx` — register `/crm/duplicates` route.
 
-## 3. Fees page columns
+**Cleanup of existing data**
+- Migration runs the normaliser once over existing rows (idempotent).
+- The Duplicates page lets staff resolve the one current pair (`Manav Mahajan` vs `VIJOHN` on `9815122441`) interactively — no destructive auto-merge.
 
-Pickable: Receipt №, Date, Student, Enrolment №, Course, Batch, Mode, Amount, Discount, Net, Status, Collected By.
-
-## 4. Attendance roster columns
-
-Pickable per-day grid: Photo, Enrolment №, Name, Phone, Present/Absent toggle, Notes, % attendance to date.
-
-## 5. Certificates columns
-
-Pickable: Certificate №, Student, Enrolment №, Course, Batch, Issue Date, Grade, Issued By, Status.
-
-## Technical design
-
-### Database (one shared pattern)
-
-Create one config table per section, mirroring `crm_enquiry_report_columns`:
-
-- `crm_student_report_columns`
-- `crm_batch_report_columns`
-- `crm_fee_report_columns`
-- `crm_attendance_report_columns`
-- `crm_certificate_report_columns`
-
-All share the same columns: `id, column_key (unique), label, show_in_list, show_in_export, sort_order, created_at, updated_at`, the same `update_updated_at_column` trigger, and the same RLS policies (admins write, any CRM role reads).
-
-Each table is seeded in the migration with the column rows listed above (sort_order in tens, e.g. 10, 20, 30 so reordering is easy later).
-
-### Shared UI helper
-
-Create `src/crm/components/ColumnPickerPopover.tsx` — the popover already inlined in `CrmEnquiries.tsx`. Refactor `CrmEnquiries.tsx` to use it, then reuse in Students/Batches/Fees/Attendance/Certificates. Props: `cols`, `onToggle(col, next)`.
-
-Create a `useReportColumns(table, defaultCols)` hook that loads + caches columns and exposes `{ cols, visibleCols, exportCols, toggleVisible }`.
-
-### Students page changes (`src/crm/pages/CrmStudents.tsx`)
-
-- Fetch `crm_batches` (id, name, faculty_name, status) once and build a `Map<batchId, {name, faculty_name}>`.
-- Pull payment totals via a join/aggregate from `crm_payments` (sum where not void) keyed by `student_id` to compute Paid/Balance only when those columns are visible.
-- Add Course/Batch/Faculty filter state; apply in `filtered`.
-- Replace hard-coded `<TableHead>`/`<TableCell>` with a `renderCell(key, student)` switch like `CrmEnquiries.renderCell`.
-- Add Columns popover, Export button, bulk WhatsApp.
-- Keep existing KPIs and 🟢 Live filter.
-
-### Files to create
-
-- `supabase/migrations/<ts>_section_report_columns.sql` — 5 tables + seeds + RLS + trigger.
-- `src/crm/components/ColumnPickerPopover.tsx`
-- `src/crm/hooks/useReportColumns.ts`
-
-### Files to edit
-
-- `src/crm/pages/CrmStudents.tsx` (major rewrite — filters, picker, dynamic columns, export, bulk WA)
-- `src/crm/pages/CrmEnquiries.tsx` (swap inline popover for shared component — no behavior change)
-- `src/crm/pages/CrmBatches.tsx` (add picker + dynamic table + faculty filter)
-- `src/crm/pages/CrmFees.tsx` (add picker + dynamic table)
-- `src/crm/pages/CrmAttendance.tsx` (add picker for roster columns)
-- `src/crm/pages/CrmCertificates.tsx` (add picker + dynamic table)
-
-### Out of scope
-
-- No changes to the public website.
-- Column **reordering** via drag is not included (sort_order is admin-editable in DB only for now); we can add a UI in a follow-up.
-- Per-user column preferences are not included — the picker writes the team-wide default, identical to how Enquiries works today.
+## What stays the same
+- Name remains free-text and editable.
+- No UNIQUE constraint on phone — siblings/parents on a shared number still allowed via "Continue anyway" + duplicate-exception entry.
+- All existing reports, exports, WhatsApp templates and column-picker work unchanged.

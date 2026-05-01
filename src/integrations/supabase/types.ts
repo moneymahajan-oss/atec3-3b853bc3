@@ -685,6 +685,39 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_duplicate_exceptions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          key_type: string
+          key_value: string
+          note: string | null
+          related_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          key_type: string
+          key_value: string
+          note?: string | null
+          related_ids?: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          key_type?: string
+          key_value?: string
+          note?: string | null
+          related_ids?: string[]
+        }
+        Relationships: []
+      }
       crm_enquiries: {
         Row: {
           alt_phone: string | null
@@ -2162,7 +2195,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      crm_find_by_phone: {
+        Args: { _phone: string }
+        Returns: {
+          course_name: string
+          created_at: string
+          extra: string
+          id: string
+          kind: string
+          name: string
+          phone: string
+          status: string
+        }[]
+      }
       crm_flag_overdue_fee_plans: { Args: never; Returns: number }
+      crm_normalise_phone_value: { Args: { p: string }; Returns: string }
       has_any_crm_role: { Args: { _user_id: string }; Returns: boolean }
       has_crm_role: {
         Args: {
