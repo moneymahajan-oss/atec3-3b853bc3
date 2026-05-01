@@ -34,6 +34,46 @@ interface Settings {
 
 const TEXTAREA_FIELDS = new Set(["any_message"]);
 
+// Map any human label / legacy slug the public form might submit to the exact Postgres enum value.
+// Returns null when nothing matches so we send NULL instead of a value the DB will reject.
+const QUALIFICATION_MAP: Record<string, string> = {
+  class_10: "class_10", "10th": "class_10", below_10th: "class_10", "below 10th": "class_10",
+  class_12: "class_12", "12th": "class_12",
+  graduation: "graduation", graduate: "graduation",
+  post_graduation: "post_graduation", post_graduate: "post_graduation", "post-graduation": "post_graduation", postgraduate: "post_graduation",
+  diploma: "diploma",
+  other: "other",
+};
+const BUDGET_MAP: Record<string, string> = {
+  under_5k: "under_5k", below_5000: "under_5k", "below 5000": "under_5k", under_5000: "under_5k",
+  "5k_10k": "5k_10k", "5000_10000": "5k_10k", "5,000_10,000": "5k_10k",
+  "10k_20k": "10k_20k", "10000_20000": "10k_20k",
+  "20k_plus": "20k_plus", above_20k: "20k_plus", above_20000: "20k_plus",
+  flexible: "flexible",
+  // legacy values that used to be on the form
+  under_10k: "10k_20k", "10k_25k": "10k_20k", "25k_50k": "20k_plus", "50k_plus": "20k_plus",
+};
+const TIMING_MAP: Record<string, string> = {
+  morning: "morning", afternoon: "afternoon", evening: "evening", weekend: "weekend", flexible: "flexible",
+};
+const CURRENT_STATUS_MAP: Record<string, string> = {
+  student: "student",
+  working_professional: "working_professional", "working professional": "working_professional",
+  job_seeker: "job_seeker", "job seeker": "job_seeker",
+  business_owner: "business_owner", "business owner": "business_owner",
+  homemaker: "homemaker",
+  other: "other",
+};
+
+const normaliseKey = (v: string) =>
+  (v || "").toLowerCase().trim().replace(/[\s+-]+/g, "_");
+
+const mapEnum = (raw: string, table: Record<string, string>): string | null => {
+  if (!raw) return null;
+  const key = normaliseKey(raw);
+  return table[key] ?? table[raw.toLowerCase().trim()] ?? null;
+};
+
 export default function Enquire() {
   const [fields, setFields] = useState<FieldRow[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -105,12 +145,12 @@ export default function Enquire() {
       company_name: values.company_name || null,
       designation: values.designation || null,
       preferred_mode: values.preferred_mode || null,
-      preferred_timing: (values.preferred_timing || "").toLowerCase() || null,
-      budget_range: (values.budget_range || "").toLowerCase().replace(/[\s+-]+/g, "_") || null,
+      preferred_timing: mapEnum(values.preferred_timing || "", TIMING_MAP),
+      budget_range: mapEnum(values.budget_range || "", BUDGET_MAP),
       hear_about_us: values.how_heard || null,
       any_message: values.any_message || null,
-      qualification: (values.qualification || "").toLowerCase().replace(/\s+/g, "_") || null,
-      current_status: (values.current_status || "").toLowerCase().replace(/\s+/g, "_") || null,
+      qualification: mapEnum(values.qualification || "", QUALIFICATION_MAP),
+      current_status: mapEnum(values.current_status || "", CURRENT_STATUS_MAP),
       course_id: values.course_interested || null,
       course_name_snapshot: courseRow?.name || null,
       source: "student_self_fill",
