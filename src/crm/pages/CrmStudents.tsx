@@ -402,34 +402,33 @@ export default function CrmStudents() {
                       ) : renderCell(c.column_key, s)}
                     </TableCell>
                   ))}
-                  <TableCell key={c.column_key}>{renderCell(c.column_key, s)}</TableCell>
-                ))}
-                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="inline-flex gap-1 items-center">
-                    <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
-                      <a
-                        href={`https://wa.me/${s.phone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Send className="w-4 h-4 text-emerald-600" />
-                      </a>
-                    </Button>
-                    <StudentWhatsAppButton
-                      section="students"
-                      student={{
-                        id: s.id,
-                        full_name: s.full_name,
-                        phone: s.phone,
-                        enrolment_no: s.enrolment_no,
-                        course_name_snapshot: s.course_name_snapshot,
-                        total_fee: s.total_fee,
-                      }}
-                    />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex gap-1 items-center">
+                      <Button size="icon" variant="ghost" asChild title="Open WhatsApp chat">
+                        <a
+                          href={`https://wa.me/${s.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Send className="w-4 h-4 text-emerald-600" />
+                        </a>
+                      </Button>
+                      <StudentWhatsAppButton
+                        section="students"
+                        student={{
+                          id: s.id,
+                          full_name: s.full_name,
+                          phone: s.phone,
+                          enrolment_no: s.enrolment_no,
+                          course_name_snapshot: s.course_name_snapshot,
+                          total_fee: s.total_fee,
+                        }}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ));
+            })()}
           </TableBody>
         </Table>
       </div>
