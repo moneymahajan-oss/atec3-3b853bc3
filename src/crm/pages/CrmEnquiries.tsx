@@ -318,30 +318,7 @@ export default function CrmEnquiries() {
             <Button variant="outline" onClick={() => window.open("/enquire", "_blank", "noopener,noreferrer")}>
               <ExternalLink className="w-4 h-4 mr-2" /> Open Form
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" title="Show / hide table columns">
-                  <Columns3 className="w-4 h-4 mr-2" /> Columns
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72 max-h-96 overflow-y-auto p-3">
-                <div className="text-sm font-medium mb-2">Visible columns</div>
-                <div className="space-y-1.5">
-                  {reportCols.map((c) => (
-                    <label key={c.column_key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 px-2 py-1 rounded">
-                      <Checkbox
-                        checked={c.show_in_list}
-                        onCheckedChange={(v) => toggleColumnVisibility(c, !!v)}
-                      />
-                      <span>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="text-xs text-muted-foreground mt-2 pt-2 border-t">
-                  Changes apply to everyone in your team.
-                </div>
-              </PopoverContent>
-            </Popover>
+            <ColumnPickerPopover cols={reportCols} onToggle={toggleColumnVisibility} />
             <Button variant="outline" onClick={() => navigate("/crm/import-export")}>
               <Upload className="w-4 h-4 mr-2" /> Import
             </Button>
