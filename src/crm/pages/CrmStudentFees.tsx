@@ -100,23 +100,50 @@ export default function CrmStudentFees() {
     : paymentsPaid + regPaid;
   const due = totalBilled - totalPaid;
 
-  // Per-course breakdown rows
+  // Per-course breakdown rows — one row PER enrolled course (never single/limit-1)
   const courseBreakdown = useMemo(() => {
     return enrolments.map((e) => {
-      const fee = e.net_payable_fee ?? e.total_fee ?? 0;
-      const paidForCourse = payments
+      const fee = e.total_fee ?? 0;
+      const discount = e.discount_amount ?? 0;
+      const netFee = e.net_payable_fee ?? Math.max(0, fee - discount);
+      const coursePayments = payments
         .filter((p) => !p.is_void && p.enrolment_id === e.id)
-        .reduce((a, p) => a + (p.amount || 0), 0)
-        + (e.registration_fee_paid ?? 0);
+        .sort((a, b) => (a.paid_on < b.paid_on ? 1 : -1));
+      const paidForCourse =
+        coursePayments.reduce((a, p) => a + (p.amount || 0), 0) +
+        (e.registration_fee_paid ?? 0);
       return {
         id: e.id,
         course: e.course_name_snapshot || "—",
         fee,
+        discount,
+        netFee,
         paid: paidForCourse,
-        balance: Math.max(0, fee - paidForCourse),
+        balance: Math.max(0, netFee - paidForCourse),
+        payments: coursePayments,
+        regPaid: e.registration_fee_paid ?? 0,
       };
     });
   }, [enrolments, payments]);
+
+  const totals = useMemo(() => {
+    return courseBreakdown.reduce(
+      (acc, r) => ({
+        fee: acc.fee + r.fee,
+        discount: acc.discount + r.discount,
+        netFee: acc.netFee + r.netFee,
+        paid: acc.paid + r.paid,
+        balance: acc.balance + r.balance,
+      }),
+      { fee: 0, discount: 0, netFee: 0, paid: 0, balance: 0 },
+    );
+  }, [courseBreakdown]);
+
+  const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
+  const toggleCourse = (id: string) =>
+    setExpandedCourses((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
   // Auto-select sole active enrolment for new plans/payments
   const activeEnrolments = useMemo(() => enrolments.filter((e) => e.status === "active"), [enrolments]);
