@@ -229,7 +229,8 @@ export default function CrmStudents() {
   const renderCell = (key: string, s: Student) => {
     const b = s.batch_id ? batchMap.get(s.batch_id) : null;
     const paid = paidMap[s.id] || 0;
-    const net = s.net_payable_fee ?? s.total_fee;
+    const net = effectiveNet(s);
+    const total = effectiveTotal(s);
     switch (key) {
       case "photo": {
         const initials = s.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
