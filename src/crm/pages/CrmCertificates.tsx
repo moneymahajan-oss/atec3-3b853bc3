@@ -297,6 +297,22 @@ export default function CrmCertificates() {
                 </SelectContent>
               </Select>
             </div>
+            {studentId && studentEnrolments.length > 1 && (
+              <div>
+                <Label>Course (enrolment) *</Label>
+                <Select value={enrolmentId || "none"} onValueChange={(v) => setEnrolmentId(v === "none" ? "" : v)}>
+                  <SelectTrigger><SelectValue placeholder="Choose course" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— select —</SelectItem>
+                    {studentEnrolments.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Template</Label>
