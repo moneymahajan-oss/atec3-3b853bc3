@@ -107,7 +107,7 @@ export default function CrmEnquiries() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
-  const [reportCols, setReportCols] = useState<ReportCol[]>([]);
+  const { cols: reportCols, visibleCols, exportCols, toggleVisible: toggleColumnVisibility } = useReportColumns("crm_enquiry_report_columns");
   const [instituteName, setInstituteName] = useState<string>("ATEC Education");
 
   const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
@@ -166,35 +166,15 @@ export default function CrmEnquiries() {
     setLoading(false);
   };
 
-  const loadCols = async () => {
-    const { data } = await supabase
-      .from("crm_enquiry_report_columns")
-      .select("id,column_key,label,show_in_list,show_in_export,sort_order")
-      .order("sort_order");
-    setReportCols((data ?? []) as ReportCol[]);
-  };
 
   useEffect(() => {
     load();
-    loadCols();
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
   }, []);
 
-  const toggleColumnVisibility = async (col: ReportCol, next: boolean) => {
-    if (!col.id) return;
-    setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: next } : c)));
-    const { error } = await supabase
-      .from("crm_enquiry_report_columns")
-      .update({ show_in_list: next })
-      .eq("id", col.id);
-    if (error) {
-      toast.error(error.message);
-      setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: !next } : c)));
-    }
-  };
 
   const counsellors = useMemo(() => {
     const set = new Set<string>();
@@ -224,10 +204,6 @@ export default function CrmEnquiries() {
 
   const reset = () => { setQ(""); setStatus("all"); setSource("all"); setCourse("all"); setCounsellor("all"); setFrom(""); setTo(""); };
 
-  const visibleCols = useMemo(
-    () => reportCols.filter((c) => c.show_in_list).sort((a, b) => a.sort_order - b.sort_order),
-    [reportCols]
-  );
 
   const renderCell = (key: string, e: Enquiry) => {
     const wa = waMap[e.id];
