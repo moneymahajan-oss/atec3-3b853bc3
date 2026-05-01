@@ -119,13 +119,39 @@ export default function Enquire() {
       notes: values.any_message || null,
     };
 
-    const { error } = await supabase.from("crm_enquiries").insert(payload as never);
-    setSubmitting(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    const normPhone = (values.mobile || "").replace(/\D/g, "").slice(-10);
+    // Silent dedupe: if a same-phone + same-course enquiry exists in last 30 days, refresh it instead of inserting
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const courseIdForCheck = values.course_interested || null;
+    let dupeId: string | null = null;
+    if (normPhone) {
+      const dupeQuery = supabase
+        .from("crm_enquiries")
+        .select("id")
+        .eq("phone", normPhone)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const { data: dupe } = courseIdForCheck
+        ? await dupeQuery.eq("course_id", courseIdForCheck).maybeSingle()
+        : await dupeQuery.maybeSingle();
+      if (dupe?.id) dupeId = dupe.id;
     }
-    setSubmitted(true);
+    let error: { message: string } | null = null;
+    if (dupeId) {
+      const { error: updErr } = await supabase
+        .from("crm_enquiries")
+        .update({
+          notes: `Re-submitted via website self-fill on ${new Date().toLocaleString()}${values.any_message ? `\nMessage: ${values.any_message}` : ""}`,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id", dupeId);
+      error = updErr as never;
+    } else {
+      const { error: insErr } = await supabase.from("crm_enquiries").insert(payload as never);
+      error = insErr as never;
+    }
+
   };
 
   if (loading) {
