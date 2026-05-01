@@ -39,6 +39,7 @@ import CrmReminders from "./crm/pages/CrmReminders.tsx";
 import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
 import CrmFaculties from "./crm/pages/CrmFaculties.tsx";
+import CrmDuplicates from "./crm/pages/CrmDuplicates.tsx";
 import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
 import FacultyList from "./pages/FacultyList.tsx";
@@ -100,6 +101,7 @@ const App = () => (
                   <Route path="import-export" element={<CrmImportExport />} />
                   <Route path="seo" element={<CrmSeo />} />
                   <Route path="campaigns" element={<CrmCampaigns />} />
+                  <Route path="duplicates" element={<CrmDuplicates />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

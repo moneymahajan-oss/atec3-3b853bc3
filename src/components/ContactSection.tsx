@@ -48,20 +48,40 @@ export default function ContactSection() {
       message,
     });
 
-    // Also create a CRM enquiry so it appears in the Enquiry panel
+    // Also create a CRM enquiry so it appears in the Enquiry panel — with silent dedupe
     if (name && phone) {
-      await supabase.from("crm_enquiries").insert({
-        name,
-        phone: phone.replace(/\D/g, ""),
-        whatsapp: phone.replace(/\D/g, ""),
-        email: email || null,
-        course_name_snapshot: courseInterest || null,
-        source: "website_form",
-        status: "new",
-        priority: "medium",
-        any_message: message || null,
-        notes: "Auto-created from website Contact form",
-      } as never);
+      const normPhone = phone.replace(/\D/g, "").slice(-10);
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: dupe } = await supabase
+        .from("crm_enquiries")
+        .select("id")
+        .eq("phone", normPhone)
+        .eq("course_name_snapshot", courseInterest || "")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (dupe?.id) {
+        await supabase.from("crm_enquiries")
+          .update({
+            notes: `Re-submitted via website Contact form on ${new Date().toLocaleString()}${message ? `\nMessage: ${message}` : ""}`,
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("id", dupe.id);
+      } else {
+        await supabase.from("crm_enquiries").insert({
+          name,
+          phone: normPhone,
+          whatsapp: normPhone,
+          email: email || null,
+          course_name_snapshot: courseInterest || null,
+          source: "website_form",
+          status: "new",
+          priority: "medium",
+          any_message: message || null,
+          notes: "Auto-created from website Contact form",
+        } as never);
+      }
     }
 
     setLoading(false);
