@@ -176,10 +176,22 @@ export default function CrmStudents() {
     setFrom(""); setTo(""); setRangePreset("all");
   };
 
+  const effectiveTotal = (s: Student): number => {
+    const enrols = enrolMap[s.id];
+    if (enrols && enrols.length > 0) return enrols.reduce((a, e) => a + (e.total_fee || 0), 0);
+    return s.total_fee || 0;
+  };
+  const effectiveNet = (s: Student): number => {
+    const enrols = enrolMap[s.id];
+    if (enrols && enrols.length > 0) return enrols.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0);
+    return s.net_payable_fee ?? s.total_fee ?? 0;
+  };
+
   const valueOf = (key: string, s: Student): string | number => {
     const b = s.batch_id ? batchMap.get(s.batch_id) : null;
     const paid = paidMap[s.id] || 0;
-    const net = s.net_payable_fee ?? s.total_fee;
+    const net = effectiveNet(s);
+    const total = effectiveTotal(s);
     switch (key) {
       case "enrolment_no": return s.enrolment_no ?? "";
       case "full_name": return s.full_name;
