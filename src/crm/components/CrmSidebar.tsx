@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
   Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing, Ban,
-  AlertTriangle,
+  AlertTriangle, UserCog,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
