@@ -272,6 +272,39 @@ export type Database = {
           },
         ]
       }
+      crm_attendance_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_audit_logs: {
         Row: {
           action: string
@@ -299,6 +332,39 @@ export type Database = {
           entity_id?: string | null
           id?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      crm_batch_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -444,6 +510,39 @@ export type Database = {
           status?: Database["public"]["Enums"]["crm_campaign_status"]
           template_key?: string | null
           total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_certificate_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
@@ -1078,6 +1177,39 @@ export type Database = {
           },
         ]
       }
+      crm_fee_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_institute_settings: {
         Row: {
           address: string | null
@@ -1284,6 +1416,39 @@ export type Database = {
           og_image_url?: string | null
           page_path?: string
           title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      crm_student_report_columns: {
+        Row: {
+          column_key: string
+          created_at: string
+          id: string
+          label: string
+          show_in_export: boolean
+          show_in_list: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          column_key: string
+          created_at?: string
+          id?: string
+          label: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          column_key?: string
+          created_at?: string
+          id?: string
+          label?: string
+          show_in_export?: boolean
+          show_in_list?: boolean
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
