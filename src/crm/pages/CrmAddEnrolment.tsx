@@ -113,7 +113,49 @@ export default function CrmAddEnrolment() {
       student_id: studentId,
       course_id: form.course_id,
     });
+
+    // Auto-create a default "full fee" pending plan so the enrolment shows up
+    // in the Fees module immediately. Staff can split into installments later.
+    const balance = (Number(form.total_fee) || 0)
+      - (Number(form.discount_amount) || 0)
+      - (Number(form.registration_fee_paid) || 0);
+    if (data?.id && balance > 0) {
+      const { error: planErr } = await supabase.from("crm_fee_plans").insert({
+        student_id: studentId,
+        enrolment_id: data.id,
+        installment_no: 1,
+        label: "Full fee",
+        amount: balance,
+        plan_type: "custom",
+        status: "pending",
+        notes: `Auto-created on enrolment in ${courseRow?.name ?? "course"}`,
+      });
+      if (planErr) {
+        // Non-blocking: tell user but still treat enrolment as saved
+        toast.warning(`Enrolment saved, but fee plan was not auto-created: ${planErr.message}`);
+      }
+    }
+
+    // If a registration fee was already collected, log it as a payment too.
+    if (data?.id && (Number(form.registration_fee_paid) || 0) > 0) {
+      await supabase.from("crm_payments").insert({
+        student_id: studentId,
+        enrolment_id: data.id,
+        amount: Number(form.registration_fee_paid) || 0,
+        mode: "cash",
+        notes: "Registration fee at enrolment",
+        collected_by: user?.id ?? null,
+      });
+    }
+
     toast.success(`Enrolled in ${courseRow?.name}. Enrolment #${data?.enrolment_no}`);
+    // If we came from an enquiry, mark it converted and link the student
+    const fromEnq = new URLSearchParams(window.location.search).get("from_enquiry");
+    if (fromEnq) {
+      await supabase.from("crm_enquiries")
+        .update({ status: "converted", converted_student_id: studentId })
+        .eq("id", fromEnq);
+    }
     navigate(`/crm/students/${studentId}`);
   };
 
