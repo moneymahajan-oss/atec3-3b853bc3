@@ -33,16 +33,21 @@ export default function CrmFees() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [{ data: students, error }, { data: payments }, { data: plans }] = await Promise.all([
+      const [{ data: students, error }, { data: payments }, { data: plans }, { data: enrolments }] = await Promise.all([
         supabase.from("crm_students").select("id,full_name,enrolment_no,phone,course_name_snapshot,total_fee,registration_fee_paid").order("created_at", { ascending: false }),
         supabase.from("crm_payments").select("student_id,amount,is_void"),
         supabase.from("crm_fee_plans").select("student_id,due_date,amount,amount_paid,status,is_void"),
+        supabase.from("crm_student_enrolments" as never).select("student_id,course_name_snapshot,total_fee,net_payable_fee"),
       ]);
       if (error) toast.error(error.message);
       const paidByStudent: Record<string, number> = {};
       (payments ?? []).forEach((p) => {
         if ((p as { is_void?: boolean }).is_void) return;
         paidByStudent[p.student_id] = (paidByStudent[p.student_id] || 0) + (p.amount ?? 0);
+      });
+      const enrolByStudent: Record<string, { course_name_snapshot: string | null; total_fee: number; net_payable_fee: number | null }[]> = {};
+      ((enrolments ?? []) as unknown as { student_id: string; course_name_snapshot: string | null; total_fee: number; net_payable_fee: number | null }[]).forEach((e) => {
+        (enrolByStudent[e.student_id] = enrolByStudent[e.student_id] || []).push(e);
       });
       const today = new Date().toISOString().slice(0, 10);
       const plansBy: Record<string, { next?: { date: string; amount: number }; overdue: number }> = {};
@@ -57,18 +62,27 @@ export default function CrmFees() {
           bucket.next = { date: p.due_date, amount: remaining };
         }
       });
-      const built: Row[] = (students ?? []).map((s) => ({
-        id: s.id,
-        full_name: s.full_name,
-        enrolment_no: s.enrolment_no,
-        phone: s.phone,
-        course_name_snapshot: s.course_name_snapshot,
-        total_fee: s.total_fee ?? 0,
-        total_paid: (paidByStudent[s.id] || 0) + (s.registration_fee_paid ?? 0),
-        next_due_date: plansBy[s.id]?.next?.date ?? null,
-        next_due_amount: plansBy[s.id]?.next?.amount ?? 0,
-        overdue_count: plansBy[s.id]?.overdue ?? 0,
-      }));
+      const built: Row[] = (students ?? []).map((s) => {
+        const enrols = enrolByStudent[s.id] ?? [];
+        const totalFee = enrols.length > 0
+          ? enrols.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0)
+          : (s.total_fee ?? 0);
+        const courseLabel = enrols.length > 0
+          ? enrols.map((e) => e.course_name_snapshot || "").filter(Boolean).join(", ") || s.course_name_snapshot
+          : s.course_name_snapshot;
+        return {
+          id: s.id,
+          full_name: s.full_name,
+          enrolment_no: s.enrolment_no,
+          phone: s.phone,
+          course_name_snapshot: courseLabel,
+          total_fee: totalFee,
+          total_paid: (paidByStudent[s.id] || 0) + (s.registration_fee_paid ?? 0),
+          next_due_date: plansBy[s.id]?.next?.date ?? null,
+          next_due_amount: plansBy[s.id]?.next?.amount ?? 0,
+          overdue_count: plansBy[s.id]?.overdue ?? 0,
+        };
+      });
       setRows(built);
       setLoading(false);
     })();
