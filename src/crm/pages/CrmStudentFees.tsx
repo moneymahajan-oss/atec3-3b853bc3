@@ -86,9 +86,37 @@ export default function CrmStudentFees() {
 
   const regPaid = (student as unknown as { registration_fee_paid?: number } | null)?.registration_fee_paid ?? 0;
   const paymentsPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
-  const totalPaid = paymentsPaid + regPaid;
-  const totalBilled = student?.total_fee ?? 0;
+
+  // When multi-course, billed total = sum of enrolment net payable; otherwise fall back to student.total_fee
+  const enrolmentsBilled = enrolments.reduce(
+    (a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0),
+    0,
+  );
+  const enrolmentsRegPaid = enrolments.reduce((a, e) => a + (e.registration_fee_paid ?? 0), 0);
+
+  const totalBilled = enrolments.length > 0 ? enrolmentsBilled : (student?.total_fee ?? 0);
+  const totalPaid = enrolments.length > 0
+    ? paymentsPaid + enrolmentsRegPaid
+    : paymentsPaid + regPaid;
   const due = totalBilled - totalPaid;
+
+  // Per-course breakdown rows
+  const courseBreakdown = useMemo(() => {
+    return enrolments.map((e) => {
+      const fee = e.net_payable_fee ?? e.total_fee ?? 0;
+      const paidForCourse = payments
+        .filter((p) => !p.is_void && p.enrolment_id === e.id)
+        .reduce((a, p) => a + (p.amount || 0), 0)
+        + (e.registration_fee_paid ?? 0);
+      return {
+        id: e.id,
+        course: e.course_name_snapshot || "—",
+        fee,
+        paid: paidForCourse,
+        balance: Math.max(0, fee - paidForCourse),
+      };
+    });
+  }, [enrolments, payments]);
 
   // Auto-select sole active enrolment for new plans/payments
   const activeEnrolments = useMemo(() => enrolments.filter((e) => e.status === "active"), [enrolments]);
