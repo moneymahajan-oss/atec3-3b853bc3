@@ -69,6 +69,7 @@ export default function CrmStudents() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [rangePreset, setRangePreset] = useState("all");
+  const [groupByPerson, setGroupByPerson] = useState(false);
 
   const { cols, visibleCols, exportCols, toggleVisible } = useReportColumns("crm_student_report_columns");
 
