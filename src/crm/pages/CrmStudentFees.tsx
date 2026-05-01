@@ -266,6 +266,7 @@ export default function CrmStudentFees() {
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
+                {enrolments.length > 1 && <TableHead>Course</TableHead>}
                 <TableHead>Label</TableHead>
                 <TableHead>Due</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
@@ -275,12 +276,19 @@ export default function CrmStudentFees() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {plans.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
-              ) : plans.map((p) => (
-                <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
-                  <TableCell className="font-mono">{p.installment_no}</TableCell>
-                  <TableCell className="text-sm">{p.label || "—"}</TableCell>
+              {(() => {
+                const filteredPlans = plans.filter((p) => enrolmentFilter === "all" || (p.enrolment_id ?? "") === enrolmentFilter);
+                return filteredPlans.length === 0 ? (
+                  <TableRow><TableCell colSpan={enrolments.length > 1 ? 8 : 7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
+                ) : filteredPlans.map((p) => (
+                  <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
+                    <TableCell className="font-mono">{p.installment_no}</TableCell>
+                    {enrolments.length > 1 && (
+                      <TableCell className="text-xs text-muted-foreground">
+                        {enrolments.find((e) => e.id === p.enrolment_id)?.course_name_snapshot ?? "—"}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-sm">{p.label || "—"}</TableCell>
                   <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
                   <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
                   <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
