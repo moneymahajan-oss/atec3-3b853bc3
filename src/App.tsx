@@ -40,6 +40,7 @@ import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
 import CrmFaculties from "./crm/pages/CrmFaculties.tsx";
 import CrmDuplicates from "./crm/pages/CrmDuplicates.tsx";
+import CrmAddEnrolment from "./crm/pages/CrmAddEnrolment.tsx";
 import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
 import FacultyList from "./pages/FacultyList.tsx";
@@ -87,6 +88,7 @@ const App = () => (
                   <Route path="enquiries" element={<CrmEnquiries />} />
                   <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
                   <Route path="students" element={<CrmStudents />} />
+                  <Route path="students/:studentId/add-course" element={<CrmAddEnrolment />} />
                   <Route path="students/:id" element={<CrmStudentForm />} />
                   <Route path="fees" element={<CrmFees />} />
                   <Route path="fees/:studentId" element={<CrmStudentFees />} />
