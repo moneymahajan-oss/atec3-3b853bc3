@@ -96,21 +96,27 @@ export default function CrmCertificates() {
     if (!studentId) { toast.error("Select a student"); return; }
     const stu = students.find(s => s.id === studentId);
     if (!stu) return;
+    if (studentEnrolments.length > 1 && !enrolmentId) {
+      toast.error("Pick which course this certificate is for");
+      return;
+    }
+    const enr = studentEnrolments.find((e) => e.id === enrolmentId) || studentEnrolments[0] || null;
     setIssuing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase.from("crm_certificates").insert({
         student_id: stu.id,
-        course_id: stu.course_id,
-        course_name_snapshot: stu.course_name_snapshot,
+        course_id: enr?.course_id ?? stu.course_id,
+        course_name_snapshot: enr?.course_name_snapshot ?? stu.course_name_snapshot,
         student_name_snapshot: stu.full_name,
-        enrolment_no_snapshot: stu.enrolment_no,
+        enrolment_no_snapshot: enr?.enrolment_no ?? stu.enrolment_no,
+        enrolment_id: enr?.id ?? null,
         template_kind: templateKind,
         grade,
         issued_on: issueDate,
         issued_by: user?.id,
         issued_by_name: user?.user_metadata?.full_name || user?.email || null,
-      }).select("*").single();
+      } as never).select("*").single();
       if (error) throw error;
 
       // Generate PDF and upload
@@ -118,9 +124,10 @@ export default function CrmCertificates() {
       toast.success("Certificate issued");
       setOpenIssue(false);
       setStudentId("");
+      setEnrolmentId("");
       load();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to issue");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to issue");
     } finally {
       setIssuing(false);
     }
