@@ -303,7 +303,7 @@ export default function CrmStudentFees() {
         </div>
       )}
 
-      {enrolments.length > 1 && (
+      {courseBreakdown.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Per-course breakdown</CardTitle>
@@ -312,26 +312,86 @@ export default function CrmStudentFees() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8" />
                   <TableHead>Course</TableHead>
                   <TableHead className="text-right">Fee</TableHead>
+                  <TableHead className="text-right">Discount</TableHead>
+                  <TableHead className="text-right">Net Fee</TableHead>
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courseBreakdown.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="text-sm">{row.course}</TableCell>
-                    <TableCell className="text-right font-mono">₹{row.fee.toLocaleString("en-IN")}</TableCell>
-                    <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{row.paid.toLocaleString("en-IN")}</TableCell>
-                    <TableCell className={`text-right font-mono ${row.balance > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{row.balance.toLocaleString("en-IN")}</TableCell>
-                  </TableRow>
-                ))}
+                {courseBreakdown.map((row) => {
+                  const isOpen = !!expandedCourses[row.id];
+                  const hasHistory = row.payments.length > 0 || row.regPaid > 0;
+                  return (
+                    <>
+                      <TableRow key={row.id}>
+                        <TableCell className="p-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleCourse(row.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={isOpen ? "Collapse payments" : "Expand payments"}
+                          >
+                            {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-sm">{row.course}</TableCell>
+                        <TableCell className="text-right font-mono">{fmt(row.fee)}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {row.discount > 0 ? (
+                            <span className="text-emerald-700 dark:text-emerald-400">−{fmt(row.discount)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{fmt(row.netFee)}</TableCell>
+                        <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{fmt(row.paid)}</TableCell>
+                        <TableCell className={`text-right font-mono ${row.balance > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{fmt(row.balance)}</TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow key={`${row.id}-history`} className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell />
+                          <TableCell colSpan={6}>
+                            {hasHistory ? (
+                              <div className="space-y-1 py-1">
+                                <div className="text-xs font-medium text-muted-foreground mb-1">Payment history</div>
+                                {row.regPaid > 0 && (
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Registration fee paid</span>
+                                    <span className="font-mono">{fmt(row.regPaid)}</span>
+                                  </div>
+                                )}
+                                {row.payments.map((p) => (
+                                  <div key={p.id} className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">
+                                      {p.paid_on} · {p.mode}{p.receipt_no ? ` · ${p.receipt_no}` : ""}
+                                    </span>
+                                    <span className="font-mono">{fmt(p.amount)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground py-1">No payments recorded yet.</div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  );
+                })}
                 <TableRow className="font-semibold bg-muted/40">
+                  <TableCell />
                   <TableCell>TOTAL</TableCell>
-                  <TableCell className="text-right font-mono">₹{totalBilled.toLocaleString("en-IN")}</TableCell>
-                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{totalPaid.toLocaleString("en-IN")}</TableCell>
-                  <TableCell className={`text-right font-mono ${due > 0 ? "text-rose-600 dark:text-rose-400" : ""}`}>₹{Math.max(0, due).toLocaleString("en-IN")}</TableCell>
+                  <TableCell className="text-right font-mono">{fmt(totals.fee)}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">
+                    {totals.discount > 0 ? `−${fmt(totals.discount)}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">{fmt(totals.netFee)}</TableCell>
+                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{fmt(totals.paid)}</TableCell>
+                  <TableCell className={`text-right font-mono ${totals.balance > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{fmt(totals.balance)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
