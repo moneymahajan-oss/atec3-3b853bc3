@@ -637,6 +637,7 @@ export default function CrmStudentForm() {
             </CardContent>
           </Card>
 
+          {!isNew && id && <EnrolmentsCard studentId={id} />}
           {!isNew && id && <StudentAttendanceCard studentId={id} />}
         </div>
 
