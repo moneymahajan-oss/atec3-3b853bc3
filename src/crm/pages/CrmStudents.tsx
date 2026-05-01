@@ -209,7 +209,7 @@ export default function CrmStudents() {
       case "faculty": return b?.faculty_name ?? "";
       case "enrolment_date": return s.enrolment_date;
       case "status": return s.status;
-      case "total_fee": return s.total_fee;
+      case "total_fee": return total;
       case "net_payable_fee": return net;
       case "paid_amount": return paid;
       case "balance": return Math.max(0, net - paid);
