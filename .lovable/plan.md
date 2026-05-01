@@ -1,112 +1,137 @@
 ## Goal
 
-Add a **Faculties** module that's the single source of truth for faculty info across both the CRM and the public website.
+Bring the **same column-picker + admin-managed columns** experience from Enquiries to **Students** (primary ask), and extend the same pattern to other relevant list pages so all sections feel consistent. Also add the missing **Batch + Faculty filters** and a **WhatsApp message button** on every row in the Students list, matching what is shown in the screenshot.
 
-- **CRM** gets a new `/crm/faculties` page: list, filter, drill-down with batches & students they handle, date-range filter, KPIs and export.
-- **Public website** gets a new "Our Faculty" section on the homepage and a dedicated `/faculty` page, both driven by the same data so any edit in CRM updates the website instantly.
+## Where the pattern is reused
 
-## Data model — one new table
+Apply the same Enquiries-style "Columns" popover + persistent admin config to:
 
-Currently faculty is just a free-text `faculty_name` on `crm_batches`. To synchronise CRM ↔ public site we need a real record per faculty.
+1. **Students** (`/crm/students`) — primary ask in this message
+2. **Batches** (`/crm/batches`)
+3. **Fees** (`/crm/fees`)
+4. **Attendance** (`/crm/attendance`) — column-picker for the roster table
+5. **Certificates** (`/crm/certificates`)
 
-**New table `public.crm_faculties`**
-- `id uuid pk`
-- `name text not null` (matches `crm_batches.faculty_name`)
-- `slug text unique` (auto-generated from name, used for `/faculty/:slug`)
-- `designation text` (e.g. "Senior Trainer — Tally & GST")
-- `qualifications text`
-- `specialization text` (short tagline)
-- `bio text` (long description, public)
-- `photo_url text`
-- `email text`, `phone text` (private — CRM-only)
-- `experience_years int`
-- `joined_on date`
-- `linkedin_url text`, `instagram_url text`
-- `display_order int default 0`
-- `is_active bool default true` (employed / not)
-- `is_public bool default true` (show on website)
-- `created_at`, `updated_at`
+(Faculties, Reports, Dashboard stay as-is — they are aggregate dashboards, not row tables.)
 
-**RLS**
-- CRM staff: full read; admins: full write (mirrors `crm_courses`).
-- `anon` + `public`: SELECT where `is_active = true AND is_public = true` (mirrors `courses`).
+## 1. Students page — full redesign of filters + table
 
-**Linking to existing data**
-- Keep `crm_batches.faculty_name` as the join key (no FK change). The CRM Faculties page joins on `name` (case-insensitive). Anything in batches with no matching faculty row is grouped under "Unassigned" — admin can click "Create faculty record" to promote it.
-- A small migration-time helper INSERTs a row for each currently-distinct `faculty_name` so nothing disappears on day one.
+### New filters (above the table)
 
-## CRM page — `/crm/faculties`
+- Search (existing)
+- **Batch** dropdown (new) — all batches, grouped: Running first, then Planned, then Completed
+- **Faculty** dropdown (new) — distinct `faculty_name` from `crm_batches` (joined via student.batch_id)
+- **Course** dropdown (new) — distinct active courses
+- Status (existing, incl. 🟢 Live)
+- Joined-date preset + custom range (existing)
+- Reset (existing)
+- **Columns** popover (new) — same UI as Enquiries
+- **Export** button (new) — XLSX of currently-filtered rows using export-flagged columns
 
-**Filters (top bar)**
-- Faculty selector (All / specific) — also accepts `?faculty=<slug>` from URL.
-- Date range (start / end) — affects batch overlap, student enrolment, and attendance working days.
-- Batch status: All / Running / Completed / Planned / Cancelled.
-- Search (faculty name).
+### Per-row WhatsApp button
 
-**View A — All faculties (summary table)**
-Columns: Photo + Name • Designation • Total batches • Running batches • Total students (lifetime) • Active students • Working days (in range) • Public on website (toggle) • Actions (View / Edit / Delete).
-Click row → switches filter to that faculty (View B).
+Already present via `StudentWhatsAppButton`. We will:
+- Keep it as the right-most action.
+- Also add a **direct "Send" icon** that opens `wa.me/<phone>` with a default greeting (mirrors the green ✈ icon shown for enquiries in the screenshot).
+- Add a **bulk "Send WhatsApp"** action when multiple students are selected (using existing `SendAllModal`).
 
-**View B — Single faculty detail**
-- **Header card**: photo, name, designation, specialization, contact (CRM-only), public toggle, "View public profile →" link to `/faculty/:slug`.
-- **KPI strip**: Total batches • Running batches • Total students • Active students.
-- **Batches table** (filtered by date + status): name, course, schedule/timing, dates, Live/Capacity (with amber ≥80%, rose =100%), working days, status, actions (Mark / Report / Edit).
-- **Students table**: name, phone, course, batch, enrolment date, status, action → `/crm/students/:id`.
+### Selectable column set (stored in DB)
 
-**Add / Edit faculty dialog** (admin-only): all fields above, photo upload to a new public bucket `crm-faculty-photos` (mirrors the `crm-course-media` pattern).
+Default columns shown out of the box: Photo, Enrolment №, Name, Phone, Course, Batch, Faculty, Joined, Status, Fee.
 
-**Export XLSX**: three sheets — Faculties summary, Batches, Students — respecting current filters.
+Full pickable set (toggleable in popover, persisted to DB so it applies team-wide — same model as enquiries):
 
-## Public website
+| key | label | default in list | default in export |
+|---|---|---|---|
+| photo | Photo | yes | no |
+| enrolment_no | Enrolment № | yes | yes |
+| full_name | Name | yes | yes |
+| phone | Phone | yes | yes |
+| alt_phone | Alt Phone | no | yes |
+| email | Email | no | yes |
+| course | Course | yes | yes |
+| batch | Batch | yes | yes |
+| faculty | Faculty | yes | yes |
+| enrolment_date | Joined | yes | yes |
+| status | Status | yes | yes |
+| total_fee | Total Fee | yes | yes |
+| net_payable_fee | Net Payable | no | yes |
+| paid_amount | Paid | no | yes |
+| balance | Balance | no | yes |
+| city | City | no | yes |
+| state | State | no | yes |
+| qualification | Qualification | no | yes |
+| college_name | College | no | yes |
+| referred_by | Referred By | no | yes |
+| hear_about_us | How Did You Hear | no | yes |
+| father_name | Father Name | no | yes |
+| father_phone | Father Phone | no | yes |
+| created_at | Created At | no | yes |
 
-**Homepage section** `<FacultySection />` (added to `src/pages/Index.tsx`):
-- Heading "Meet Our Faculty" + subtitle.
-- Responsive grid of cards (photo, name, designation, specialization, experience).
-- Card click → `/faculty/:slug`.
-- "View all faculty →" CTA to `/faculty`.
+## 2. Batches page columns
 
-**Listing page** `/faculty` (`src/pages/FacultyList.tsx`):
-- Full grid of all `is_public` faculties, search box, sorted by `display_order` then name.
+Pickable: Name, Course, Faculty, Schedule, Timing, Start Date, End Date, Capacity, Enrolled, Seats Left, Status, Created.
 
-**Detail page** `/faculty/:slug` (`src/pages/FacultyDetail.tsx`):
-- Photo, name, designation, qualifications, experience, bio, specialization, social links.
-- "Courses I teach" — derived from distinct `course_name_snapshot` of their batches (no private student/batch data exposed).
-- "Enquire about this faculty" CTA → existing `/enquire?faculty=<name>` (prefills `referred_by` field).
+## 3. Fees page columns
 
-**Navbar**: add "Faculty" link between "Courses" and "Gallery" in `src/components/Navbar.tsx`.
+Pickable: Receipt №, Date, Student, Enrolment №, Course, Batch, Mode, Amount, Discount, Net, Status, Collected By.
 
-**SEO**: add a row to `crm_seo_meta` for `/faculty` so admins can edit title/description from the existing SEO page.
+## 4. Attendance roster columns
 
-## Sync points with already built sections
+Pickable per-day grid: Photo, Enrolment №, Name, Phone, Present/Absent toggle, Notes, % attendance to date.
 
-- **CrmBatches** (`src/crm/pages/CrmBatches.tsx`): `faculty_name` cell becomes a clickable link → `/crm/faculties?faculty=<slug>`. The faculty dropdown in the batch dialog becomes a Select sourced from `crm_faculties` (free-text fallback preserved for backward compatibility).
-- **CrmReports** (`src/crm/pages/CrmReports.tsx`): existing "Faculty workload" card gets a "View full Faculties page →" header link. Logic stays the same (still derived from batch joins) so the numbers stay identical between Reports and Faculties page.
-- **CrmSidebar**: new "Faculties" entry under Operations group, icon `UserCog`, between "Batches" and "Attendance".
-- **CrmStudents**: an optional "Taught by" column reading the student's batch's faculty_name (read-only).
-- **App routes** (`src/App.tsx`): add `/crm/faculties`, `/faculty`, `/faculty/:slug`.
+## 5. Certificates columns
 
-## Technical details
+Pickable: Certificate №, Student, Enrolment №, Course, Batch, Issue Date, Grade, Issued By, Status.
 
-**Migration** (single SQL file):
-- Create enum-free `crm_faculties` table + RLS policies + `updated_at` trigger.
-- Create storage bucket `crm-faculty-photos` (public read, admin write).
-- Seed one row per distinct existing `crm_batches.faculty_name` (auto-slug).
+## Technical design
 
-**New files**
-- `src/crm/pages/CrmFaculties.tsx` — list + drill-down + filters + export.
-- `src/crm/pages/CrmFacultyForm.tsx` — add/edit dialog form (or modal inside the list page; will use modal to match Batches style).
-- `src/components/FacultySection.tsx` — homepage grid.
-- `src/pages/FacultyList.tsx` — `/faculty` page.
-- `src/pages/FacultyDetail.tsx` — `/faculty/:slug` page.
+### Database (one shared pattern)
 
-**Edited files**
-- `src/App.tsx` — three new routes.
-- `src/crm/components/CrmSidebar.tsx` — nav entry.
-- `src/crm/pages/CrmBatches.tsx` — clickable faculty cell, faculty Select.
-- `src/crm/pages/CrmReports.tsx` — header link.
-- `src/pages/Index.tsx` — mount `<FacultySection />`.
-- `src/components/Navbar.tsx` — "Faculty" link.
+Create one config table per section, mirroring `crm_enquiry_report_columns`:
 
-**No changes** to: `crm_batches` schema, existing RLS on other tables, edge functions, auth, or the `enquire` flow (just prefills an existing field).
+- `crm_student_report_columns`
+- `crm_batch_report_columns`
+- `crm_fee_report_columns`
+- `crm_attendance_report_columns`
+- `crm_certificate_report_columns`
 
-Approve to implement.
+All share the same columns: `id, column_key (unique), label, show_in_list, show_in_export, sort_order, created_at, updated_at`, the same `update_updated_at_column` trigger, and the same RLS policies (admins write, any CRM role reads).
+
+Each table is seeded in the migration with the column rows listed above (sort_order in tens, e.g. 10, 20, 30 so reordering is easy later).
+
+### Shared UI helper
+
+Create `src/crm/components/ColumnPickerPopover.tsx` — the popover already inlined in `CrmEnquiries.tsx`. Refactor `CrmEnquiries.tsx` to use it, then reuse in Students/Batches/Fees/Attendance/Certificates. Props: `cols`, `onToggle(col, next)`.
+
+Create a `useReportColumns(table, defaultCols)` hook that loads + caches columns and exposes `{ cols, visibleCols, exportCols, toggleVisible }`.
+
+### Students page changes (`src/crm/pages/CrmStudents.tsx`)
+
+- Fetch `crm_batches` (id, name, faculty_name, status) once and build a `Map<batchId, {name, faculty_name}>`.
+- Pull payment totals via a join/aggregate from `crm_payments` (sum where not void) keyed by `student_id` to compute Paid/Balance only when those columns are visible.
+- Add Course/Batch/Faculty filter state; apply in `filtered`.
+- Replace hard-coded `<TableHead>`/`<TableCell>` with a `renderCell(key, student)` switch like `CrmEnquiries.renderCell`.
+- Add Columns popover, Export button, bulk WhatsApp.
+- Keep existing KPIs and 🟢 Live filter.
+
+### Files to create
+
+- `supabase/migrations/<ts>_section_report_columns.sql` — 5 tables + seeds + RLS + trigger.
+- `src/crm/components/ColumnPickerPopover.tsx`
+- `src/crm/hooks/useReportColumns.ts`
+
+### Files to edit
+
+- `src/crm/pages/CrmStudents.tsx` (major rewrite — filters, picker, dynamic columns, export, bulk WA)
+- `src/crm/pages/CrmEnquiries.tsx` (swap inline popover for shared component — no behavior change)
+- `src/crm/pages/CrmBatches.tsx` (add picker + dynamic table + faculty filter)
+- `src/crm/pages/CrmFees.tsx` (add picker + dynamic table)
+- `src/crm/pages/CrmAttendance.tsx` (add picker for roster columns)
+- `src/crm/pages/CrmCertificates.tsx` (add picker + dynamic table)
+
+### Out of scope
+
+- No changes to the public website.
+- Column **reordering** via drag is not included (sort_order is admin-editable in DB only for now); we can add a UI in a follow-up.
+- Per-user column preferences are not included — the picker writes the team-wide default, identical to how Enquiries works today.

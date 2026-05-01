@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink, Columns3 } from "lucide-react";
+import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,6 +13,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { PageHeader } from "../components/PageHeader";
+import { ColumnPickerPopover } from "../components/ColumnPickerPopover";
+import { useReportColumns } from "../hooks/useReportColumns";
 import { toast } from "sonner";
 
 type Enquiry = {
@@ -45,7 +45,7 @@ type Enquiry = {
   created_at: string;
 };
 
-type ReportCol = { id?: string; column_key: string; label: string; show_in_list: boolean; show_in_export: boolean; sort_order: number };
+
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
@@ -107,7 +107,7 @@ export default function CrmEnquiries() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
-  const [reportCols, setReportCols] = useState<ReportCol[]>([]);
+  const { cols: reportCols, visibleCols, toggleVisible: toggleColumnVisibility } = useReportColumns("crm_enquiry_report_columns");
   const [instituteName, setInstituteName] = useState<string>("ATEC Education");
 
   const formUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/enquire`;
@@ -166,35 +166,15 @@ export default function CrmEnquiries() {
     setLoading(false);
   };
 
-  const loadCols = async () => {
-    const { data } = await supabase
-      .from("crm_enquiry_report_columns")
-      .select("id,column_key,label,show_in_list,show_in_export,sort_order")
-      .order("sort_order");
-    setReportCols((data ?? []) as ReportCol[]);
-  };
 
   useEffect(() => {
     load();
-    loadCols();
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
   }, []);
 
-  const toggleColumnVisibility = async (col: ReportCol, next: boolean) => {
-    if (!col.id) return;
-    setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: next } : c)));
-    const { error } = await supabase
-      .from("crm_enquiry_report_columns")
-      .update({ show_in_list: next })
-      .eq("id", col.id);
-    if (error) {
-      toast.error(error.message);
-      setReportCols((prev) => prev.map((c) => (c.id === col.id ? { ...c, show_in_list: !next } : c)));
-    }
-  };
 
   const counsellors = useMemo(() => {
     const set = new Set<string>();
@@ -224,10 +204,6 @@ export default function CrmEnquiries() {
 
   const reset = () => { setQ(""); setStatus("all"); setSource("all"); setCourse("all"); setCounsellor("all"); setFrom(""); setTo(""); };
 
-  const visibleCols = useMemo(
-    () => reportCols.filter((c) => c.show_in_list).sort((a, b) => a.sort_order - b.sort_order),
-    [reportCols]
-  );
 
   const renderCell = (key: string, e: Enquiry) => {
     const wa = waMap[e.id];
@@ -342,30 +318,7 @@ export default function CrmEnquiries() {
             <Button variant="outline" onClick={() => window.open("/enquire", "_blank", "noopener,noreferrer")}>
               <ExternalLink className="w-4 h-4 mr-2" /> Open Form
             </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" title="Show / hide table columns">
-                  <Columns3 className="w-4 h-4 mr-2" /> Columns
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72 max-h-96 overflow-y-auto p-3">
-                <div className="text-sm font-medium mb-2">Visible columns</div>
-                <div className="space-y-1.5">
-                  {reportCols.map((c) => (
-                    <label key={c.column_key} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 px-2 py-1 rounded">
-                      <Checkbox
-                        checked={c.show_in_list}
-                        onCheckedChange={(v) => toggleColumnVisibility(c, !!v)}
-                      />
-                      <span>{c.label}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="text-xs text-muted-foreground mt-2 pt-2 border-t">
-                  Changes apply to everyone in your team.
-                </div>
-              </PopoverContent>
-            </Popover>
+            <ColumnPickerPopover cols={reportCols} onToggle={toggleColumnVisibility} />
             <Button variant="outline" onClick={() => navigate("/crm/import-export")}>
               <Upload className="w-4 h-4 mr-2" /> Import
             </Button>
