@@ -311,7 +311,7 @@ export default function CrmStudentForm() {
           course_id: form.course_id,
           course_name_snapshot: payload.course_name_snapshot,
           batch_id: form.batch_id || null,
-          enrolment_no: payload.enrolment_no ?? null,
+          enrolment_no: null,
           enrolment_date: payload.enrolment_date,
           status: "active",
           total_fee: payload.total_fee,
