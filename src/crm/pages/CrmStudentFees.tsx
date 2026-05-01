@@ -326,7 +326,7 @@ export default function CrmStudentFees() {
                   const isOpen = !!expandedCourses[row.id];
                   const hasHistory = row.payments.length > 0 || row.regPaid > 0;
                   return (
-                    <>
+                    <Fragment key={row.id}>
                       <TableRow key={row.id}>
                         <TableCell className="p-2">
                           <button
@@ -379,7 +379,7 @@ export default function CrmStudentFees() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   );
                 })}
                 <TableRow className="font-semibold bg-muted/40">
