@@ -1,62 +1,85 @@
-## Two bugs to fix together
+## Goal
 
-### Bug A — Students list "Total Fee" shows only one course
-For multi-course students (e.g. manav: Tally ₹24,000 + Python ₹5,500), the row shows ₹24,000 instead of ₹29,500. The `paid` and `balance` columns suffer the same issue. Same defect on the `/crm/fees` list and stat cards.
+Generate a single, clean SQL migration file that contains **everything** needed to recreate this project's backend (Lovable Cloud / Supabase) inside another Supabase project — without dropping or overwriting any data already in the target.
 
-### Bug B — Clicking a student doesn't surface both courses
-On the Students list, clicking the row opens the student profile (`CrmStudentForm`) which already has an `EnrolmentsCard`. The user expects both courses to be immediately visible. We need to confirm the profile renders all enrolments (not just the primary `course_name_snapshot`) and make the row click obviously land on the profile with the enrolments section in view.
+The output will be a downloadable file at `/mnt/documents/atec_full_migration.sql` plus an optional companion `atec_seed_data.sql` for reference data (settings, report columns, enquiry form fields, SEO meta, expense categories, etc.).
 
-## Root cause
+---
 
-- `CrmStudents.tsx` reads `total_fee` / `net_payable_fee` straight off `crm_students` (single-course snapshot). It already loads `crm_student_enrolments` into `enrolMap` for the course chips but never aggregates fees from it.
-- `CrmFees.tsx` reads `crm_students.total_fee` only — never queries `crm_student_enrolments` at all.
-- `CrmStudentForm.tsx` mounts `EnrolmentsCard` (which queries `crm_student_enrolments` correctly), but the page also shows a single "Course / Fee" block at the top sourced from `crm_students` — which can read as "only one course".
+## What the migration file will include
 
-## Fix — data/logic only, no redesign
+1. **Extensions** — `pgcrypto`, `uuid-ossp` (idempotent `CREATE EXTENSION IF NOT EXISTS`).
+2. **Custom enum types** — every `USER-DEFINED` type used by the schema (`crm_role`, `crm_enquiry_status`, `crm_enquiry_source`, `crm_enquiry_priority`, `crm_attendance_status`, `crm_batch_status`, `crm_campaign_audience`, `crm_campaign_status`, `crm_course_mode`, `crm_enrolment_status`, `crm_fee_status`, `crm_fee_plan_type`, `crm_payment_mode`, `admin_role`, `announcement_type`, etc.) wrapped in `DO $$ ... EXCEPTION WHEN duplicate_object` blocks so they don't error if they already exist.
+3. **Tables** — all `public.*` tables from this project, using `CREATE TABLE IF NOT EXISTS` with full column definitions, defaults, primary keys, unique constraints, and foreign keys. Includes:
+   - All `crm_*` tables (students, enrolments, fee_plans, payments, attendance, batches, courses, faculties, certificates, campaigns, enquiries, expenses, audit logs, report-column tables, settings, etc.)
+   - Public site tables (`courses`, `announcements`, `ai_use_cases`, `contact_submissions`, `admin_users`)
+4. **Indexes** — non-PK indexes used by the app, with `CREATE INDEX IF NOT EXISTS`.
+5. **Functions** — every `SECURITY DEFINER` and trigger function listed in this project (e.g. `has_crm_role`, `has_any_crm_role`, `is_admin`, `crm_normalise_phone_value`, `crm_compute_net_payable`, `crm_apply_payment_to_plan`, `generate_crm_*_no`, `crm_flag_overdue_fee_plans`, `crm_get_student_enrolments`, `crm_find_by_phone`, `crm_auto_create_enquiry_for_student`, `update_updated_at_column`, etc.) using `CREATE OR REPLACE FUNCTION`.
+6. **Triggers** — all triggers that should fire on insert/update (phone normalisation, net-payable computation, enrolment/receipt/certificate number generation, payment → fee plan sync, auto-enquiry creation, `updated_at` touch). Wrapped with `DROP TRIGGER IF EXISTS … ; CREATE TRIGGER …` so re-runs stay clean.
+7. **Row-Level Security** — `ALTER TABLE … ENABLE ROW LEVEL SECURITY` for every table, then each policy recreated via `DROP POLICY IF EXISTS … ; CREATE POLICY …`. Mirrors the exact policies currently in the project.
+8. **Storage buckets** — `INSERT … ON CONFLICT (id) DO NOTHING` for: `course-documents`, `gallery`, `crm-course-media`, `crm-student-docs`, `crm-receipts`, `crm-certificates`, `crm-faculty-photos` (with correct `public` flag).
+9. **Seed reference data (optional, in companion file)** — default rows that the app expects to exist:
+   - `crm_institute_settings` singleton
+   - `crm_enquiry_form_fields`
+   - `crm_*_report_columns` (student, fee, enquiry, batch, attendance, certificate)
+   - `crm_expense_categories`
+   - `crm_seo_meta`
+   All inserts use `ON CONFLICT DO NOTHING` so existing target data is preserved.
 
-### 1. `src/crm/pages/CrmStudents.tsx`
-Add helpers using the existing `enrolMap`:
-- `effectiveTotal(s)` = if `enrolMap[s.id]?.length` → sum of `total_fee` across enrolments; else `s.total_fee`.
-- `effectiveNet(s)`   = if `enrolMap[s.id]?.length` → sum of `net_payable_fee ?? total_fee`; else `s.net_payable_fee ?? s.total_fee`.
+---
 
-Use these in:
-- `valueOf("total_fee" | "net_payable_fee" | "balance")`
-- `renderCell("total_fee" | "net_payable_fee" | "balance")`
+## Non-destructive guarantees
 
-`paidMap` already aggregates all non-void payments per student → leave as is.
+- **No `DROP TABLE`, no `TRUNCATE`, no `DELETE`** anywhere in the file.
+- All object creation uses `IF NOT EXISTS` / `CREATE OR REPLACE` / `ON CONFLICT DO NOTHING`.
+- Enum creation guarded by `DO $$ ... EXCEPTION` blocks.
+- Policies dropped-then-recreated only by name on tables we own — safe because policy names are namespaced to this project's tables.
+- `auth.*`, `storage.*`, `realtime.*` schemas are **not** modified (only `storage.buckets` rows inserted, which is safe).
 
-Result: manav row Total Fee = ₹29,500, Balance recomputes correctly.
+---
 
-### 2. `src/crm/pages/CrmFees.tsx`
-- Add a 4th parallel fetch of `crm_student_enrolments` (`student_id, total_fee, net_payable_fee`).
-- Group by `student_id` into `enrolByStudent`.
-- When building each `Row`: `total_fee = enrolByStudent[s.id]?.length ? sum(net_payable_fee ?? total_fee) : s.total_fee`.
-- Also concatenate course names: `course_name_snapshot = enrolByStudent[s.id]?.length ? names.join(", ") : s.course_name_snapshot`, so the Course cell shows both names.
+## What is NOT included (and why)
 
-This automatically fixes the top stat cards (Total billed, Outstanding) and per-row Total/Due.
+- **`auth.users` rows** — Supabase manages auth users; they cannot be cloned via SQL across projects. The target project's admins must sign up in the new project, then you insert matching rows into `crm_user_roles` / `admin_users` using their new `auth.uid()`.
+- **Existing business data** (students, payments, enquiries, etc.) — the user asked for schema cloning without disturbing the target's existing data. If a data dump is also wanted later, that's a separate `pg_dump --data-only` export.
+- **Storage object files** — only bucket definitions are migrated. Actual files in buckets must be copied separately if needed.
 
-### 3. `src/crm/pages/CrmStudentForm.tsx` — make both courses visible on student profile
-- Confirm `EnrolmentsCard` is mounted near the top (above the single-course "Course & Fee" block), so the user lands on the profile and immediately sees both course rows.
-- In the legacy "Course & Fee" header section, when `enrolMap.length > 1`, replace the single course label with a small "+N courses — see Enrolments below" hint AND render all course names as Badges (re-use `Badge`). Don't remove the section (it still drives the registration/initial enrolment UI), just stop misleading the eye.
-- Total Fee shown at the top of the profile must use the same `effectiveTotal` formula (sum of enrolment net fees) when multiple enrolments exist.
+---
 
-(`CrmStudentFees.tsx` is already correct from the previous pass — leave alone.)
+## How I'll build it (technical)
 
-### 4. Row click behaviour (Bug B explicit)
-The row is already clickable to `/crm/students/:id`. Verify `navigate(\`/crm/students/${s.id}\`)` is wired to the row (not just the action buttons). If not, add an `onClick` on the `<TableRow>` that navigates to the profile, with `cursor-pointer` styling on the row only. Inline action buttons (`StudentWhatsAppButton`, message icon) keep `e.stopPropagation()`.
+1. Use `supabase--read_query` (read-only DB access) to dump exact definitions from `information_schema` and `pg_catalog`:
+   - `pg_type` + `pg_enum` for enums
+   - `information_schema.columns` + `pg_attribute` for table DDL
+   - `pg_indexes` for indexes
+   - `pg_proc` for function bodies (already partially shown in context)
+   - `pg_trigger` for trigger definitions
+   - `pg_policies` for RLS policies
+   - `storage.buckets` for bucket list
+2. Stitch the results into one ordered SQL file in this sequence: extensions → enums → tables → indexes → functions → triggers → RLS enable → policies → storage buckets → (companion) seed data.
+3. Write to `/mnt/documents/atec_full_migration.sql` and `/mnt/documents/atec_seed_data.sql`.
+4. QA: run the file through `psql --dry-run`-style parsing (load into a scratch schema check) and verify line count + table coverage matches the live schema.
 
-## Files touched
-- `src/crm/pages/CrmStudents.tsx`
-- `src/crm/pages/CrmFees.tsx`
-- `src/crm/pages/CrmStudentForm.tsx`
+---
 
-## Out of scope
-- No SQL or RLS changes — `crm_student_enrolments` already holds everything.
-- No layout / colour / typography changes.
-- `CrmStudentFees.tsx` already aggregates correctly; not touched.
+## Deliverables
 
-## Manual verification
-1. `/crm/students` → manav row Total Fee = ₹29,500; both course chips visible (already working); single-course students unchanged.
-2. Click manav row → profile opens; both courses shown in Enrolments section; header total = ₹29,500.
-3. `/crm/fees` → top "Total billed" includes both courses; manav row Total = ₹29,500, Course cell shows "Tally Prime, Python Programming".
-4. Export XLSX from Students → Total Fee / Net Payable / Balance reflect summed values.
+- `atec_full_migration.sql` — schema, functions, triggers, RLS, policies, storage buckets (idempotent, non-destructive).
+- `atec_seed_data.sql` — optional reference rows the app expects, all `ON CONFLICT DO NOTHING`.
+- Short `README` in the chat reply explaining the run order and the post-import step (creating an admin user in the new project and inserting their `crm_user_roles` row).
+
+---
+
+## Steps for you after import
+
+1. Create a new Supabase project (or use the existing one).
+2. Run `atec_full_migration.sql` in the SQL editor.
+3. Run `atec_seed_data.sql` if you want default settings / form fields / report columns.
+4. Sign up your admin email in the new project's Auth, then run:
+   ```sql
+   INSERT INTO public.crm_user_roles (user_id, role)
+   VALUES ('<new-auth-user-id>', 'admin');
+   ```
+5. Re-create storage objects (file uploads) manually if you need the old files.
+
+Approve this plan and I'll generate both SQL files and attach them for download.
