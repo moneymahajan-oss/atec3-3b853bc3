@@ -43,24 +43,28 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        setTimeout(() => fetchRole(s.user.id), 0);
-      } else {
-        setRole(null);
-      }
-      setLoading(false);
-    });
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_evt, s) => {
+    setSession(s);
+    setUser(s?.user ?? null);
+    if (s?.user) {
+      await fetchRole(s.user.id);  // wait for role BEFORE setting loading false
+    } else {
+      setRole(null);
+    }
+    setLoading(false);  // only now set loading false
+  });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) fetchRole(s.user.id);
-      setLoading(false);
-    });
+  supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    setSession(s);
+    setUser(s?.user ?? null);
+    if (s?.user) {
+      await fetchRole(s.user.id);  // wait for role BEFORE setting loading false
+    }
+    setLoading(false);  // only now set loading false
+  });
 
+  return () => subscription.unsubscribe();
+}, []);
     return () => subscription.unsubscribe();
   }, []);
 
