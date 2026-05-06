@@ -42,29 +42,38 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_evt, s) => {
-    setSession(s);
-    setUser(s?.user ?? null);
-    if (s?.user) {
-      await fetchRole(s.user.id);  // wait for role BEFORE setting loading false
-    } else {
-      setRole(null);
+ useEffect(() => {
+  let mounted = true;
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (_evt, s) => {
+      if (!mounted) return;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        await fetchRole(s.user.id);
+      } else {
+        setRole(null);
+      }
+      if (mounted) setLoading(false);
     }
-    setLoading(false);  // only now set loading false
-  });
+  );
 
   supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    if (!mounted) return;
     setSession(s);
     setUser(s?.user ?? null);
     if (s?.user) {
-      await fetchRole(s.user.id);  // wait for role BEFORE setting loading false
+      await fetchRole(s.user.id);
     }
-    setLoading(false);  // only now set loading false
+    if (mounted) setLoading(false);
   });
 
-  return () => subscription.unsubscribe();
-  }, []);
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
