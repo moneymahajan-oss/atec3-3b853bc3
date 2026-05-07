@@ -41,8 +41,8 @@ export default function LifeAtAtecSection() {
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
             {settings.life_at_atec_heading || "About ATEC"}
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            {settings.life_at_atec_subheading || "Experience the vibrant campus culture and student activities"}
+          <p className="text-muted-foreground max-w-2xl mx-auto whitespace-pre-line">
+            {settings.life_at_atec_subheading || "Watch our story unfold"}
           </p>
         </motion.div>
 

@@ -48,12 +48,12 @@ export default function AboutSection() {
     <section id="about" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
-          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> About Us</Badge>
-          <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
-            {settings.about_section_heading || "About ATEC"}
+          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> </Badge>
+          <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4 whitespace-pre-line">
+            {settings.about_section_heading || "\n"}
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            {settings.about_section_subheading || "Watch our story unfold"}
+          <p className="text-muted-foreground max-w-2xl mx-auto whitespace-pre-line">
+            {settings.about_section_subheading || "\n"}
           </p>
         </motion.div>
 
