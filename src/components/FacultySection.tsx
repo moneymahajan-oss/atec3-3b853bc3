@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { GraduationCap, ArrowRight } from "lucide-react";
+import { GraduationCap, ArrowRight, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,10 +11,10 @@ type Faculty = {
 };
 
 export default function FacultySection() {
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['public_faculties'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("crm_faculties")
         .select("id,name,slug,designation,specialization,photo_url,experience_years")
         .eq("is_active", true)
@@ -22,12 +22,21 @@ export default function FacultySection() {
         .order("display_order")
         .order("name")
         .limit(8);
+      if (error) throw error;
       return (data ?? []) as Faculty[];
     },
-    staleTime: 0,
+    placeholderData: [] as Faculty[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="faculty" className="py-16 md:py-24 bg-muted/30 text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading faculty
+      </button>
+    </section>
+  );
 
   if (!isLoading && items.length === 0) return null;
 

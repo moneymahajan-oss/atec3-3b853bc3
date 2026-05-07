@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { GraduationCap, Users, BookOpen, Award } from "lucide-react";
+import { GraduationCap, Users, BookOpen, Award, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const iconMap: Record<string, React.ElementType> = { GraduationCap, Users, BookOpen, Award };
@@ -34,16 +34,25 @@ function Counter({ target }: { target: number }) {
 }
 
 export default function StatsStrip() {
-  const { data: stats = [], isLoading } = useQuery({
+  const { data: stats = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {
-      const { data } = await supabase.from("stats").select("*").order("display_order");
-      return data || [];
+      const { data, error } = await supabase.from("stats").select("*").order("display_order");
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section className="relative z-20 -mt-12 text-center py-4">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading stats
+      </button>
+    </section>
+  );
 
   if (isLoading || stats.length === 0) return null;
 

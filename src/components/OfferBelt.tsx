@@ -11,14 +11,15 @@ export default function OfferBelt() {
   const { data: offers = [], isLoading } = useQuery({
     queryKey: ['offer_belt'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("offer_belt")
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-      return (data || []) as Offer[];
+      if (error) throw error;
+      return (data ?? []) as Offer[];
     },
-    staleTime: 0,
+    placeholderData: [] as Offer[],
     retry: 2,
     retryDelay: 1000,
   });

@@ -50,7 +50,16 @@ import FacultyList from "./pages/FacultyList.tsx";
 import FacultyDetail from "./pages/FacultyDetail.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 300000,
+      gcTime: 600000,
+      refetchOnWindowFocus: false,
+      retry: 3,
+    },
+  },
+});
 
 function FaviconMount() {
   useFaviconFromSettings();

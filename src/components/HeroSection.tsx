@@ -23,12 +23,12 @@ export default function HeroSection() {
     queryFn: async () => {
       const { data, error } = await supabase.from("hero_slides").select("*").eq("is_active", true).order("display_order");
       if (error) { console.error("[HeroSection] fetch error:", error.message); return fallbackSlides; }
-      const validSlides = (data || []).filter(
+      const validSlides = (data ?? []).filter(
         (slide: any) => slide?.is_active && slide?.title?.trim() && slide?.image_url?.trim()
       );
       return validSlides.length ? validSlides : fallbackSlides;
     },
-    staleTime: 0,
+    placeholderData: fallbackSlides,
     retry: 2,
     retryDelay: 1000,
   });

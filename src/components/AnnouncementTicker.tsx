@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Megaphone, AlertTriangle, Award } from "lucide-react";
+import { Megaphone, AlertTriangle, Award, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 const typeConfig: Record<string, { icon: React.ElementType; class: string }> = {
@@ -9,16 +9,25 @@ const typeConfig: Record<string, { icon: React.ElementType; class: string }> = {
 };
 
 export default function AnnouncementTicker() {
-  const { data: announcements = [], isLoading } = useQuery({
+  const { data: announcements = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['announcements'],
     queryFn: async () => {
-      const { data } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
-      return data || [];
+      const { data, error } = await supabase.from("announcements").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section className="py-4 bg-muted/50 border-y border-border text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading announcements
+      </button>
+    </section>
+  );
 
   if (isLoading || announcements.length === 0) return null;
   const items = [...announcements, ...announcements];

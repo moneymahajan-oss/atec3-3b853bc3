@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap, MessageCircle, Send } from "lucide-react";
+import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap, MessageCircle, Send, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -33,13 +33,14 @@ export default function CoursesSection() {
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: courses = [] } = useQuery({
+  const { data: courses = [], isError, refetch } = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
-      const { data } = await supabase.from("courses").select("*").eq("is_active", true).order("display_order");
-      return data || [];
+      const { data, error } = await supabase.from("courses").select("*").eq("is_active", true).order("display_order");
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
@@ -47,8 +48,6 @@ export default function CoursesSection() {
   const filtered = active === "All" ? courses : courses.filter((c: any) => c.category === active);
   const waNumber = settings.whatsapp_number || "917009933289";
 
-  // Enroll now also captures the visitor as an enquiry — route through the
-  // Share form so we collect name + phone before opening WhatsApp.
   const handleEnroll = (course: any) => {
     setShareCourse(course);
   };
@@ -130,6 +129,14 @@ export default function CoursesSection() {
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
+  if (isError) return (
+    <section id="courses" className="py-12 bg-white text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading courses
+      </button>
+    </section>
+  );
+
   return (
     <section id="courses" className="py-12 bg-white">
       <div className="container mx-auto px-4">
@@ -197,7 +204,6 @@ export default function CoursesSection() {
         </motion.div>
       </div>
 
-      {/* Syllabus modal */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           {selectedCourse && (
@@ -226,7 +232,6 @@ export default function CoursesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Share Course Details modal */}
       <Dialog open={!!shareCourse} onOpenChange={(o) => !o && setShareCourse(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>

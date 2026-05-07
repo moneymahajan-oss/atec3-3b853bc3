@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, FileText, FileDown, BookOpen, BarChart3, IndianRupee, Download } from "lucide-react";
+import { Sparkles, FileText, FileDown, BookOpen, BarChart3, IndianRupee, Download, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,16 +8,25 @@ import { supabase } from "@/integrations/supabase/client";
 const iconMap: Record<string, React.ElementType> = { FileText, FileDown, BookOpen, BarChart3, IndianRupee };
 
 export default function DownloadsSection() {
-  const { data: downloads = [], isLoading } = useQuery({
+  const { data: downloads = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['downloads'],
     queryFn: async () => {
-      const { data } = await supabase.from("downloads").select("*").order("display_order");
-      return data || [];
+      const { data, error } = await supabase.from("downloads").select("*").order("display_order");
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="downloads" className="py-12 bg-[#f8fafc] text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading downloads
+      </button>
+    </section>
+  );
 
   if (isLoading || downloads.length === 0) return null;
 
