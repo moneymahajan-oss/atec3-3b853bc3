@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidatePublicQueries } from "@/lib/queryKeys";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
 import { Button } from "@/components/ui/button";
