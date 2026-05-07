@@ -39,10 +39,10 @@ export default function LifeAtAtecSection() {
             <Sparkles className="w-3 h-3 mr-1" /> ABOUT US
           </Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
-            {settings.life_section_heading || "About ATEC"}
+            {settings.life_section_heading || "\n"}
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto whitespace-pre-line">
-            {settings.about_section_subheading || "Watch our story unfold"}
+            {settings.about_section_subheading || "\n"}
           </p>
         </motion.div>
 
