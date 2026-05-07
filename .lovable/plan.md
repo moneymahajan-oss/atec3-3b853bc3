@@ -1,73 +1,62 @@
+I found the previous fix did not fully cover the live failure mode. The public page now fetches with React Query, but admin edits still do not invalidate the shared React Query cache, settings still use a separate 60-second custom cache, and several card sections still render image/card layouts without validating media URLs. That can create stale cards and visible blank/white media areas after returning from admin or reloading an already-mounted page.
 
-## Problem
+Plan to fix it:
 
-All 13 public-facing section components (HeroSection, GallerySection, CoursesSection, etc.) fetch data using `useEffect([], [])` + `useState`. This means:
-- Data is fetched once on mount and never refetched on re-navigation
-- No proper loading/error states — components return `null` while data loads, causing whitespace flashes
-- After admin edits, the public site shows stale data until a hard refresh
+1. Create one shared query-key map for public content
+   - Add a small helper module for public content query keys, including:
+     - `hero_slides`
+     - `courses`
+     - `gallery_items`
+     - `testimonials`
+     - `stats`
+     - `youtube_videos` variants
+     - `announcements`
+     - `downloads`
+     - `offer_belt`
+     - `ai_use_cases`
+     - `mock_tests`
+     - `crm_faculties`
+     - `site_settings`
+   - This avoids the current risk where admin invalidation uses a different string than the public `useQuery`.
 
-## What's already fine (no changes needed)
+2. Fix admin create/update/delete cache invalidation
+   - Change `src/pages/AdminTable.tsx` to use `useQueryClient()`.
+   - After every successful insert/update/delete, invalidate the exact public query keys for that edited table.
+   - For shared tables, invalidate all affected variants. Example: editing `youtube_videos` invalidates `learn_videos`, `about_videos`, and `life_videos`; editing `courses` invalidates both `courses` and the contact course list if applicable.
+   - Keep `fetchData()` for the admin table itself, but add React Query invalidation so returning to the website immediately refetches.
 
-- **RLS policies**: All public tables already have correct `SELECT` policies for the `public` role
-- **Storage URLs**: No `getSignedUrl()` calls found — all media uses direct public URLs
-- **Admin mutations**: AdminTable.tsx already calls `fetchData()` after save/delete (the admin panel itself refreshes correctly)
+3. Convert site settings to React Query instead of the 60-second manual cache
+   - Rewrite `src/hooks/useSiteSettings.tsx` to use React Query with query key `['site_settings']` and `staleTime: 0`.
+   - Keep exported compatibility functions if needed, but make them invalidate/refetch the query instead of relying on a module-level timeout cache.
+   - Update `src/pages/AdminSiteContent.tsx` so each successful settings save invalidates `['site_settings']` immediately.
+   - This directly fixes database text/settings not appearing until later.
 
-## Plan: Convert to React Query
+4. Normalize and validate public media URLs before rendering cards
+   - Add a helper to trim media URLs and reject empty/null strings.
+   - For public buckets/URLs, keep public URL usage only; no signed URLs.
+   - Update card components so they only render media markup after data is loaded and the media URL is valid, or use a stable fallback/placeholder where appropriate.
+   - Target files:
+     - `src/components/HeroSection.tsx`
+     - `src/components/CoursesSection.tsx`
+     - `src/components/GallerySection.tsx`
+     - `src/components/FacultySection.tsx`
+     - `src/components/TestimonialsSection.tsx`
+     - `src/components/VideosSection.tsx`
+     - public faculty pages if they have the same media pattern.
 
-Replace the `useEffect + useState` data-fetching pattern with `useQuery` in all 13 section components. Each component gets:
-- `useQuery` with `staleTime: 0` so it refetches on every mount
-- Proper `isLoading` handling (skeleton or graceful null) instead of rendering empty containers
-- Consistent query keys for future cache invalidation
+5. Fix loading/empty render states to avoid white spaces
+   - For sections that currently do `if (isLoading || items.length === 0) return null`, adjust behavior by section:
+     - Critical hero: always render a valid fallback slide immediately.
+     - Optional sections: render nothing until data is loaded, then only render when valid items exist.
+     - Sections with headings/cards: do not render heading/container/card wrappers before valid data exists.
+   - Remove card markup that can mount before its required image/media data exists.
 
-### Files to change (13 components)
+6. Confirm database visibility/RLS and active data
+   - RLS policies already show public/anon SELECT access for active public content tables.
+   - I will keep this intact and only add a migration if I find a missing policy while implementing.
 
-| Component | Table | Query Key |
-|-----------|-------|-----------|
-| `src/components/HeroSection.tsx` | `hero_slides` | `['hero_slides']` |
-| `src/components/GallerySection.tsx` | `gallery_items` | `['gallery_items']` |
-| `src/components/CoursesSection.tsx` | `courses` | `['courses']` |
-| `src/components/FacultySection.tsx` | `crm_faculties` | `['public_faculties']` |
-| `src/components/TestimonialsSection.tsx` | `testimonials` | `['testimonials']` |
-| `src/components/AIUseCasesSection.tsx` | `ai_use_cases` | `['ai_use_cases']` |
-| `src/components/VideosSection.tsx` | `youtube_videos` | `['learn_videos']` |
-| `src/components/AboutSection.tsx` | `youtube_videos` | `['about_videos']` |
-| `src/components/LifeAtAtecSection.tsx` | `youtube_videos` | `['life_videos']` |
-| `src/components/StatsStrip.tsx` | `stats` | `['stats']` |
-| `src/components/AnnouncementTicker.tsx` | `announcements` | `['announcements']` |
-| `src/components/OfferBelt.tsx` | `offer_belt` | `['offer_belt']` |
-| `src/components/DownloadsSection.tsx` | `downloads` | `['downloads']` |
-
-### Pattern for each component
-
-**Before:**
-```tsx
-const [items, setItems] = useState([]);
-useEffect(() => {
-  supabase.from("table").select("*").eq("is_active", true)
-    .then(({ data }) => setItems(data || []));
-}, []);
-if (items.length === 0) return null;
-```
-
-**After:**
-```tsx
-import { useQuery } from "@tanstack/react-query";
-
-const { data: items = [], isLoading } = useQuery({
-  queryKey: ['table'],
-  queryFn: async () => {
-    const { data } = await supabase.from("table").select("*").eq("is_active", true);
-    return data || [];
-  },
-  staleTime: 0,
-});
-if (isLoading || items.length === 0) return null;
-```
-
-### MockTestSection special case
-`MockTestSection.tsx` also fetches from `mock_tests` but has complex multi-step quiz state — it will also be converted but its additional `useEffect` for the timer will remain.
-
-### What this fixes
-1. **Whitespace on second load**: React Query caches data and refetches in background — no blank flash
-2. **Stale data after admin edits**: `staleTime: 0` means every navigation triggers a fresh fetch
-3. **Loading states**: Components hide gracefully during loading instead of rendering empty containers
+7. Verification after changes
+   - Open the preview and confirm the homepage renders without blank/white card media spaces.
+   - Simulate the second-load scenario by navigating away/back and/or refreshing.
+   - Confirm network calls refetch after invalidation and public sections display database data.
+   - Provide a concise before/after list of every changed file and the specific fix applied.
