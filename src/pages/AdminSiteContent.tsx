@@ -63,6 +63,8 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
 export default function AdminSiteContent() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
