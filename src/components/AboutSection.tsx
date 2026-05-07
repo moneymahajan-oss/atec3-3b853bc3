@@ -23,12 +23,8 @@ function getYouTubeId(input: string): string | null {
 
 export default function AboutSection() {
   const [aboutVideos, setAboutVideos] = useState<any[]>([]);
-  const [aboutVideos, setAboutVideos] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("team_members").select("*").order("display_order").then(({ data }) => {
-      if (data) setTeamMembers(data);
-    });
     supabase
       .from("youtube_videos")
       .select("*")
