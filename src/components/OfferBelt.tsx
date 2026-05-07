@@ -7,7 +7,7 @@ interface Offer {
   bg_color: string;
 }
 
-export default function OfferBelt() {,
+export default function OfferBelt() {
   const { data: offers = [], isLoading } = useQuery({
     queryKey: ['offer_belt'],
     queryFn: async () => {
