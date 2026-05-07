@@ -1,37 +1,27 @@
-## Goal
-Isolate the admin panel's auth session from the CRM's by giving it a separate Supabase client with a distinct `localStorage` key, so signing in/out of one doesn't affect the other.
+## Problem
 
-## Changes
+The current `lovable_full_schema.sql` uses Postgres `COPY ... FROM stdin` blocks for table data (e.g. line 1729). Supabase's web SQL editor (and most non-`psql` runners) cannot process `stdin` data — it parses the first stdin row (`f6e147da-...`) as SQL, producing the `syntax error at or near "f6e147da"` you saw.
 
-### 1. New file: `src/integrations/supabase/adminClient.ts`
-Mirror of `src/integrations/supabase/client.ts` with two differences:
-- Exported name: `supabaseAdmin` (instead of `supabase`)
-- `storageKey: 'admin-auth-token'` (instead of `'crm-auth-token'`)
+## Fix
 
-All other options (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `persistSession: true`, `autoRefreshToken: true`, `Database` type) stay identical.
+Regenerate the file so all data is emitted as plain `INSERT` statements (runnable in the Supabase SQL editor), and keep the schema + RLS + storage buckets in one idempotent file.
 
-### 2. Update Admin pages in `src/pages/` that directly import the supabase client
-Files that currently `import { supabase } from "@/integrations/supabase/client"`:
-- `src/pages/AdminDashboard.tsx`
-- `src/pages/AdminSiteContent.tsx`
-- `src/pages/AdminTable.tsx`
+### Steps
 
-In each, replace:
-```ts
-import { supabase } from "@/integrations/supabase/client";
-```
-with:
-```ts
-import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
-```
+1. Re-run `pg_dump` against the Lovable database with:
+   - Schema: `--schema-only --no-owner --no-privileges --schema=public`
+   - Data: `--data-only --no-owner --inserts --rows-per-insert=100 --schema=public` (produces `INSERT INTO ... VALUES (...)` — no `COPY/stdin`)
+2. Strip non-portable directives: `\restrict`, `\unrestrict`, `SET transaction_timeout`, ownership lines, extension `CREATE` (already handled by Supabase).
+3. Prepend a guarded reset block (drop existing `public` objects safely) so the file is re-runnable on the target DB.
+4. Append idempotent `storage.buckets` upserts (already in current file — keep).
+5. Order: extensions check → enums/types → tables → functions → triggers → RLS enable → policies → indexes → data INSERTs → storage buckets.
+6. Write the new file to `/mnt/documents/lovable_full_schema_v2.sql` (keeps v1 for comparison).
+7. Quick lint: `grep -nE '^(COPY|\\\\\.|\\\\restrict)' lovable_full_schema_v2.sql` must return nothing.
 
-Aliasing `supabaseAdmin as supabase` keeps every `supabase.from(...)` / `supabase.storage...` call inside the file unchanged — minimal diff, zero behavior change beyond the auth session source.
+### Notes
 
-### 3. Files intentionally NOT changed
-- `src/pages/AdminLogin.tsx` — does not import the supabase client directly; it uses `useAuth()`. See note below.
-- `src/hooks/useAuth.tsx` — shared hook; changing it would affect non-admin code. Out of scope for this request.
+- `auth.users` rows are still excluded (Supabase-managed). After import you'll re-create the admin/CRM users via the Auth UI and update `admin_users.user_id` / `crm_user_roles.user_id` to match.
+- Dual login (admin + CRM simultaneously) is already wired via separate `localStorage` keys and unaffected by this migration.
+- File will be larger than v1 (INSERTs are more verbose than COPY) but will run cleanly in the Supabase SQL editor.
 
-## Caveat to flag
-`AdminLogin.tsx` signs in via `useAuth()`, which uses the original `supabase` client (storageKey `crm-auth-token`). After this change, `AdminDashboard` / `AdminSiteContent` / `AdminTable` will read data using a *different* client (`admin-auth-token`) that has no session, so their RLS-protected queries will run unauthenticated and likely return nothing.
-
-If the intent is true session isolation between admin and CRM, `useAuth` (or at least the admin login/session logic) also needs to use `supabaseAdmin`. I'll proceed with exactly what was requested, but recommend a follow-up to route admin auth through `adminClient` as well.
+Approve and I'll generate `lovable_full_schema_v2.sql`.
