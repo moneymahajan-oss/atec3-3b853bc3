@@ -11,6 +11,7 @@ import FacultySection from "@/components/FacultySection";
 import AIUseCasesSection from "@/components/AIUseCasesSection";
 import MockTestSection from "@/components/MockTestSection";
 import VideosSection from "@/components/VideosSection";
+import LifeAtAtecSection from "@/components/LifeAtAtecSection";
 import DownloadsSection from "@/components/DownloadsSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
@@ -30,6 +31,7 @@ const Index = () => {
       <GallerySection />
       <FacultySection />
       <TestimonialsSection />
+      <LifeAtAtecSection />
       <AIUseCasesSection />
       <MockTestSection />
       <VideosSection />
