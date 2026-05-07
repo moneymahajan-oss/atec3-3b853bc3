@@ -16,6 +16,7 @@ export default function ContactSection() {
   const settings = useSiteSettings();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
