@@ -29,6 +29,8 @@ export default function HeroSection() {,
       return validSlides.length ? validSlides : fallbackSlides;
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const [current, setCurrent] = useState(0);

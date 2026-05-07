@@ -25,6 +25,8 @@ export default function FacultySection() {,
       return (data ?? []) as Faculty[];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (!isLoading && items.length === 0) return null;

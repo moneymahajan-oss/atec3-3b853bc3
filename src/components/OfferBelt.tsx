@@ -19,6 +19,8 @@ export default function OfferBelt() {,
       return (data || []) as Offer[];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (isLoading || offers.length === 0) return null;

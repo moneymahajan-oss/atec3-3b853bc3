@@ -40,6 +40,8 @@ export default function CoursesSection() {
       return data || [];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   const filtered = active === "All" ? courses : courses.filter((c: any) => c.category === active);

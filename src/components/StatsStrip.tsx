@@ -41,6 +41,8 @@ export default function StatsStrip() {,
       return data || [];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (isLoading || stats.length === 0) return null;
