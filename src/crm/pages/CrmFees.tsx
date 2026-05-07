@@ -114,7 +114,7 @@ export default function CrmFees() {
       setRows(built);
       setLoading(false);
     })();
-  }, []);
+  }, [hasAccess]);
 
   const filtered = useMemo(() => rows.filter((r) => {
     if (!q) return true;
