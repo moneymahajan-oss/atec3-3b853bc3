@@ -16,6 +16,7 @@ export default function ContactSection() {
   const settings = useSiteSettings();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [courses, setCourses] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function ContactSection() {
     const name = (form.get("name") as string) || "";
     const phone = (form.get("phone") as string) || "";
     const email = (form.get("email") as string) || "";
-    const courseInterest = (form.get("course_interest") as string) || "";
+    const courseInterest = selectedCourse || "";
     const message = (form.get("message") as string) || "";
 
     const { error } = await supabase.from("leads").insert({
@@ -155,16 +156,20 @@ export default function ContactSection() {
                 <Input name="email" type="email" placeholder="Email Address" className="bg-background" />
               </div>
               <Input name="phone" type="tel" placeholder="WhatsApp Number" required className="bg-background" />
-              <Select name="course_interest">
-                <SelectTrigger className="bg-background"><SelectValue placeholder="Interested Course" /></SelectTrigger>
-                <SelectContent>
-                  {courses.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {courses.length > 0 ? (
+                <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                  <SelectTrigger className="bg-background"><SelectValue placeholder="Interested Course" /></SelectTrigger>
+                  <SelectContent>
+                    {courses.map((c) => (
+                      <SelectItem key={c.id} value={c.name}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input placeholder="Interested Course" className="bg-background" disabled />
+              )}
               <Textarea name="message" placeholder="Your message..." rows={4} className="bg-background" />
               <Button type="submit" className="w-full gradient-accent text-accent-foreground border-0 font-semibold hover:opacity-90 transition-opacity" disabled={submitted || loading}>
                 {submitted ? <><CheckCircle className="w-4 h-4 mr-2" /> Sent!</> : <><Send className="w-4 h-4 mr-2" /> Send via WhatsApp</>}
