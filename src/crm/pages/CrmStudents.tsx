@@ -57,6 +57,7 @@ const statusColors: Record<string, string> = {
 
 export default function CrmStudents() {
   const navigate = useNavigate();
+  const { hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Student[]>([]);
   const [batches, setBatches] = useState<BatchInfo[]>([]);
   const [paidMap, setPaidMap] = useState<Record<string, number>>({});
