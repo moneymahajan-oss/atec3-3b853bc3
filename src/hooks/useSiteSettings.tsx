@@ -1,65 +1,47 @@
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-let cache: Record<string, string> | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 60_000; // 60 seconds
-const listeners = new Set<(s: Record<string, string>) => void>();
-
-async function loadSettings() {
-  try {
-    const { data, error } = await supabase.from("site_settings").select("key, value");
-    if (error) {
-      console.error("[useSiteSettings] fetch error:", error.message);
-      return cache || {};
-    }
-    const map: Record<string, string> = {};
-    (data || []).forEach((row: any) => {
-      if (row.key) map[row.key] = row.value ?? "";
-    });
-    cache = map;
-    cacheTimestamp = Date.now();
-    listeners.forEach((l) => l(map));
-    return map;
-  } catch (e) {
-    console.error("[useSiteSettings] unexpected error:", e);
-    return cache || {};
+async function fetchSettings(): Promise<Record<string, string>> {
+  const { data, error } = await supabase.from("site_settings").select("key, value");
+  if (error) {
+    console.error("[useSiteSettings] fetch error:", error.message);
+    return {};
   }
+  const map: Record<string, string> = {};
+  (data || []).forEach((row: any) => {
+    if (row.key) map[row.key] = row.value ?? "";
+  });
+  return map;
 }
 
-export function useSiteSettings() {
-  const [settings, setSettings] = useState<Record<string, string>>(cache || {});
-
-  useEffect(() => {
-    const isStale = !cache || Date.now() - cacheTimestamp > CACHE_TTL;
-    if (isStale) {
-      loadSettings().then(setSettings);
-    }
-    listeners.add(setSettings);
-
-    // Refresh when user switches back to this tab (e.g. from admin panel)
-    const onFocus = () => {
-      if (Date.now() - cacheTimestamp > CACHE_TTL) {
-        loadSettings().then(setSettings);
-      }
-    };
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      listeners.delete(setSettings);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, []);
-
-  return settings;
+/**
+ * React Query-backed site settings hook.
+ * staleTime: 0 — always refetch on mount / window focus so admin edits
+ * show up immediately on the public site.
+ */
+export function useSiteSettings(): Record<string, string> {
+  const { data } = useQuery({
+    queryKey: ["site_settings"],
+    queryFn: fetchSettings,
+    staleTime: 0,
+  });
+  return data ?? {};
 }
 
-export function getCachedSetting(key: string, fallback = ""): string {
-  return cache?.[key] || fallback;
+/**
+ * Force an immediate refetch of site_settings across every mounted component.
+ * Called from admin pages after saving a setting.
+ */
+export function useRefreshSiteSettings() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: ["site_settings"] });
 }
 
+/**
+ * @deprecated Use useRefreshSiteSettings() hook instead when inside a component.
+ * This standalone version is kept for non-component callers that already have
+ * access to a QueryClient.
+ */
 export function refreshSiteSettings() {
-  cache = null;
-  cacheTimestamp = 0;
-  return loadSettings();
+  // no-op — callers should migrate to the hook version
 }

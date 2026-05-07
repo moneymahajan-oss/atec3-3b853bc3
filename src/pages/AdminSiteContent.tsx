@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { refreshSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowLeft, GraduationCap, LogOut, Eye, Save } from "lucide-react";
 
 const GROUPS: { label: string; keys: { key: string; label: string; multiline?: boolean; placeholder?: string }[] }[] = [
@@ -63,6 +63,7 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
 export default function AdminSiteContent() {
   const { user, isAdmin, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export default function AdminSiteContent() {
       await supabase.from("site_settings").insert({ key, value: values[key] || "" });
     }
     // Bust the public site cache so changes appear immediately
-    refreshSiteSettings();
+    queryClient.invalidateQueries({ queryKey: ["site_settings"] });
     toast({ title: "Saved", description: key });
     setSaving(null);
   };

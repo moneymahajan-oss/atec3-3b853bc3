@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidatePublicQueries } from "@/lib/queryKeys";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
 import { Button } from "@/components/ui/button";
@@ -233,6 +235,7 @@ export default function AdminTable() {
   const { table } = useParams<{ table: string }>();
   const { user, isAdmin, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -289,6 +292,7 @@ export default function AdminTable() {
     setEditItem(null);
     setIsNew(false);
     fetchData();
+    invalidatePublicQueries(queryClient, tableName);
   };
 
   const handleDelete = async (id: string) => {
@@ -297,6 +301,7 @@ export default function AdminTable() {
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Deleted" });
     fetchData();
+    invalidatePublicQueries(queryClient, tableName);
   };
 
   const openNew = () => {
