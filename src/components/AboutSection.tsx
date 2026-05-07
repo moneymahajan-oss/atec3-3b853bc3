@@ -22,8 +22,7 @@ function getYouTubeId(input: string): string | null {
 }
 
 export default function AboutSection() {
-  const settings = useSiteSettings();
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [aboutVideos, setAboutVideos] = useState<any[]>([]);
   const [aboutVideos, setAboutVideos] = useState<any[]>([]);
 
   useEffect(() => {
