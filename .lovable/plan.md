@@ -1,34 +1,32 @@
 
-## What we'll do
+## Problem
 
-The database schema (tables, functions, triggers, RLS policies) is already in place from the existing migrations. All tables are currently **empty**. We need to:
+The admin login at `/admin/login` shows **"Database error querying schema"** (500 error). The auth logs confirm:
 
-### 1. Seed all data from the original project
+```
+error finding user: sql: Scan error on column index 8, name "email_change": converting NULL to string is unsupported
+```
 
-Extract just the `INSERT` statements from the previously generated `lovable_full_schema_v2.sql` file and run them against the current database. This includes data for all tables: courses, hero_slides, gallery_items, testimonials, announcements, stats, team_members, downloads, youtube_videos, offer_belt, site_settings, mock_tests, whatsapp_templates, CRM courses, CRM faculties, CRM enquiry form fields, CRM report columns, CRM institute settings, CRM SEO meta, and all other content tables.
+The previous fix addressed `confirmation_token` and other token columns, but missed `email_change`, `phone_change`, and `phone` columns which are also NULL and cause the same crash.
 
-We'll use `SET session_replication_role = 'replica'` to bypass triggers/RLS during import, then reset it afterward.
+## Fix
 
-### 2. Create two auth users
+Run a single database migration to set ALL potentially NULL string columns on auth.users to empty strings:
 
-- **Admin user**: `moneymahajan@gmail.com` / `Manav@22441`
-- **CRM user**: `crm@moneymahajan.com` / `Manav@22441`
-  (Note: `crm@moneymahajan@gmail.com` has two `@` signs which is invalid — I'll use `crm@moneymahajan.com` instead. Let me know if you want a different email.)
+```sql
+UPDATE auth.users
+SET
+  email_change = COALESCE(email_change, ''),
+  phone_change = COALESCE(phone_change, ''),
+  phone = COALESCE(phone, '');
+```
 
-Both users will be auto-confirmed so they can log in immediately.
+This will fix login for both admin (`moneymahajan@gmail.com`) and CRM (`crm@moneymahajan.com`) users.
 
-### 3. Grant permissions
+## Root Cause
 
-- Insert the admin user's ID into `admin_users` table (grants admin panel access)
-- Insert the CRM user's ID into `crm_user_roles` table with role `admin` (grants full CRM access)
-- Both users use separate auth sessions (admin uses `admin-auth-token` localStorage key, CRM uses the default) so they can be logged in simultaneously on the same browser
+The users were created via a raw SQL INSERT into `auth.users` which left several string columns as NULL. GoTrue's Go code expects these to be non-null strings and crashes when scanning NULL values.
 
-### 4. Enable auto-confirm for email signups
+## No code changes needed
 
-Configure auth to auto-confirm so these users can sign in immediately without email verification.
-
-### Technical details
-
-- Data will be inserted via a migration that wraps INSERTs in `session_replication_role = 'replica'` to skip FK/trigger checks during load
-- The `admin_users` and `crm_user_roles` entries will reference the newly created auth user IDs
-- No schema changes needed — all tables, RLS policies, functions, and triggers are already correct from existing migrations
+Only a database migration is required. No frontend or component changes.
