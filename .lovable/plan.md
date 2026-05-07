@@ -1,27 +1,34 @@
-## Problem
 
-The current `lovable_full_schema.sql` uses Postgres `COPY ... FROM stdin` blocks for table data (e.g. line 1729). Supabase's web SQL editor (and most non-`psql` runners) cannot process `stdin` data — it parses the first stdin row (`f6e147da-...`) as SQL, producing the `syntax error at or near "f6e147da"` you saw.
+## What we'll do
 
-## Fix
+The database schema (tables, functions, triggers, RLS policies) is already in place from the existing migrations. All tables are currently **empty**. We need to:
 
-Regenerate the file so all data is emitted as plain `INSERT` statements (runnable in the Supabase SQL editor), and keep the schema + RLS + storage buckets in one idempotent file.
+### 1. Seed all data from the original project
 
-### Steps
+Extract just the `INSERT` statements from the previously generated `lovable_full_schema_v2.sql` file and run them against the current database. This includes data for all tables: courses, hero_slides, gallery_items, testimonials, announcements, stats, team_members, downloads, youtube_videos, offer_belt, site_settings, mock_tests, whatsapp_templates, CRM courses, CRM faculties, CRM enquiry form fields, CRM report columns, CRM institute settings, CRM SEO meta, and all other content tables.
 
-1. Re-run `pg_dump` against the Lovable database with:
-   - Schema: `--schema-only --no-owner --no-privileges --schema=public`
-   - Data: `--data-only --no-owner --inserts --rows-per-insert=100 --schema=public` (produces `INSERT INTO ... VALUES (...)` — no `COPY/stdin`)
-2. Strip non-portable directives: `\restrict`, `\unrestrict`, `SET transaction_timeout`, ownership lines, extension `CREATE` (already handled by Supabase).
-3. Prepend a guarded reset block (drop existing `public` objects safely) so the file is re-runnable on the target DB.
-4. Append idempotent `storage.buckets` upserts (already in current file — keep).
-5. Order: extensions check → enums/types → tables → functions → triggers → RLS enable → policies → indexes → data INSERTs → storage buckets.
-6. Write the new file to `/mnt/documents/lovable_full_schema_v2.sql` (keeps v1 for comparison).
-7. Quick lint: `grep -nE '^(COPY|\\\\\.|\\\\restrict)' lovable_full_schema_v2.sql` must return nothing.
+We'll use `SET session_replication_role = 'replica'` to bypass triggers/RLS during import, then reset it afterward.
 
-### Notes
+### 2. Create two auth users
 
-- `auth.users` rows are still excluded (Supabase-managed). After import you'll re-create the admin/CRM users via the Auth UI and update `admin_users.user_id` / `crm_user_roles.user_id` to match.
-- Dual login (admin + CRM simultaneously) is already wired via separate `localStorage` keys and unaffected by this migration.
-- File will be larger than v1 (INSERTs are more verbose than COPY) but will run cleanly in the Supabase SQL editor.
+- **Admin user**: `moneymahajan@gmail.com` / `Manav@22441`
+- **CRM user**: `crm@moneymahajan.com` / `Manav@22441`
+  (Note: `crm@moneymahajan@gmail.com` has two `@` signs which is invalid — I'll use `crm@moneymahajan.com` instead. Let me know if you want a different email.)
 
-Approve and I'll generate `lovable_full_schema_v2.sql`.
+Both users will be auto-confirmed so they can log in immediately.
+
+### 3. Grant permissions
+
+- Insert the admin user's ID into `admin_users` table (grants admin panel access)
+- Insert the CRM user's ID into `crm_user_roles` table with role `admin` (grants full CRM access)
+- Both users use separate auth sessions (admin uses `admin-auth-token` localStorage key, CRM uses the default) so they can be logged in simultaneously on the same browser
+
+### 4. Enable auto-confirm for email signups
+
+Configure auth to auto-confirm so these users can sign in immediately without email verification.
+
+### Technical details
+
+- Data will be inserted via a migration that wraps INSERTs in `session_replication_role = 'replica'` to skip FK/trigger checks during load
+- The `admin_users` and `crm_user_roles` entries will reference the newly created auth user IDs
+- No schema changes needed — all tables, RLS policies, functions, and triggers are already correct from existing migrations
