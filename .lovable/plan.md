@@ -1,32 +1,48 @@
+## Root Cause Analysis
 
-## Problem
+After auditing the entire data flow, RLS policies, auth clients, and component rendering, I found **three issues** that combine to cause the blank page problem:
 
-The admin login at `/admin/login` shows **"Database error querying schema"** (500 error). The auth logs confirm:
+### Issue 1: Stale `useSiteSettings` module cache (Primary cause)
+`useSiteSettings` uses a **module-level `cache` variable** that persists across client-side navigations. When you:
+1. Open the homepage (cache loads)
+2. Navigate to `/admin` and edit settings (changes go to DB via `supabaseAdmin`)
+3. Click "View Site" to return to `/` (client-side navigation)
 
-```
-error finding user: sql: Scan error on column index 8, name "email_change": converting NULL to string is unsupported
-```
+The cache is **never refreshed** because it's still populated from step 1. The `loadSettings()` function is only called when `cache === null`, which only happens on a full page reload.
 
-The previous fix addressed `confirmation_token` and other token columns, but missed `email_change`, `phone_change`, and `phone` columns which are also NULL and cause the same crash.
+### Issue 2: No Error Boundary
+There is **zero error boundary** in the app. If any component throws during rendering (e.g., accessing `.title` on undefined data after an admin deletes a record), the **entire React tree crashes to a white screen** with no recovery.
 
-## Fix
+### Issue 3: Settings key mismatch
+The admin panel saves `life_section_heading` but `LifeAtAtecSection` reads `life_at_atec_heading`. Similarly, there's no `life_at_atec_subheading` key - only `about_section_subheading`. These mismatches mean admin edits to these fields have no effect on the public site.
 
-Run a single database migration to set ALL potentially NULL string columns on auth.users to empty strings:
+---
 
-```sql
-UPDATE auth.users
-SET
-  email_change = COALESCE(email_change, ''),
-  phone_change = COALESCE(phone_change, ''),
-  phone = COALESCE(phone, '');
-```
+## Plan
 
-This will fix login for both admin (`moneymahajan@gmail.com`) and CRM (`crm@moneymahajan.com`) users.
+### 1. Add global Error Boundary
+Create an `ErrorBoundary` component wrapping the app in `App.tsx`. This prevents a single component error from crashing the entire page, and shows a friendly "Something went wrong" message with a reload button.
 
-## Root Cause
+### 2. Fix `useSiteSettings` cache refresh
+- Call `refreshSiteSettings()` (which resets cache to null and re-fetches) when navigating from admin to the public site
+- Add automatic cache invalidation: set a short TTL (e.g., 60 seconds) on the cache so it re-fetches periodically
+- This ensures admin changes are reflected without requiring a hard reload
 
-The users were created via a raw SQL INSERT into `auth.users` which left several string columns as NULL. GoTrue's Go code expects these to be non-null strings and crashes when scanning NULL values.
+### 3. Fix settings key mismatches in `LifeAtAtecSection`
+- Change `settings.life_at_atec_heading` to `settings.life_section_heading`
+- Add `life_at_atec_subheading` key support OR change the component to read `about_section_subheading`
 
-## No code changes needed
+### 4. Make data-fetching components resilient
+Add null-safety guards in components like `HeroSection` to handle cases where data properties might be undefined (e.g., when an admin partially deletes or corrupts a record).
 
-Only a database migration is required. No frontend or component changes.
+---
+
+## Technical Details
+
+**Files to modify:**
+- `src/hooks/useSiteSettings.tsx` - Add TTL-based cache invalidation
+- `src/components/LifeAtAtecSection.tsx` - Fix settings key names
+- `src/App.tsx` - Wrap routes in ErrorBoundary
+- `src/components/ErrorBoundary.tsx` - New file
+- `src/pages/AdminSiteContent.tsx` - Call `refreshSiteSettings()` after save
+- `src/components/HeroSection.tsx` - Add null guards

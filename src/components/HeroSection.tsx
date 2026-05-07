@@ -23,6 +23,7 @@ export default function HeroSection() {
   if (slides.length === 0) return <section id="home" className="h-screen bg-background" />;
 
   const slide = slides[current];
+  if (!slide) return <section id="home" className="h-screen bg-background" />;
 
   return (
     <section id="home" className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-gray-900">

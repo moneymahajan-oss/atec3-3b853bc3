@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 let cache: Record<string, string> | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60_000; // 60 seconds
 const listeners = new Set<(s: Record<string, string>) => void>();
 
 async function loadSettings() {
@@ -11,6 +13,7 @@ async function loadSettings() {
     if (row.value) map[row.key] = row.value;
   });
   cache = map;
+  cacheTimestamp = Date.now();
   listeners.forEach((l) => l(map));
   return map;
 }
@@ -19,7 +22,8 @@ export function useSiteSettings() {
   const [settings, setSettings] = useState<Record<string, string>>(cache || {});
 
   useEffect(() => {
-    if (!cache) {
+    const isStale = !cache || Date.now() - cacheTimestamp > CACHE_TTL;
+    if (isStale) {
       loadSettings().then(setSettings);
     }
     listeners.add(setSettings);
@@ -37,5 +41,6 @@ export function getCachedSetting(key: string, fallback = ""): string {
 
 export function refreshSiteSettings() {
   cache = null;
+  cacheTimestamp = 0;
   return loadSettings();
 }
