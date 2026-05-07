@@ -1,41 +1,44 @@
+
 ## Problem
 
-The published site breaks because components fire Supabase queries before the auth client has fully initialized. In preview (dev mode with HMR), this timing issue is masked.
+CRM pages (Enquiries, Students, Batches, Courses, Fees, Attendance, etc.) fire Supabase queries immediately on mount via `useEffect(() => { load(); }, [])`. However, the auth session may not be fully restored yet at that point.
 
-## Plan
+All CRM tables have RLS policies requiring `has_any_crm_role(auth.uid())`. When `auth.uid()` is `null` (session not yet restored), every query returns 0 rows — making it look like data is permanently "loading" or empty.
 
-### 1. Add auth-ready gate in App.tsx
+## Root Cause
 
-Convert `App` from an arrow-function component to a stateful component that calls `supabase.auth.getSession()` once on mount. Until it resolves, render a loading indicator. This ensures no child component mounts or fires queries before the Supabase client is initialized.
+The `CrmLayout` component checks `useCrmAuth().loading` and shows a spinner until auth is ready. But the child CRM pages mount their `useEffect` hooks immediately once `loading` becomes `false`, which can still race with the Supabase client's internal session restoration.
 
-```tsx
-const [ready, setReady] = useState(false);
+More critically, many pages use `useEffect(() => { load(); }, [])` with no dependency on the auth state, so if the component mounts before the session token is attached to requests, RLS blocks everything.
+
+## Fix
+
+1. **Create a `useAuthReady` hook** that exposes `{ user, isReady }` — it waits for `supabase.auth.getSession()` to complete before setting `isReady = true`.
+
+2. **Update all CRM pages** that fetch data on mount to:
+   - Import `useCrmAuth` (most already do) or `useAuthReady`
+   - Add `hasAccess` (or `user`) as a dependency in their `useEffect`
+   - Guard the `load()` call with `if (!hasAccess) return`
+   - This ensures queries only run after auth is confirmed
+
+Affected pages (at minimum):
+- `CrmEnquiries.tsx` — `useEffect` line 177, add `hasAccess` dep
+- `CrmStudents.tsx` — `useEffect` line 77, add `hasAccess` dep  
+- `CrmBatches.tsx` — `useEffect` line 80, add `hasAccess` dep
+- `CrmCourses.tsx` — `useEffect` line 41, add `hasAccess` dep
+- `CrmFees.tsx` — `useEffect` line 36, add `hasAccess` dep
+- `CrmAttendance.tsx` — `useEffect` lines 45/50, add `hasAccess` dep
+- `CrmDashboard.tsx` — already guards with `hasAccess` (good)
+- Any other CRM pages with similar patterns
+
+3. **Pattern for each fix:**
+```typescript
+const { hasAccess } = useCrmAuth();
+
 useEffect(() => {
-  supabase.auth.getSession().then(() => setReady(true));
-}, []);
-if (!ready) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!hasAccess) return;
+  load();
+}, [hasAccess]);
 ```
 
-This uses the **main** supabase client (not adminClient).
-
-### 2. Add retry + retryDelay to all 14 public-data useQuery hooks
-
-In each of these components, add `retry: 2` and `retryDelay: 1000` to the useQuery options so transient failures on first load are retried:
-
-- HeroSection, CoursesSection, GallerySection, FacultySection
-- TestimonialsSection, VideosSection, DownloadsSection, MockTestSection
-- AIUseCasesSection, AboutSection, AnnouncementTicker
-- LifeAtAtecSection, OfferBelt, StatsStrip
-
-### 3. Verify no `enabled: !!user` on public queries
-
-Confirmed: none of these 14 components gate queries on auth state. No changes needed here.
-
-### 4. No React.lazy usage found
-
-No `React.lazy` or dynamic `import()` patterns exist in the codebase, so no Suspense boundaries are needed.
-
-## Files changed
-
-- `src/App.tsx` — add auth-ready gate
-- 14 component files — add `retry: 2, retryDelay: 1000` to useQuery
+This is a minimal, non-breaking change — no UI or styling modifications, just ensuring data fetches wait for authentication.
