@@ -27,11 +27,11 @@ const Index = () => {
       <StatsStrip />
       <AnnouncementTicker />
       <CoursesSection />
+      <LifeAtAtecSection />
       <AboutSection />
       <GallerySection />
       <FacultySection />
       <TestimonialsSection />
-      <LifeAtAtecSection />
       <AIUseCasesSection />
       <MockTestSection />
       <VideosSection />
