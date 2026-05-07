@@ -14,6 +14,6 @@ export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLI
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    storageKey: 'sb-admin-auth',
+    storageKey: 'sb-admin',
   }
 });
