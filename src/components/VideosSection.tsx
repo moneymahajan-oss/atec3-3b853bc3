@@ -5,6 +5,7 @@ import { Sparkles, Play, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import VideoThumbnail from "@/components/VideoThumbnail";
 
 const META: Record<string, { duration: string; category: string; desc: string }> = {
   "Introduction to Python": { duration: "12:45", category: "Programming", desc: "Beginner-friendly intro to Python syntax and logic." },
@@ -54,7 +55,7 @@ export default function VideosSection() {
                 className="glass rounded-xl overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow flex"
               >
                 <div className="relative w-32 sm:w-40 flex-shrink-0 overflow-hidden">
-                  <img src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <VideoThumbnail src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
                     <div className="w-10 h-10 rounded-full gradient-accent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                       <Play className="w-4 h-4 text-accent-foreground ml-0.5" />
