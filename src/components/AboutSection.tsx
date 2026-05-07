@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Users, Briefcase, FlaskConical, CalendarClock, BadgeIndianRupee, ShieldCheck, Linkedin } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Users, Briefcase, FlaskConical, CalendarClock, BadgeIndianRupee, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const highlights = [
   { icon: Users, title: "Industry Experts", desc: "Learn from professionals with real-world experience" },
