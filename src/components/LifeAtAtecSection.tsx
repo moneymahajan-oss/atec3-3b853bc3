@@ -36,10 +36,10 @@ export default function LifeAtAtecSection() {
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
-            <Sparkles className="w-3 h-3 mr-1" /> Campus Life
+            <Sparkles className="w-3 h-3 mr-1" /> ABOUT US
           </Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
-            {settings.life_at_atec_heading || "Life at ATEC"}
+            {settings.life_at_atec_heading || "About ATEC"}
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             {settings.life_at_atec_subheading || "Experience the vibrant campus culture and student activities"}
