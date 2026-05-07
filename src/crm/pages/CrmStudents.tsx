@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useCrmAuth } from "../hooks/useCrmAuth";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { Plus, Search, Filter, Phone, User, RotateCcw, Download, Send } from "lucide-react";
