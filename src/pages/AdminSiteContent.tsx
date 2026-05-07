@@ -91,7 +91,7 @@ export default function AdminSiteContent() {
       await supabase.from("site_settings").insert({ key, value: values[key] || "" });
     }
     // Bust the public site cache so changes appear immediately
-    refreshSiteSettings();
+    queryClient.invalidateQueries({ queryKey: ["site_settings"] });
     toast({ title: "Saved", description: key });
     setSaving(null);
   };
