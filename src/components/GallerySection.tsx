@@ -11,6 +11,8 @@ export default function GallerySection() {
   const [filter, setFilter] = useState("All");
   const [lightbox, setLightbox] = useState<string | null>(null);
 
+    retry: 2,
+    retryDelay: 1000,
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['gallery_items'],
     queryFn: async () => {

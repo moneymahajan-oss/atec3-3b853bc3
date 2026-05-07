@@ -17,7 +17,9 @@ const fallbackSlides = [
   },
 ];
 
-export default function HeroSection() {
+export default function HeroSection() {,
+    retry: 2,
+    retryDelay: 1000,
   const { data: slides = fallbackSlides } = useQuery({
     queryKey: ['hero_slides'],
     queryFn: async () => {

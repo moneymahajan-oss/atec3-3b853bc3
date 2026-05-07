@@ -8,7 +8,9 @@ const typeConfig: Record<string, { icon: React.ElementType; class: string }> = {
   urgent: { icon: AlertTriangle, class: "text-destructive bg-destructive/10" },
 };
 
-export default function AnnouncementTicker() {
+export default function AnnouncementTicker() {,
+    retry: 2,
+    retryDelay: 1000,
   const { data: announcements = [], isLoading } = useQuery({
     queryKey: ['announcements'],
     queryFn: async () => {

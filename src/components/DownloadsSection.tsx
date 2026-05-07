@@ -7,7 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const iconMap: Record<string, React.ElementType> = { FileText, FileDown, BookOpen, BarChart3, IndianRupee };
 
-export default function DownloadsSection() {
+export default function DownloadsSection() {,
+    retry: 2,
+    retryDelay: 1000,
   const { data: downloads = [], isLoading } = useQuery({
     queryKey: ['downloads'],
     queryFn: async () => {

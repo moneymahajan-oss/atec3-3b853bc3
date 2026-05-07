@@ -16,6 +16,8 @@ export default function LifeAtAtecSection() {
   const heading = settings.life_section_heading?.trim();
   const subheading = settings.about_section_subheading?.trim();
 
+    retry: 2,
+    retryDelay: 1000,
   const { data: videos = [], isLoading } = useQuery({
     queryKey: ['life_videos'],
     queryFn: async () => {
