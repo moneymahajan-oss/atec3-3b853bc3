@@ -36,8 +36,18 @@ export function useSiteSettings() {
       loadSettings().then(setSettings);
     }
     listeners.add(setSettings);
+
+    // Refresh when user switches back to this tab (e.g. from admin panel)
+    const onFocus = () => {
+      if (Date.now() - cacheTimestamp > CACHE_TTL) {
+        loadSettings().then(setSettings);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+
     return () => {
       listeners.delete(setSettings);
+      window.removeEventListener("focus", onFocus);
     };
   }, []);
 
