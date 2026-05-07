@@ -9,9 +9,19 @@ export default function HeroSection() {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    supabase.from("hero_slides").select("*").order("display_order").then(({ data }) => {
-      if (data?.length) setSlides(data);
-    });
+    const load = async () => {
+      try {
+        const { data, error } = await supabase.from("hero_slides").select("*").eq("is_active", true).order("display_order");
+        if (error) {
+          console.error("[HeroSection] fetch error:", error.message);
+          return;
+        }
+        if (data?.length) setSlides(data);
+      } catch (e) {
+        console.error("[HeroSection] unexpected:", e);
+      }
+    };
+    load();
   }, []);
 
   useEffect(() => {

@@ -7,15 +7,24 @@ const CACHE_TTL = 60_000; // 60 seconds
 const listeners = new Set<(s: Record<string, string>) => void>();
 
 async function loadSettings() {
-  const { data } = await supabase.from("site_settings").select("key, value");
-  const map: Record<string, string> = {};
-  (data || []).forEach((row: any) => {
-    if (row.value) map[row.key] = row.value;
-  });
-  cache = map;
-  cacheTimestamp = Date.now();
-  listeners.forEach((l) => l(map));
-  return map;
+  try {
+    const { data, error } = await supabase.from("site_settings").select("key, value");
+    if (error) {
+      console.error("[useSiteSettings] fetch error:", error.message);
+      return cache || {};
+    }
+    const map: Record<string, string> = {};
+    (data || []).forEach((row: any) => {
+      if (row.key) map[row.key] = row.value ?? "";
+    });
+    cache = map;
+    cacheTimestamp = Date.now();
+    listeners.forEach((l) => l(map));
+    return map;
+  } catch (e) {
+    console.error("[useSiteSettings] unexpected error:", e);
+    return cache || {};
+  }
 }
 
 export function useSiteSettings() {
@@ -27,8 +36,18 @@ export function useSiteSettings() {
       loadSettings().then(setSettings);
     }
     listeners.add(setSettings);
+
+    // Refresh when user switches back to this tab (e.g. from admin panel)
+    const onFocus = () => {
+      if (Date.now() - cacheTimestamp > CACHE_TTL) {
+        loadSettings().then(setSettings);
+      }
+    };
+    window.addEventListener("focus", onFocus);
+
     return () => {
       listeners.delete(setSettings);
+      window.removeEventListener("focus", onFocus);
     };
   }, []);
 

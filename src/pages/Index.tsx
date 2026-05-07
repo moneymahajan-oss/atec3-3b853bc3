@@ -16,28 +16,29 @@ import DownloadsSection from "@/components/DownloadsSection";
 import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 import { SEO } from "@/components/SEO";
+import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEO />
-      <OfferBelt />
-      <Navbar />
-      <HeroSection />
-      <StatsStrip />
-      <AnnouncementTicker />
-      <CoursesSection />
-      <LifeAtAtecSection />
-      <AboutSection />
-      <GallerySection />
-      <FacultySection />
-      <TestimonialsSection />
-      <AIUseCasesSection />
-      <MockTestSection />
-      <VideosSection />
-      <DownloadsSection />
-      <ContactSection />
-      <Footer />
+      <SectionErrorBoundary name="OfferBelt"><OfferBelt /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Navbar"><Navbar /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Hero"><HeroSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Stats"><StatsStrip /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Announcements"><AnnouncementTicker /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Courses"><CoursesSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="LifeAtAtec"><LifeAtAtecSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="About"><AboutSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Gallery"><GallerySection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Faculty"><FacultySection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Testimonials"><TestimonialsSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="AIUseCases"><AIUseCasesSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="MockTest"><MockTestSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Videos"><VideosSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Downloads"><DownloadsSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Contact"><ContactSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="Footer"><Footer /></SectionErrorBoundary>
     </div>
   );
 };
