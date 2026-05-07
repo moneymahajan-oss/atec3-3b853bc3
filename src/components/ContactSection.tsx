@@ -37,7 +37,7 @@ export default function ContactSection() {
     const name = (form.get("name") as string) || "";
     const phone = (form.get("phone") as string) || "";
     const email = (form.get("email") as string) || "";
-    const courseInterest = (form.get("course_interest") as string) || "";
+    const courseInterest = selectedCourse || "";
     const message = (form.get("message") as string) || "";
 
     const { error } = await supabase.from("leads").insert({
