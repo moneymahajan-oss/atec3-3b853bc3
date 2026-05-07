@@ -1,48 +1,73 @@
-## Root Cause Analysis
 
-After auditing the entire data flow, RLS policies, auth clients, and component rendering, I found **three issues** that combine to cause the blank page problem:
+## Problem
 
-### Issue 1: Stale `useSiteSettings` module cache (Primary cause)
-`useSiteSettings` uses a **module-level `cache` variable** that persists across client-side navigations. When you:
-1. Open the homepage (cache loads)
-2. Navigate to `/admin` and edit settings (changes go to DB via `supabaseAdmin`)
-3. Click "View Site" to return to `/` (client-side navigation)
+All 13 public-facing section components (HeroSection, GallerySection, CoursesSection, etc.) fetch data using `useEffect([], [])` + `useState`. This means:
+- Data is fetched once on mount and never refetched on re-navigation
+- No proper loading/error states — components return `null` while data loads, causing whitespace flashes
+- After admin edits, the public site shows stale data until a hard refresh
 
-The cache is **never refreshed** because it's still populated from step 1. The `loadSettings()` function is only called when `cache === null`, which only happens on a full page reload.
+## What's already fine (no changes needed)
 
-### Issue 2: No Error Boundary
-There is **zero error boundary** in the app. If any component throws during rendering (e.g., accessing `.title` on undefined data after an admin deletes a record), the **entire React tree crashes to a white screen** with no recovery.
+- **RLS policies**: All public tables already have correct `SELECT` policies for the `public` role
+- **Storage URLs**: No `getSignedUrl()` calls found — all media uses direct public URLs
+- **Admin mutations**: AdminTable.tsx already calls `fetchData()` after save/delete (the admin panel itself refreshes correctly)
 
-### Issue 3: Settings key mismatch
-The admin panel saves `life_section_heading` but `LifeAtAtecSection` reads `life_at_atec_heading`. Similarly, there's no `life_at_atec_subheading` key - only `about_section_subheading`. These mismatches mean admin edits to these fields have no effect on the public site.
+## Plan: Convert to React Query
 
----
+Replace the `useEffect + useState` data-fetching pattern with `useQuery` in all 13 section components. Each component gets:
+- `useQuery` with `staleTime: 0` so it refetches on every mount
+- Proper `isLoading` handling (skeleton or graceful null) instead of rendering empty containers
+- Consistent query keys for future cache invalidation
 
-## Plan
+### Files to change (13 components)
 
-### 1. Add global Error Boundary
-Create an `ErrorBoundary` component wrapping the app in `App.tsx`. This prevents a single component error from crashing the entire page, and shows a friendly "Something went wrong" message with a reload button.
+| Component | Table | Query Key |
+|-----------|-------|-----------|
+| `src/components/HeroSection.tsx` | `hero_slides` | `['hero_slides']` |
+| `src/components/GallerySection.tsx` | `gallery_items` | `['gallery_items']` |
+| `src/components/CoursesSection.tsx` | `courses` | `['courses']` |
+| `src/components/FacultySection.tsx` | `crm_faculties` | `['public_faculties']` |
+| `src/components/TestimonialsSection.tsx` | `testimonials` | `['testimonials']` |
+| `src/components/AIUseCasesSection.tsx` | `ai_use_cases` | `['ai_use_cases']` |
+| `src/components/VideosSection.tsx` | `youtube_videos` | `['learn_videos']` |
+| `src/components/AboutSection.tsx` | `youtube_videos` | `['about_videos']` |
+| `src/components/LifeAtAtecSection.tsx` | `youtube_videos` | `['life_videos']` |
+| `src/components/StatsStrip.tsx` | `stats` | `['stats']` |
+| `src/components/AnnouncementTicker.tsx` | `announcements` | `['announcements']` |
+| `src/components/OfferBelt.tsx` | `offer_belt` | `['offer_belt']` |
+| `src/components/DownloadsSection.tsx` | `downloads` | `['downloads']` |
 
-### 2. Fix `useSiteSettings` cache refresh
-- Call `refreshSiteSettings()` (which resets cache to null and re-fetches) when navigating from admin to the public site
-- Add automatic cache invalidation: set a short TTL (e.g., 60 seconds) on the cache so it re-fetches periodically
-- This ensures admin changes are reflected without requiring a hard reload
+### Pattern for each component
 
-### 3. Fix settings key mismatches in `LifeAtAtecSection`
-- Change `settings.life_at_atec_heading` to `settings.life_section_heading`
-- Add `life_at_atec_subheading` key support OR change the component to read `about_section_subheading`
+**Before:**
+```tsx
+const [items, setItems] = useState([]);
+useEffect(() => {
+  supabase.from("table").select("*").eq("is_active", true)
+    .then(({ data }) => setItems(data || []));
+}, []);
+if (items.length === 0) return null;
+```
 
-### 4. Make data-fetching components resilient
-Add null-safety guards in components like `HeroSection` to handle cases where data properties might be undefined (e.g., when an admin partially deletes or corrupts a record).
+**After:**
+```tsx
+import { useQuery } from "@tanstack/react-query";
 
----
+const { data: items = [], isLoading } = useQuery({
+  queryKey: ['table'],
+  queryFn: async () => {
+    const { data } = await supabase.from("table").select("*").eq("is_active", true);
+    return data || [];
+  },
+  staleTime: 0,
+});
+if (isLoading || items.length === 0) return null;
+```
 
-## Technical Details
+### MockTestSection special case
+`MockTestSection.tsx` also fetches from `mock_tests` but has complex multi-step quiz state — it will also be converted but its additional `useEffect` for the timer will remain.
 
-**Files to modify:**
-- `src/hooks/useSiteSettings.tsx` - Add TTL-based cache invalidation
-- `src/components/LifeAtAtecSection.tsx` - Fix settings key names
-- `src/App.tsx` - Wrap routes in ErrorBoundary
-- `src/components/ErrorBoundary.tsx` - New file
-- `src/pages/AdminSiteContent.tsx` - Call `refreshSiteSettings()` after save
-- `src/components/HeroSection.tsx` - Add null guards
+### What this fixes
+1. **Whitespace on second load**: React Query caches data and refetches in background — no blank flash
+2. **Stale data after admin edits**: `staleTime: 0` means every navigation triggers a fresh fetch
+3. **Loading states**: Components hide gracefully during loading instead of rendering empty containers
