@@ -156,7 +156,7 @@ export default function ContactSection() {
                 <Input name="email" type="email" placeholder="Email Address" className="bg-background" />
               </div>
               <Input name="phone" type="tel" placeholder="WhatsApp Number" required className="bg-background" />
-              <Select name="course_interest">
+              <Select value={selectedCourse} onValueChange={setSelectedCourse}>
                 <SelectTrigger className="bg-background"><SelectValue placeholder="Interested Course" /></SelectTrigger>
                 <SelectContent>
                   {courses.map((c) => (
