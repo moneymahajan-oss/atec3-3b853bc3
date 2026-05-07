@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, FileText, FileDown, BookOpen, BarChart3, IndianRupee, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +8,16 @@ import { supabase } from "@/integrations/supabase/client";
 const iconMap: Record<string, React.ElementType> = { FileText, FileDown, BookOpen, BarChart3, IndianRupee };
 
 export default function DownloadsSection() {
-  const [downloads, setDownloads] = useState<any[]>([]);
+  const { data: downloads = [], isLoading } = useQuery({
+    queryKey: ['downloads'],
+    queryFn: async () => {
+      const { data } = await supabase.from("downloads").select("*").order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  useEffect(() => {
-    supabase.from("downloads").select("*").order("display_order").then(({ data }) => {
-      if (data) setDownloads(data);
-    });
-  }, []);
-
-  if (downloads.length === 0) return null;
+  if (isLoading || downloads.length === 0) return null;
 
   return (
     <section id="downloads" className="py-12 bg-[#f8fafc]">
@@ -26,7 +27,7 @@ export default function DownloadsSection() {
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">Downloads</h2>
         </motion.div>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {downloads.map((d, i) => {
+          {downloads.map((d: any, i: number) => {
             const Icon = iconMap[d.icon_name] || FileText;
             return (
               <motion.div key={d.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}

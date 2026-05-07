@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Users, Briefcase, FlaskConical, CalendarClock, BadgeIndianRupee, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,36 +15,34 @@ const highlights = [
 function getYouTubeId(input: string): string | null {
   if (!input) return null;
   const trimmed = input.trim();
-  // If it's already a bare YouTube ID (no slashes, no spaces, ~11 chars)
   if (/^[A-Za-z0-9_-]{6,15}$/.test(trimmed)) return trimmed;
   const match = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
   return match ? match[1] : null;
 }
 
 export default function AboutSection() {
-  const [aboutVideos, setAboutVideos] = useState<any[]>([]);
-
-  useEffect(() => {
-    supabase
-      .from("youtube_videos")
-      .select("*")
-      .eq("is_active", true)
-      .eq("section", "about")
-      .order("display_order")
-      .limit(4)
-      .then(({ data }) => {
-        if (data) setAboutVideos(data);
-      });
-  }, []);
+  const { data: aboutVideos = [] } = useQuery({
+    queryKey: ['about_videos'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("youtube_videos")
+        .select("*")
+        .eq("is_active", true)
+        .eq("section", "about")
+        .order("display_order")
+        .limit(4);
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
   return (
     <section id="about" className="py-12 bg-[#f8fafc]">
       <div className="container mx-auto px-4">
 
-        {/* YouTube videos - compact gallery-style grid */}
         {aboutVideos.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-10">
-            {aboutVideos.map((v, i) => {
+            {aboutVideos.map((v: any, i: number) => {
               const id = getYouTubeId(v.video_id || v.youtube_url || "");
               return (
                 <motion.div

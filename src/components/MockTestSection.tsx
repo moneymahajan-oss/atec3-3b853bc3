@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, Clock, CheckCircle2, XCircle, MessageCircle, BookOpen, Trophy, Zap, Brain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Question {
   question: string;
   options: string[];
-  correct: number; // index of correct option
+  correct: number;
 }
 
 interface Test {
@@ -27,7 +28,6 @@ type Stage = "intro" | "register" | "test" | "result";
 export default function MockTestSection() {
   const settings = useSiteSettings();
   const { toast } = useToast();
-  const [tests, setTests] = useState<Test[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<string>("");
   const [stage, setStage] = useState<Stage>("intro");
   const [studentName, setStudentName] = useState("");
@@ -38,22 +38,28 @@ export default function MockTestSection() {
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
 
+  const { data: tests = [] } = useQuery({
+    queryKey: ['mock_tests'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("mock_tests")
+        .select("*")
+        .eq("is_active", true);
+      if (!data) return [];
+      return (data as any[]).map((t) => ({
+        ...t,
+        questions: Array.isArray(t.questions) ? t.questions : [],
+      })) as Test[];
+    },
+    staleTime: 0,
+  });
+
+  // Set default selected course when tests load
   useEffect(() => {
-    supabase
-      .from("mock_tests")
-      .select("*")
-      .eq("is_active", true)
-      .then(({ data }) => {
-        if (data) {
-          const parsed = (data as any[]).map((t) => ({
-            ...t,
-            questions: Array.isArray(t.questions) ? t.questions : [],
-          })) as Test[];
-          setTests(parsed);
-          if (parsed.length > 0) setSelectedCourse(parsed[0].course);
-        }
-      });
-  }, []);
+    if (tests.length > 0 && !selectedCourse) {
+      setSelectedCourse(tests[0].course);
+    }
+  }, [tests, selectedCourse]);
 
   // Timer
   useEffect(() => {
@@ -88,7 +94,6 @@ export default function MockTestSection() {
     }
     const test = courseTests[0];
     if (!test) return;
-    // Shuffle questions
     const shuffled = { ...test, questions: [...test.questions].sort(() => Math.random() - 0.5) };
     setActiveTest(shuffled);
     setAnswers({});
@@ -108,7 +113,6 @@ export default function MockTestSection() {
 
     setScore(correct);
 
-    // Save result
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
       whatsapp_no: whatsappNo,
@@ -118,7 +122,6 @@ export default function MockTestSection() {
       answers: answers as any,
     });
 
-    // Build WhatsApp link
     const link = await buildWhatsAppLink(
       "mock_test_result",
       {
@@ -175,7 +178,6 @@ export default function MockTestSection() {
                     const Icon = icons[Math.abs(c.charCodeAt(0)) % icons.length];
                     return { c, qCount, difficulty, diffColor, Icon };
                   });
-                  // ensure even count
                   const padded = cards.length % 2 === 1 ? [...cards, null] : cards;
                   return padded.map((card, idx) => {
                     if (!card) {

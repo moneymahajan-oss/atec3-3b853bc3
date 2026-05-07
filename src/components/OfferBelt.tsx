@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Offer {
@@ -8,22 +8,21 @@ interface Offer {
 }
 
 export default function OfferBelt() {
-  const [offers, setOffers] = useState<Offer[]>([]);
+  const { data: offers = [], isLoading } = useQuery({
+    queryKey: ['offer_belt'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("offer_belt")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      return (data || []) as Offer[];
+    },
+    staleTime: 0,
+  });
 
-  useEffect(() => {
-    supabase
-      .from("offer_belt")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order")
-      .then(({ data }) => {
-        if (data) setOffers(data as Offer[]);
-      });
-  }, []);
+  if (isLoading || offers.length === 0) return null;
 
-  if (offers.length === 0) return null;
-
-  // Use the first offer's color for the strip background
   const bg = offers[0].bg_color || "#F59E0B";
   const items = [...offers, ...offers, ...offers];
 
