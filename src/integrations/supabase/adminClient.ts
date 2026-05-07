@@ -16,7 +16,8 @@ export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLI
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    lock: false,
     flowType: 'pkce',
+    // Use a no-op lock to prevent contention with the main client's navigator lock
+    lock: (name: string, acquireTimeout: number, fn: () => Promise<any>) => fn(),
   }
 });
