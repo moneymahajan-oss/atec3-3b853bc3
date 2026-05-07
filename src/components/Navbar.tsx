@@ -93,14 +93,15 @@ export default function Navbar() {
             {navLinks.map(({ label, href }) => (
               <a
                 key={href}
-                href={waNumber ? whatsAppLinkSync(waNumber, `Hi ATEC! I'm interested in ${label}. Please share details.`) : href}
-                target={href === "#home" ? "_self" : "_blank"}
-                rel="noopener noreferrer"
+                href={href}
                 onClick={(e) => {
-                  // Allow internal scroll for sections by intercepting only when label is generic
-                  // Per spec all nav buttons go to WhatsApp
+                  e.preventDefault();
+                  const el = document.querySelector(href);
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
                 }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-muted`}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
               >
                 {label}
               </a>
@@ -144,13 +145,16 @@ export default function Navbar() {
             className="fixed inset-0 top-16 z-40 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             <div className="flex flex-col p-6 gap-2">
-              {navLinks.map(({ label }) => (
+              {navLinks.map(({ label, href }) => (
                 <a
                   key={label}
-                  href={whatsAppLinkSync(waNumber, `Hi ATEC! I'm interested in ${label}. Please share details.`)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMobileOpen(false)}
+                  href={href}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setMobileOpen(false);
+                    const el = document.querySelector(href);
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }}
                   className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
                 >
                   {label}
