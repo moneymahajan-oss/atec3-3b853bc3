@@ -46,12 +46,13 @@ interface Settings {
 }
 
 export default function CrmSettings() {
-  const { isAdmin, loading } = useCrmAuth();
+  const { isAdmin, loading, hasAccess } = useCrmAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
+    if (!hasAccess) return;
     (async () => {
       const { data } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
       if (data) {
@@ -63,7 +64,7 @@ export default function CrmSettings() {
         });
       }
     })();
-  }, []);
+  }, [hasAccess]);
 
   // Auto-scroll to Danger Zone if URL hash matches (from sidebar link)
   useEffect(() => {

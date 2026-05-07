@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useCrmAuth } from "../hooks/useCrmAuth";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { Plus, Search, Filter, Phone, User, RotateCcw, Download, Send } from "lucide-react";
@@ -56,6 +57,7 @@ const statusColors: Record<string, string> = {
 
 export default function CrmStudents() {
   const navigate = useNavigate();
+  const { hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Student[]>([]);
   const [batches, setBatches] = useState<BatchInfo[]>([]);
   const [paidMap, setPaidMap] = useState<Record<string, number>>({});
@@ -75,6 +77,7 @@ export default function CrmStudents() {
   const { cols, visibleCols, exportCols, toggleVisible } = useReportColumns("crm_student_report_columns");
 
   useEffect(() => {
+    if (!hasAccess) return;
     (async () => {
       const [{ data, error }, { data: bs }, { data: pays }, { data: enr }] = await Promise.all([
         supabase
@@ -101,7 +104,7 @@ export default function CrmStudents() {
       setEnrolMap(em);
       setLoading(false);
     })();
-  }, []);
+  }, [hasAccess]);
 
   const batchMap = useMemo(() => {
     const m = new Map<string, BatchInfo>();

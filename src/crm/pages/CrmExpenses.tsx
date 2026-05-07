@@ -38,7 +38,7 @@ const empty: Partial<Expense> = {
 };
 
 export default function CrmExpenses() {
-  const { user, isAdmin } = useCrmAuth();
+  const { user, isAdmin, hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Expense[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,7 @@ export default function CrmExpenses() {
     setCats((c ?? []) as Cat[]);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const filtered = useMemo(() => items.filter((e) => {
     if (!showVoided && e.is_void) return false;

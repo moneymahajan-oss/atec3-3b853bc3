@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useCrmAuth } from "../hooks/useCrmAuth";
 import { Link, useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { Plus, Search, Phone, MessageSquare, Filter, Upload, Download, RotateCcw, Send, Copy, ExternalLink } from "lucide-react";
@@ -97,6 +98,7 @@ function waColor(iso: string): string {
 
 export default function CrmEnquiries() {
   const navigate = useNavigate();
+  const { hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Enquiry[]>([]);
   const [waMap, setWaMap] = useState<Record<string, { template_key: string; created_at: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -175,12 +177,13 @@ export default function CrmEnquiries() {
 
 
   useEffect(() => {
+    if (!hasAccess) return;
     load();
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
-  }, []);
+  }, [hasAccess]);
 
 
   const counsellors = useMemo(() => {

@@ -23,7 +23,7 @@ interface Template {
 }
 
 export default function CrmWhatsAppTemplates() {
-  const { isAdmin } = useCrmAuth();
+  const { isAdmin, hasAccess } = useCrmAuth();
   const [list, setList] = useState<Template[]>([]);
   const [editing, setEditing] = useState<Template | null>(null);
   const [open, setOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function CrmWhatsAppTemplates() {
     const { data } = await supabase.from("crm_whatsapp_templates").select("*").order("category").order("name");
     setList(((data ?? []) as unknown) as Template[]);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const startNew = () => {
     setEditing({ id: "", template_key: "", name: "", category: "general", body: "", variables: [], is_active: true });

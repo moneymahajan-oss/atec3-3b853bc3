@@ -52,7 +52,7 @@ const empty = {
 };
 
 export default function CrmCampaigns() {
-  const { isAdmin } = useCrmAuth();
+  const { isAdmin, hasAccess } = useCrmAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
@@ -72,7 +72,7 @@ export default function CrmCampaigns() {
     setCourses(co || []);
     setBatches(bt || []);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   async function fetchAudience(audience: string, filter: any): Promise<{ name: string; phone: string; vars: Record<string,string> }[]> {
     if (audience === "all_enquiries") {

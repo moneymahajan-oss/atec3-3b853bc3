@@ -44,7 +44,7 @@ interface StudentLite {
 }
 
 export default function CrmCertificates() {
-  const { isAdmin } = useCrmAuth();
+  const { isAdmin, hasAccess } = useCrmAuth();
   const [certs, setCerts] = useState<Cert[]>([]);
   const [students, setStudents] = useState<StudentLite[]>([]);
   const [search, setSearch] = useState("");
@@ -80,7 +80,7 @@ export default function CrmCertificates() {
     setStudents((s as any) || []);
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();

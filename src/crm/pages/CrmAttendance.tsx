@@ -32,7 +32,7 @@ const colors: Record<string, string> = {
 };
 
 export default function CrmAttendance() {
-  const { user } = useCrmAuth();
+  const { user, hasAccess } = useCrmAuth();
   const [search, setSearch] = useSearchParams();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [batchId, setBatchId] = useState<string>(search.get("batch") || "");
@@ -43,9 +43,10 @@ export default function CrmAttendance() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!hasAccess) return;
     supabase.from("crm_batches").select("id,name,course_name_snapshot").order("created_at", { ascending: false })
       .then(({ data }) => setBatches((data ?? []) as Batch[]));
-  }, []);
+  }, [hasAccess]);
 
   useEffect(() => {
     if (batchId) {
