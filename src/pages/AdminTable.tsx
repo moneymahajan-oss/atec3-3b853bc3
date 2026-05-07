@@ -301,6 +301,7 @@ export default function AdminTable() {
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Deleted" });
     fetchData();
+    invalidatePublicQueries(queryClient, tableName);
   };
 
   const openNew = () => {
