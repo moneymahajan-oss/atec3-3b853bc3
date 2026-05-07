@@ -11,9 +11,9 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storageKey: 'sb-admin-auth-token',
+    persistSession: true,
+    autoRefreshToken: true,
     detectSessionInUrl: false,
-    persistSession: false,
-    autoRefreshToken: false,
+    storageKey: 'sb-admin-auth',
   }
 });
