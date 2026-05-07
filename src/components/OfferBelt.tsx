@@ -8,8 +8,6 @@ interface Offer {
 }
 
 export default function OfferBelt() {,
-    retry: 2,
-    retryDelay: 1000,
   const { data: offers = [], isLoading } = useQuery({
     queryKey: ['offer_belt'],
     queryFn: async () => {

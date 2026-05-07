@@ -14,8 +14,6 @@ function getYouTubeId(url?: string | null): string | null {
 export default function TestimonialsSection() {
   const settings = useSiteSettings();
 
-    retry: 2,
-    retryDelay: 1000,
   const { data: testimonials = [], isLoading } = useQuery({
     queryKey: ['testimonials'],
     queryFn: async () => {

@@ -9,8 +9,6 @@ const typeConfig: Record<string, { icon: React.ElementType; class: string }> = {
 };
 
 export default function AnnouncementTicker() {,
-    retry: 2,
-    retryDelay: 1000,
   const { data: announcements = [], isLoading } = useQuery({
     queryKey: ['announcements'],
     queryFn: async () => {

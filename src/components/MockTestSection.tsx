@@ -38,8 +38,6 @@ export default function MockTestSection() {
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
 
-    retry: 2,
-    retryDelay: 1000,
   const { data: tests = [] } = useQuery({
     queryKey: ['mock_tests'],
     queryFn: async () => {

@@ -34,8 +34,6 @@ function Counter({ target }: { target: number }) {
 }
 
 export default function StatsStrip() {,
-    retry: 2,
-    retryDelay: 1000,
   const { data: stats = [], isLoading } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {

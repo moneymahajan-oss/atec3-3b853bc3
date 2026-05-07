@@ -21,8 +21,6 @@ function getYouTubeId(input: string): string | null {
 }
 
 export default function AboutSection() {,
-    retry: 2,
-    retryDelay: 1000,
   const { data: aboutVideos = [] } = useQuery({
     queryKey: ['about_videos'],
     queryFn: async () => {

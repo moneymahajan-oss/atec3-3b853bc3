@@ -27,8 +27,6 @@ const IMAGES: Record<string, string> = {
 export default function AIUseCasesSection() {
   const settings = useSiteSettings();
 
-    retry: 2,
-    retryDelay: 1000,
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['ai_use_cases'],
     queryFn: async () => {

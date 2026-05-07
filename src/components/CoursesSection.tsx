@@ -33,8 +33,6 @@ export default function CoursesSection() {
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-    retry: 2,
-    retryDelay: 1000,
   const { data: courses = [] } = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {

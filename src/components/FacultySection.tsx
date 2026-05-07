@@ -11,8 +11,6 @@ type Faculty = {
 };
 
 export default function FacultySection() {,
-    retry: 2,
-    retryDelay: 1000,
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['public_faculties'],
     queryFn: async () => {
