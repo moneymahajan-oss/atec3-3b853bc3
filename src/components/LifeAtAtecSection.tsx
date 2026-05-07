@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -16,6 +14,8 @@ function getYouTubeId(input: string): string | null {
 export default function LifeAtAtecSection() {
   const settings = useSiteSettings();
   const [videos, setVideos] = useState<any[]>([]);
+  const heading = settings.life_section_heading?.trim();
+  const subheading = settings.about_section_subheading?.trim();
 
   useEffect(() => {
     supabase
@@ -34,17 +34,16 @@ export default function LifeAtAtecSection() {
   return (
     <section id="life-at-atec" className="py-12 bg-white">
       <div className="container mx-auto px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
-          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5">
-            <Sparkles className="w-3 h-3 mr-1" /> ABOUT US
-          </Badge>
-          <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
-            {settings.life_section_heading || "\n"}
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto whitespace-pre-line">
-            {settings.about_section_subheading || "\n"}
-          </p>
-        </motion.div>
+        {(heading || subheading) && (
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
+            {heading && (
+              <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
+                {heading}
+              </h2>
+            )}
+            {subheading && <p className="text-muted-foreground max-w-2xl mx-auto">{subheading}</p>}
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {videos.map((v, i) => {
