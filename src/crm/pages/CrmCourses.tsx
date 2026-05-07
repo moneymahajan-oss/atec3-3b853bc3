@@ -28,7 +28,7 @@ interface Course {
 }
 
 export default function CrmCourses() {
-  const { isAdmin } = useCrmAuth();
+  const { isAdmin, hasAccess } = useCrmAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState<string>("all");
@@ -38,7 +38,7 @@ export default function CrmCourses() {
     const { data } = await supabase.from("crm_courses").select("*").order("display_order");
     setCourses(((data ?? []) as unknown) as Course[]);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const toggleActive = async (c: Course) => {
     const { error } = await supabase.from("crm_courses").update({ is_active: !c.is_active }).eq("id", c.id);

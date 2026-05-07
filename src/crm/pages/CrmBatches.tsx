@@ -42,7 +42,7 @@ const empty: Partial<Batch> = {
 
 export default function CrmBatches() {
   const navigate = useNavigate();
-  const { isAdmin, user } = useCrmAuth();
+  const { isAdmin, user, hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Batch[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [liveCounts, setLiveCounts] = useState<Record<string, number>>({});
@@ -77,7 +77,7 @@ export default function CrmBatches() {
     setWorkingDays(wdMap);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const filtered = useMemo(() => items.filter((b) => {
     if (status !== "all" && b.status !== status) return false;
