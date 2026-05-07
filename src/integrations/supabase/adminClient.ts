@@ -1,5 +1,5 @@
-// Separate Supabase client for the Admin panel so its auth session is
-// isolated from the CRM client (different localStorage key).
+// Separate Supabase client for Admin panel data operations.
+// It must not persist or refresh auth, otherwise it can contend with the main auth client lock.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -11,13 +11,9 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabaseAdmin = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
-    storageKey: 'admin-auth-token',
-    persistSession: true,
-    autoRefreshToken: true,
+    storageKey: 'sb-admin-auth-token',
     detectSessionInUrl: false,
-    flowType: 'pkce',
-    // Use a no-op lock to prevent contention with the main client's navigator lock
-    lock: (name: string, acquireTimeout: number, fn: () => Promise<any>) => fn(),
+    persistSession: false,
+    autoRefreshToken: false,
   }
 });
