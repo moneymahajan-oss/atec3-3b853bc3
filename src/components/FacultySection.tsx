@@ -10,7 +10,7 @@ type Faculty = {
   photo_url: string | null; experience_years: number | null;
 };
 
-export default function FacultySection() {
+export default function FacultySection() {,
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['public_faculties'],
     queryFn: async () => {
@@ -25,6 +25,8 @@ export default function FacultySection() {
       return (data ?? []) as Faculty[];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (!isLoading && items.length === 0) return null;

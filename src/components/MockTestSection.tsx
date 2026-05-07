@@ -52,6 +52,8 @@ export default function MockTestSection() {
       })) as Test[];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   // Set default selected course when tests load

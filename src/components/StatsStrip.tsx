@@ -33,7 +33,7 @@ function Counter({ target }: { target: number }) {
   return <span ref={ref}>{count.toLocaleString()}+</span>;
 }
 
-export default function StatsStrip() {
+export default function StatsStrip() {,
   const { data: stats = [], isLoading } = useQuery({
     queryKey: ['stats'],
     queryFn: async () => {
@@ -41,6 +41,8 @@ export default function StatsStrip() {
       return data || [];
     },
     staleTime: 0,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   if (isLoading || stats.length === 0) return null;
