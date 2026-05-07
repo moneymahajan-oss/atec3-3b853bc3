@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -16,21 +17,30 @@ export default function LifeAtAtecSection() {
   const heading = settings.life_section_heading?.trim();
   const subheading = settings.about_section_subheading?.trim();
 
-  const { data: videos = [], isLoading } = useQuery({
+  const { data: videos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['life_videos'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("youtube_videos")
         .select("*")
         .eq("is_active", true)
         .eq("section", "life")
         .order("display_order");
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="life-at-atec" className="py-12 bg-white text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading videos
+      </button>
+    </section>
+  );
 
   if (isLoading || videos.length === 0) return null;
 

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, IndianRupee } from "lucide-react";
+import { Sparkles, ArrowRight, IndianRupee, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,20 +27,29 @@ const IMAGES: Record<string, string> = {
 export default function AIUseCasesSection() {
   const settings = useSiteSettings();
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['ai_use_cases'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ai_use_cases")
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-      return (data || []) as UseCase[];
+      if (error) throw error;
+      return (data ?? []) as UseCase[];
     },
-    staleTime: 0,
+    placeholderData: [] as UseCase[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="ai-careers" className="py-12 bg-white text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading AI careers
+      </button>
+    </section>
+  );
 
   if (isLoading || items.length === 0) return null;
 

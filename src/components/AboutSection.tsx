@@ -24,16 +24,17 @@ export default function AboutSection() {
   const { data: aboutVideos = [] } = useQuery({
     queryKey: ['about_videos'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("youtube_videos")
         .select("*")
         .eq("is_active", true)
         .eq("section", "about")
         .order("display_order")
         .limit(4);
-      return data || [];
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });

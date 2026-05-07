@@ -5,10 +5,10 @@ async function fetchSettings(): Promise<Record<string, string>> {
   const { data, error } = await supabase.from("site_settings").select("key, value");
   if (error) {
     console.error("[useSiteSettings] fetch error:", error.message);
-    return {};
+    throw error;
   }
   const map: Record<string, string> = {};
-  (data || []).forEach((row: any) => {
+  (data ?? []).forEach((row: any) => {
     if (row.key) map[row.key] = row.value ?? "";
   });
   return map;
@@ -16,14 +16,14 @@ async function fetchSettings(): Promise<Record<string, string>> {
 
 /**
  * React Query-backed site settings hook.
- * staleTime: 0 — always refetch on mount / window focus so admin edits
- * show up immediately on the public site.
  */
 export function useSiteSettings(): Record<string, string> {
   const { data } = useQuery({
     queryKey: ["site_settings"],
     queryFn: fetchSettings,
-    staleTime: 0,
+    placeholderData: {} as Record<string, string>,
+    retry: 3,
+    retryDelay: 1000,
   });
   return data ?? {};
 }
@@ -39,9 +39,7 @@ export function useRefreshSiteSettings() {
 
 /**
  * @deprecated Use useRefreshSiteSettings() hook instead when inside a component.
- * This standalone version is kept for non-component callers that already have
- * access to a QueryClient.
  */
 export function refreshSiteSettings() {
-  // no-op — callers should migrate to the hook version
+  // no-op
 }

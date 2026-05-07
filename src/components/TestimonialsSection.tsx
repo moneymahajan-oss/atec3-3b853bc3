@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, Star, Quote } from "lucide-react";
+import { Sparkles, Star, Quote, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -14,16 +14,25 @@ function getYouTubeId(url?: string | null): string | null {
 export default function TestimonialsSection() {
   const settings = useSiteSettings();
 
-  const { data: testimonials = [], isLoading } = useQuery({
+  const { data: testimonials = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['testimonials'],
     queryFn: async () => {
-      const { data } = await supabase.from("testimonials").select("*").eq("is_active", true).order("display_order");
-      return data || [];
+      const { data, error } = await supabase.from("testimonials").select("*").eq("is_active", true).order("display_order");
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="testimonials" className="py-12 bg-[#f8fafc] text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading testimonials
+      </button>
+    </section>
+  );
 
   if (isLoading || testimonials.length === 0) return null;
 

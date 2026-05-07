@@ -41,29 +41,28 @@ export default function MockTestSection() {
   const { data: tests = [] } = useQuery({
     queryKey: ['mock_tests'],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("mock_tests")
         .select("*")
         .eq("is_active", true);
+      if (error) throw error;
       if (!data) return [];
       return (data as any[]).map((t) => ({
         ...t,
         questions: Array.isArray(t.questions) ? t.questions : [],
       })) as Test[];
     },
-    staleTime: 0,
+    placeholderData: [] as Test[],
     retry: 2,
     retryDelay: 1000,
   });
 
-  // Set default selected course when tests load
   useEffect(() => {
     if (tests.length > 0 && !selectedCourse) {
       setSelectedCourse(tests[0].course);
     }
   }, [tests, selectedCourse]);
 
-  // Timer
   useEffect(() => {
     if (stage !== "test") return;
     if (secondsLeft <= 0) {

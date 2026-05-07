@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, Play, Clock } from "lucide-react";
+import { Sparkles, Play, Clock, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,16 +19,25 @@ const META: Record<string, { duration: string; category: string; desc: string }>
 export default function VideosSection() {
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
-  const { data: videos = [], isLoading } = useQuery({
+  const { data: videos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['learn_videos'],
     queryFn: async () => {
-      const { data } = await supabase.from("youtube_videos").select("*").eq("section", "learn").eq("is_active", true).order("display_order");
-      return data || [];
+      const { data, error } = await supabase.from("youtube_videos").select("*").eq("section", "learn").eq("is_active", true).order("display_order");
+      if (error) throw error;
+      return data ?? [];
     },
-    staleTime: 0,
+    placeholderData: [] as never[],
     retry: 2,
     retryDelay: 1000,
   });
+
+  if (isError) return (
+    <section id="videos" className="py-12 bg-white text-center">
+      <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+        <RefreshCw className="w-3 h-3" /> Retry loading videos
+      </button>
+    </section>
+  );
 
   if (isLoading || videos.length === 0) return null;
 
