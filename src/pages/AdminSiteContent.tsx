@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { refreshSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowLeft, GraduationCap, LogOut, Eye, Save } from "lucide-react";
 
 const GROUPS: { label: string; keys: { key: string; label: string; multiline?: boolean; placeholder?: string }[] }[] = [
