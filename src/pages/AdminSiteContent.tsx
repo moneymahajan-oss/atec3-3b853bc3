@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { refreshSiteSettings } from "@/hooks/useSiteSettings";
 import { ArrowLeft, GraduationCap, LogOut, Eye, Save } from "lucide-react";
 
 const GROUPS: { label: string; keys: { key: string; label: string; multiline?: boolean; placeholder?: string }[] }[] = [
@@ -88,6 +89,8 @@ export default function AdminSiteContent() {
     } else {
       await supabase.from("site_settings").insert({ key, value: values[key] || "" });
     }
+    // Bust the public site cache so changes appear immediately
+    refreshSiteSettings();
     toast({ title: "Saved", description: key });
     setSaving(null);
   };
