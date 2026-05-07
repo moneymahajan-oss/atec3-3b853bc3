@@ -292,6 +292,7 @@ export default function AdminTable() {
     setEditItem(null);
     setIsNew(false);
     fetchData();
+    invalidatePublicQueries(queryClient, tableName);
   };
 
   const handleDelete = async (id: string) => {
