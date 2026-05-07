@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap, MessageCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,20 +27,22 @@ export default function CoursesSection() {
   const settings = useSiteSettings();
   const { toast } = useToast();
   const [active, setActive] = useState("All");
-  const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [shareCourse, setShareCourse] = useState<any | null>(null);
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    supabase.from("courses").select("*").eq("is_active", true).order("display_order").then(({ data }) => {
-      if (data) setCourses(data);
-    });
-  }, []);
+  const { data: courses = [] } = useQuery({
+    queryKey: ['courses'],
+    queryFn: async () => {
+      const { data } = await supabase.from("courses").select("*").eq("is_active", true).order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  const filtered = active === "All" ? courses : courses.filter((c) => c.category === active);
+  const filtered = active === "All" ? courses : courses.filter((c: any) => c.category === active);
   const waNumber = settings.whatsapp_number || "917009933289";
 
   // Enroll now also captures the visitor as an enquiry — route through the
@@ -61,14 +64,12 @@ export default function CoursesSection() {
       toast({ title: "Invalid phone", description: "Please enter a 10-digit WhatsApp number.", variant: "destructive" });
       return;
     }
-    // Save lead (legacy)
     await supabase.from("leads").insert({
       source: "syllabus_request",
       student_name: studentName,
       phone: normPhone,
       course_name: shareCourse.name,
     });
-    // Silent dedupe: if same phone + same course in last 30 days, refresh existing enquiry
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: dupe } = await supabase
       .from("crm_enquiries")
@@ -106,10 +107,7 @@ export default function CoursesSection() {
     if (enquiryError) {
       console.error("crm_enquiries insert failed", enquiryError);
       toast({ title: "Could not record enquiry", description: enquiryError.message, variant: "destructive" });
-      // continue — still open WhatsApp so user gets the brochure
     }
-    // Build WhatsApp message — pass SHORT course-named links
-    // (legacy `courses` table has no slug; helper falls back to slugified name)
     const link = await buildWhatsAppLink(
       "syllabus_share",
       {
@@ -160,7 +158,7 @@ export default function CoursesSection() {
 
         <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filtered.map((course) => (
+            {filtered.map((course: any) => (
               <motion.div key={course.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ duration: 0.3 }}
                 className="glass rounded-2xl overflow-hidden group hover:shadow-xl transition-shadow flex flex-col">
                 <div className="relative h-48 overflow-hidden">

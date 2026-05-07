@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, Star, Quote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -13,18 +13,20 @@ function getYouTubeId(url?: string | null): string | null {
 
 export default function TestimonialsSection() {
   const settings = useSiteSettings();
-  const [testimonials, setTestimonials] = useState<any[]>([]);
 
-  useEffect(() => {
-    supabase.from("testimonials").select("*").eq("is_active", true).order("display_order").then(({ data }) => {
-      if (data) setTestimonials(data);
-    });
-  }, []);
+  const { data: testimonials = [], isLoading } = useQuery({
+    queryKey: ['testimonials'],
+    queryFn: async () => {
+      const { data } = await supabase.from("testimonials").select("*").eq("is_active", true).order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  if (testimonials.length === 0) return null;
+  if (isLoading || testimonials.length === 0) return null;
 
-  const videoTestimonials = testimonials.filter((t) => getYouTubeId(t.youtube_url));
-  const textTestimonials = testimonials.filter((t) => !getYouTubeId(t.youtube_url));
+  const videoTestimonials = testimonials.filter((t: any) => getYouTubeId(t.youtube_url));
+  const textTestimonials = testimonials.filter((t: any) => !getYouTubeId(t.youtube_url));
 
   return (
     <section id="testimonials" className="py-12 bg-[#f8fafc]">
@@ -36,10 +38,9 @@ export default function TestimonialsSection() {
           </h2>
         </motion.div>
 
-        {/* Video testimonials */}
         {videoTestimonials.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {videoTestimonials.map((t, i) => {
+            {videoTestimonials.map((t: any, i: number) => {
               const id = getYouTubeId(t.youtube_url);
               return (
                 <motion.div
@@ -69,10 +70,9 @@ export default function TestimonialsSection() {
           </div>
         )}
 
-        {/* Text testimonials (legacy fallback) */}
         {textTestimonials.length > 0 && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {textTestimonials.map((t, i) => (
+            {textTestimonials.map((t: any, i: number) => (
               <motion.div key={t.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
                 className="glass rounded-2xl p-6 hover:shadow-xl transition-shadow relative">
                 <Quote className="w-8 h-8 text-accent/20 absolute top-4 right-4" />

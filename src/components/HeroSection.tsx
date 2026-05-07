@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,30 +18,25 @@ const fallbackSlides = [
 ];
 
 export default function HeroSection() {
-  const [slides, setSlides] = useState<any[]>(fallbackSlides);
+  const { data: slides = fallbackSlides } = useQuery({
+    queryKey: ['hero_slides'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("hero_slides").select("*").eq("is_active", true).order("display_order");
+      if (error) { console.error("[HeroSection] fetch error:", error.message); return fallbackSlides; }
+      const validSlides = (data || []).filter(
+        (slide: any) => slide?.is_active && slide?.title?.trim() && slide?.image_url?.trim()
+      );
+      return validSlides.length ? validSlides : fallbackSlides;
+    },
+    staleTime: 0,
+  });
+
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const { data, error } = await supabase.from("hero_slides").select("*").eq("is_active", true).order("display_order");
-        if (error) {
-          console.error("[HeroSection] fetch error:", error.message);
-          return;
-        }
-        const validSlides = (data || []).filter(
-          (slide: any) => slide?.is_active && slide?.title?.trim() && slide?.image_url?.trim()
-        );
-        if (validSlides.length) {
-          setSlides(validSlides);
-          setCurrent(0);
-        }
-      } catch (e) {
-        console.error("[HeroSection] unexpected:", e);
-      }
-    };
-    load();
-  }, []);
+    if (slides.length === 0) return;
+    setCurrent(0);
+  }, [slides]);
 
   useEffect(() => {
     if (slides.length === 0) return;

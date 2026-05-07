@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, Play, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -15,16 +16,18 @@ const META: Record<string, { duration: string; category: string; desc: string }>
 };
 
 export default function VideosSection() {
-  const [videos, setVideos] = useState<any[]>([]);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.from("youtube_videos").select("*").eq("section", "learn").eq("is_active", true).order("display_order").then(({ data }) => {
-      if (data) setVideos(data);
-    });
-  }, []);
+  const { data: videos = [], isLoading } = useQuery({
+    queryKey: ['learn_videos'],
+    queryFn: async () => {
+      const { data } = await supabase.from("youtube_videos").select("*").eq("section", "learn").eq("is_active", true).order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  if (videos.length === 0) return null;
+  if (isLoading || videos.length === 0) return null;
 
   return (
     <section id="videos" className="py-12 bg-white">
@@ -36,7 +39,7 @@ export default function VideosSection() {
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-4 max-w-5xl mx-auto">
-          {videos.map((v, i) => {
+          {videos.map((v: any, i: number) => {
             const meta = META[v.title] || { duration: "10:00", category: "Course", desc: v.description || "" };
             return (
               <motion.div
