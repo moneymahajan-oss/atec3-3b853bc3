@@ -76,6 +76,7 @@ export default function CrmStudents() {
   const { cols, visibleCols, exportCols, toggleVisible } = useReportColumns("crm_student_report_columns");
 
   useEffect(() => {
+    if (!hasAccess) return;
     (async () => {
       const [{ data, error }, { data: bs }, { data: pays }, { data: enr }] = await Promise.all([
         supabase
@@ -102,7 +103,7 @@ export default function CrmStudents() {
       setEnrolMap(em);
       setLoading(false);
     })();
-  }, []);
+  }, [hasAccess]);
 
   const batchMap = useMemo(() => {
     const m = new Map<string, BatchInfo>();

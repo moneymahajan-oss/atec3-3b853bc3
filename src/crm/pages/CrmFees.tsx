@@ -30,11 +30,13 @@ type Row = {
 };
 
 export default function CrmFees() {
+  const { hasAccess } = useCrmAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
   useEffect(() => {
+    if (!hasAccess) return;
     (async () => {
       setLoading(true);
       const [{ data: students, error }, { data: payments }, { data: plans }, { data: enrolments }] = await Promise.all([

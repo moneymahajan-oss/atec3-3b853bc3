@@ -98,6 +98,7 @@ function waColor(iso: string): string {
 
 export default function CrmEnquiries() {
   const navigate = useNavigate();
+  const { hasAccess } = useCrmAuth();
   const [items, setItems] = useState<Enquiry[]>([]);
   const [waMap, setWaMap] = useState<Record<string, { template_key: string; created_at: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -176,12 +177,13 @@ export default function CrmEnquiries() {
 
 
   useEffect(() => {
+    if (!hasAccess) return;
     load();
     supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
-  }, []);
+  }, [hasAccess]);
 
 
   const counsellors = useMemo(() => {
