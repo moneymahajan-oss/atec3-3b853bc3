@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
@@ -13,23 +13,24 @@ function getYouTubeId(input: string): string | null {
 
 export default function LifeAtAtecSection() {
   const settings = useSiteSettings();
-  const [videos, setVideos] = useState<any[]>([]);
   const heading = settings.life_section_heading?.trim();
   const subheading = settings.about_section_subheading?.trim();
 
-  useEffect(() => {
-    supabase
-      .from("youtube_videos")
-      .select("*")
-      .eq("is_active", true)
-      .eq("section", "life")
-      .order("display_order")
-      .then(({ data }) => {
-        if (data) setVideos(data);
-      });
-  }, []);
+  const { data: videos = [], isLoading } = useQuery({
+    queryKey: ['life_videos'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("youtube_videos")
+        .select("*")
+        .eq("is_active", true)
+        .eq("section", "life")
+        .order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  if (videos.length === 0) return null;
+  if (isLoading || videos.length === 0) return null;
 
   return (
     <section id="life-at-atec" className="py-12 bg-white">
@@ -46,7 +47,7 @@ export default function LifeAtAtecSection() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {videos.map((v, i) => {
+          {videos.map((v: any, i: number) => {
             const id = getYouTubeId(v.video_id || v.youtube_url || "");
             if (!id) return null;
             return (

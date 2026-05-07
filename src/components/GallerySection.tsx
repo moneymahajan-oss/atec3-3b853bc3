@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -7,18 +8,22 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export default function GallerySection() {
   const settings = useSiteSettings();
-  const [items, setItems] = useState<any[]>([]);
   const [filter, setFilter] = useState("All");
   const [lightbox, setLightbox] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.from("gallery_items").select("*").eq("is_active", true).order("display_order").then(({ data }) => {
-      if (data) setItems(data);
-    });
-  }, []);
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['gallery_items'],
+    queryFn: async () => {
+      const { data } = await supabase.from("gallery_items").select("*").eq("is_active", true).order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  const categories = ["All", ...Array.from(new Set(items.map((g) => g.category).filter(Boolean)))];
-  const filtered = filter === "All" ? items : items.filter((g) => g.category === filter);
+  if (isLoading || items.length === 0) return null;
+
+  const categories = ["All", ...Array.from(new Set(items.map((g: any) => g.category).filter(Boolean)))];
+  const filtered = filter === "All" ? items : items.filter((g: any) => g.category === filter);
 
   return (
     <section id="gallery" className="py-12 bg-white">
@@ -39,11 +44,10 @@ export default function GallerySection() {
 
         <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <AnimatePresence>
-            {filtered.map((item) => (
+            {filtered.map((item: any) => (
               <motion.div key={item.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="relative group rounded-2xl overflow-hidden cursor-pointer aspect-square" onClick={() => setLightbox(item.image_url)}>
                 <img src={item.image_url} alt={item.caption || ""} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                {/* Diagonal ribbon caption */}
                 {item.caption && (
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <div

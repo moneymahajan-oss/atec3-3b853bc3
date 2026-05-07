@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { GraduationCap, Users, BookOpen, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,21 +34,22 @@ function Counter({ target }: { target: number }) {
 }
 
 export default function StatsStrip() {
-  const [stats, setStats] = useState<any[]>([]);
+  const { data: stats = [], isLoading } = useQuery({
+    queryKey: ['stats'],
+    queryFn: async () => {
+      const { data } = await supabase.from("stats").select("*").order("display_order");
+      return data || [];
+    },
+    staleTime: 0,
+  });
 
-  useEffect(() => {
-    supabase.from("stats").select("*").order("display_order").then(({ data }) => {
-      if (data) setStats(data);
-    });
-  }, []);
-
-  if (stats.length === 0) return null;
+  if (isLoading || stats.length === 0) return null;
 
   return (
     <section className="relative z-20 -mt-12">
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {stats.map((stat, i) => {
+          {stats.map((stat: any, i: number) => {
             const Icon = iconMap[stat.icon_name] || Award;
             return (
               <motion.div key={stat.id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}

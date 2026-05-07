@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -25,21 +25,22 @@ const IMAGES: Record<string, string> = {
 };
 
 export default function AIUseCasesSection() {
-  const [items, setItems] = useState<UseCase[]>([]);
   const settings = useSiteSettings();
 
-  useEffect(() => {
-    supabase
-      .from("ai_use_cases")
-      .select("*")
-      .eq("is_active", true)
-      .order("sort_order")
-      .then(({ data }) => {
-        if (data) setItems(data as UseCase[]);
-      });
-  }, []);
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['ai_use_cases'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ai_use_cases")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      return (data || []) as UseCase[];
+    },
+    staleTime: 0,
+  });
 
-  if (items.length === 0) return null;
+  if (isLoading || items.length === 0) return null;
 
   const waNumber = settings.whatsapp_number || "917009933289";
   const ctaLink = whatsAppLinkSync(

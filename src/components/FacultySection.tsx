@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { GraduationCap, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,11 +11,9 @@ type Faculty = {
 };
 
 export default function FacultySection() {
-  const [items, setItems] = useState<Faculty[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ['public_faculties'],
+    queryFn: async () => {
       const { data } = await supabase
         .from("crm_faculties")
         .select("id,name,slug,designation,specialization,photo_url,experience_years")
@@ -24,12 +22,12 @@ export default function FacultySection() {
         .order("display_order")
         .order("name")
         .limit(8);
-      setItems((data ?? []) as Faculty[]);
-      setLoading(false);
-    })();
-  }, []);
+      return (data ?? []) as Faculty[];
+    },
+    staleTime: 0,
+  });
 
-  if (!loading && items.length === 0) return null;
+  if (!isLoading && items.length === 0) return null;
 
   return (
     <section id="faculty" className="py-16 md:py-24 bg-muted/30">
