@@ -4,8 +4,20 @@ import { ChevronLeft, ChevronRight, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 
+const fallbackSlides = [
+  {
+    id: "fallback-hero",
+    title: "Welcome to ATEC",
+    subtitle: "Punjab's Premier Destination for Technology Education",
+    badge_text: "Avenue To Excellent Careers",
+    cta_text: "Explore Courses",
+    cta_link: "/courses",
+    image_url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80",
+  },
+];
+
 export default function HeroSection() {
-  const [slides, setSlides] = useState<any[]>([]);
+  const [slides, setSlides] = useState<any[]>(fallbackSlides);
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
@@ -16,7 +28,13 @@ export default function HeroSection() {
           console.error("[HeroSection] fetch error:", error.message);
           return;
         }
-        if (data?.length) setSlides(data);
+        const validSlides = (data || []).filter(
+          (slide: any) => slide?.is_active && slide?.title?.trim() && slide?.image_url?.trim()
+        );
+        if (validSlides.length) {
+          setSlides(validSlides);
+          setCurrent(0);
+        }
       } catch (e) {
         console.error("[HeroSection] unexpected:", e);
       }
@@ -30,10 +48,8 @@ export default function HeroSection() {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  if (slides.length === 0) return <section id="home" className="h-screen bg-background" />;
-
   const slide = slides[current];
-  if (!slide) return <section id="home" className="h-screen bg-background" />;
+  if (!slide) return null;
 
   return (
     <section id="home" className="relative h-screen min-h-[600px] max-h-[900px] overflow-hidden bg-gray-900">
