@@ -110,15 +110,25 @@ export default function LifeAtAtecSection() {
             className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
             onClick={() => setOpenVideo(null)}
           >
-            <button className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white">
+            <button className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white z-10">
               <X className="w-6 h-6" />
             </button>
-            <div className="w-full max-w-4xl aspect-video" onClick={e => e.stopPropagation()}>
+            <div
+              className={
+                openVideo.platform === "instagram"
+                  ? "w-full max-w-[420px] h-[85vh]"
+                  : openVideo.platform === "facebook"
+                  ? "w-full max-w-2xl h-[75vh]"
+                  : "w-full max-w-4xl aspect-video"
+              }
+              onClick={e => e.stopPropagation()}
+            >
               <iframe
                 src={openVideo._embed}
-                className="w-full h-full rounded-xl"
+                className="w-full h-full rounded-xl bg-black"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
+                scrolling="no"
                 title={openVideo.title || "Video"}
               />
             </div>
