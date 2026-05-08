@@ -1,6 +1,6 @@
 import * as React from "react";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { User, Session } from "@supabase/supabase-js";
+import { User, Session, type AuthChangeEvent } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 type CrmRole = "admin" | "counsellor" | null;
@@ -28,11 +28,15 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchRole = async (uid: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("crm_user_roles")
       .select("role")
       .eq("user_id", uid)
       .order("role", { ascending: true });
+    if (error) {
+      console.error("[CrmAuth] fetchRole error", error);
+      return;
+    }
     if (data && data.length > 0) {
       // Prefer admin if present
       const isAdmin = data.some((r) => r.role === "admin");
@@ -44,40 +48,51 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
 
  useEffect(() => {
   let mounted = true;
+  let authCheckDone = false;
 
-  // 8-second timeout to prevent infinite loading
+  const finishLoading = () => {
+    if (!mounted) return;
+    authCheckDone = true;
+    setLoading(false);
+  };
+
   const timeout = setTimeout(() => {
-    if (mounted && loading) {
+    if (mounted && !authCheckDone) {
       console.warn("[CrmAuth] Auth check timed out after 8s");
       setLoading(false);
     }
   }, 8000);
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (_evt, s) => {
-      if (!mounted) return;
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        try { await fetchRole(s.user.id); } catch (e) { console.error("[CrmAuth] fetchRole error", e); }
-      } else {
-        setRole(null);
-      }
-      if (mounted) setLoading(false);
-    }
-  );
-
-  supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+  const applySession = (s: Session | null, evt?: AuthChangeEvent) => {
     if (!mounted) return;
     setSession(s);
     setUser(s?.user ?? null);
-    if (s?.user) {
-      try { await fetchRole(s.user.id); } catch (e) { console.error("[CrmAuth] fetchRole error", e); }
+    if (evt === "SIGNED_OUT" || !s?.user) {
+      setRole(null);
+      finishLoading();
+      return;
     }
-    if (mounted) setLoading(false);
+    setTimeout(() => {
+      if (!mounted) return;
+      void fetchRole(s.user.id).finally(finishLoading);
+    }, 0);
+  };
+
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (evt, s) => applySession(s, evt)
+  );
+
+  supabase.auth.getSession().then(({ data: { session: s }, error }) => {
+    if (error) throw error;
+    applySession(s);
   }).catch((e) => {
     console.error("[CrmAuth] getSession error", e);
-    if (mounted) setLoading(false);
+    if (mounted) {
+      setSession(null);
+      setUser(null);
+      setRole(null);
+      finishLoading();
+    }
   });
 
   return () => {
