@@ -77,6 +77,7 @@ export default function AdminDashboard() {
             <span className="font-heading font-bold text-lg text-foreground">E-Tech Admin</span>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="default" size="sm" asChild className="bg-rose-500 hover:bg-rose-600 text-white"><Link to="/admin/crm_faculties"><UserCog className="w-4 h-4 mr-1" /> Faculty</Link></Button>
             <Button variant="outline" size="sm" asChild><Link to="/"><Eye className="w-4 h-4 mr-1" /> View Site</Link></Button>
             <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="w-4 h-4 mr-1" /> Sign Out</Button>
           </div>
