@@ -119,7 +119,7 @@ export default function AdminDashboard() {
             return (
               <Link
                 key={s.key}
-                to={isCustom ? `/admin/site-content` : `/admin/${s.key}`}
+                to={(s as any).href || (isCustom ? `/admin/site-content` : `/admin/${s.key}`)}
                 className="glass rounded-xl p-5 hover:shadow-lg transition-all group"
               >
                 <div className={`w-10 h-10 rounded-lg ${s.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
