@@ -100,16 +100,17 @@ export default function CrmFaculties() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: f }, { data: b }, { data: s }, { data: a }] = await Promise.all([
+    const [fRes, bRes, sRes, aRes] = await Promise.all([
       supabase.from("crm_faculties").select("*").order("display_order").order("name"),
       supabase.from("crm_batches").select("id,name,faculty_name,course_name_snapshot,status,capacity,start_date,end_date,schedule,timing"),
       supabase.from("crm_students").select("id,full_name,phone,course_name_snapshot,batch_id,status,enrolment_date"),
       supabase.from("crm_attendance").select("batch_id,attended_on"),
     ]);
-    setFaculties((f ?? []) as Faculty[]);
-    setBatches((b ?? []) as Batch[]);
-    setStudents((s ?? []) as Student[]);
-    setAtt((a ?? []) as Att[]);
+    if (fRes.error) throw new Error(fRes.error.message);
+    setFaculties((fRes.data ?? []) as Faculty[]);
+    setBatches((bRes.data ?? []) as Batch[]);
+    setStudents((sRes.data ?? []) as Student[]);
+    setAtt((aRes.data ?? []) as Att[]);
     setLoading(false);
   };
   useEffect(() => { if (hasAccess) load(); }, [hasAccess]);

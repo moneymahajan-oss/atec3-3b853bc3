@@ -55,12 +55,17 @@ export default function CrmBatches() {
 
   const load = async () => {
     setLoading(true);
-    const [{ data: b }, { data: c }, { data: ls }, { data: at }] = await Promise.all([
+    const [bRes, cRes, lsRes, atRes] = await Promise.all([
       supabase.from("crm_batches").select("*").order("created_at", { ascending: false }),
       supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name"),
       supabase.from("crm_students").select("batch_id").eq("status", "active"),
       supabase.from("crm_attendance").select("batch_id,attended_on"),
     ]);
+    if (bRes.error) throw new Error(bRes.error.message);
+    const { data: b } = bRes;
+    const { data: c } = cRes;
+    const { data: ls } = lsRes;
+    const { data: at } = atRes;
     setItems((b ?? []) as Batch[]);
     setCourses((c ?? []) as Course[]);
     const lc: Record<string, number> = {};

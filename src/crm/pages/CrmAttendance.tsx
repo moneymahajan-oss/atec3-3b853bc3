@@ -61,11 +61,15 @@ export default function CrmAttendance() {
   const loadRoster = async () => {
     if (!batchId || !date) return;
     setLoading(true);
-    const [{ data: rs }, { data: existing }, { data: wd }] = await Promise.all([
+    const [rsRes, existingRes, wdRes] = await Promise.all([
       supabase.from("crm_students").select("id,full_name,enrolment_no,phone").eq("batch_id", batchId).order("full_name"),
       supabase.from("crm_attendance").select("id,student_id,status,notes").eq("batch_id", batchId).eq("attended_on", date),
       supabase.from("crm_attendance").select("attended_on").eq("batch_id", batchId),
     ]);
+    if (rsRes.error) throw new Error(rsRes.error.message);
+    const { data: rs } = rsRes;
+    const { data: existing } = existingRes;
+    const { data: wd } = wdRes;
     const list = (rs ?? []) as Student[];
     setStudents(list);
     const m: Record<string, Attendance> = {};
