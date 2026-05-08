@@ -465,7 +465,11 @@ export default function AdminTable() {
                     <Select value={editItem[f.key] || ""} onValueChange={v => setEditItem({ ...editItem, [f.key]: v })}>
                       <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {f.options?.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        {f.options?.map(o => {
+                          const val = typeof o === "string" ? o : o.value;
+                          const lab = typeof o === "string" ? o : o.label;
+                          return <SelectItem key={val} value={val}>{lab}</SelectItem>;
+                        })}
                       </SelectContent>
                     </Select>
                   ) : f.type === "textarea" || f.type === "json" ? (
