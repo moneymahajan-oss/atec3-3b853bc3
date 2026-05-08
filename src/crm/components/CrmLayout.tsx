@@ -1,7 +1,8 @@
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, Moon, Search, Sun, ExternalLink } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, ExternalLink } from "lucide-react";
+import { CrmGlobalSearch } from "./CrmGlobalSearch";
 import { CrmSidebar } from "./CrmSidebar";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { useEffect, useState } from "react";
@@ -52,10 +53,7 @@ export function CrmLayout() {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 border-b bg-card flex items-center px-3 gap-2 sticky top-0 z-40">
             <SidebarTrigger />
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-sm text-muted-foreground w-72">
-              <Search className="w-4 h-4" />
-              <span className="text-xs">Search students, courses... (coming soon)</span>
-            </div>
+            <CrmGlobalSearch />
             <div className="flex-1" />
             <Button variant="ghost" size="icon" asChild title="Open public site">
               <a href="/" target="_blank" rel="noreferrer"><ExternalLink className="w-4 h-4" /></a>
