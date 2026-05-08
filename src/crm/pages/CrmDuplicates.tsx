@@ -51,6 +51,7 @@ export default function CrmDuplicates() {
       supabase.from("crm_students").select("id,full_name,phone,course_name_snapshot,status,created_at,enrolment_no").not("phone", "is", null),
       supabase.from("crm_duplicate_exceptions").select("key_type,key_value"),
     ]);
+    if (eRes.error) throw new Error(eRes.error.message);
 
     const all: Row[] = [];
     (eRes.data || []).forEach((r: { id: string; name: string; phone: string; course_name_snapshot: string | null; status: string; created_at: string; email: string | null }) => all.push({

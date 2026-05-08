@@ -45,13 +45,21 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
  useEffect(() => {
   let mounted = true;
 
+  // 8-second timeout to prevent infinite loading
+  const timeout = setTimeout(() => {
+    if (mounted && loading) {
+      console.warn("[CrmAuth] Auth check timed out after 8s");
+      setLoading(false);
+    }
+  }, 8000);
+
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     async (_evt, s) => {
       if (!mounted) return;
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        await fetchRole(s.user.id);
+        try { await fetchRole(s.user.id); } catch (e) { console.error("[CrmAuth] fetchRole error", e); }
       } else {
         setRole(null);
       }
@@ -64,13 +72,17 @@ export function CrmAuthProvider({ children }: { children: ReactNode }) {
     setSession(s);
     setUser(s?.user ?? null);
     if (s?.user) {
-      await fetchRole(s.user.id);
+      try { await fetchRole(s.user.id); } catch (e) { console.error("[CrmAuth] fetchRole error", e); }
     }
+    if (mounted) setLoading(false);
+  }).catch((e) => {
+    console.error("[CrmAuth] getSession error", e);
     if (mounted) setLoading(false);
   });
 
   return () => {
     mounted = false;
+    clearTimeout(timeout);
     subscription.unsubscribe();
   };
 }, []);

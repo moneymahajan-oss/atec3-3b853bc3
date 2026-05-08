@@ -45,7 +45,7 @@ export default function CrmFees() {
         supabase.from("crm_fee_plans").select("student_id,due_date,amount,amount_paid,status,is_void"),
         supabase.from("crm_student_enrolments" as never).select("student_id,course_name_snapshot,total_fee,net_payable_fee"),
       ]);
-      if (error) toast.error(error.message);
+      if (error) { toast.error(error.message); throw new Error(error.message); }
       const paidByStudent: Record<string, number> = {};
       (payments ?? []).forEach((p) => {
         if ((p as { is_void?: boolean }).is_void) return;

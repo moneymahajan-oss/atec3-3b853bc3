@@ -58,7 +58,7 @@ export default function CrmExpenses() {
       supabase.from("crm_expenses").select("*").order("spent_on", { ascending: false }),
       supabase.from("crm_expense_categories").select("id,name,color").eq("is_active", true).order("display_order"),
     ]);
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); throw new Error(error.message); }
     setItems((e ?? []) as Expense[]);
     setCats((c ?? []) as Cat[]);
     setLoading(false);

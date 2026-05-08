@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -49,12 +50,16 @@ export default function CrmSettings() {
   const { isAdmin, loading, hasAccess } = useCrmAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
-  useEffect(() => {
-    if (!hasAccess) return;
-    (async () => {
-      const { data } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
+  const loadSettings = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
+      if (error) throw new Error(error.message);
       if (data) {
         const raw = data as unknown as Record<string, unknown>;
         const rs = (raw.reminder_settings ?? {}) as Partial<ReminderSettingsValue>;
@@ -63,7 +68,18 @@ export default function CrmSettings() {
           reminder_settings: { ...DEFAULT_REMINDER, ...rs },
         });
       }
-    })();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load settings";
+      setLoadError(msg);
+      console.error("[CrmSettings] load error", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!hasAccess) return;
+    loadSettings();
   }, [hasAccess]);
 
   // Auto-scroll to Danger Zone if URL hash matches (from sidebar link)
@@ -107,7 +123,38 @@ export default function CrmSettings() {
     }
   };
 
-  if (!settings) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-card border rounded-2xl p-5 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-card border rounded-2xl p-8 text-center space-y-4">
+          <h2 className="text-lg font-heading font-bold">Failed to load settings</h2>
+          <p className="text-muted-foreground text-sm">{loadError}</p>
+          <Button onClick={loadSettings}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settings) return <div className="p-6 text-muted-foreground">No settings found.</div>;
 
   return (
     <div>

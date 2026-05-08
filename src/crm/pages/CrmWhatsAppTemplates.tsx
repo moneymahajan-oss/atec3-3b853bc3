@@ -29,7 +29,8 @@ export default function CrmWhatsAppTemplates() {
   const [open, setOpen] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("crm_whatsapp_templates").select("*").order("category").order("name");
+    const { data, error } = await supabase.from("crm_whatsapp_templates").select("*").order("category").order("name");
+    if (error) throw new Error(error.message);
     setList(((data ?? []) as unknown) as Template[]);
   };
   useEffect(() => { if (hasAccess) load(); }, [hasAccess]);

@@ -88,7 +88,7 @@ export default function CrmStudents() {
         supabase.from("crm_payments").select("student_id,amount,is_void"),
         supabase.from("crm_student_enrolments" as never).select("student_id,course_name_snapshot,net_payable_fee,total_fee,status"),
       ]);
-      if (error) toast.error(error.message);
+      if (error) { toast.error(error.message); throw new Error(error.message); }
       setItems((data ?? []) as Student[]);
       setBatches((bs ?? []) as BatchInfo[]);
       const pm: Record<string, number> = {};

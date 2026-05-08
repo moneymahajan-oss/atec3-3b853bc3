@@ -154,7 +154,7 @@ export default function CrmEnquiries() {
       .from("crm_enquiries")
       .select("id,name,phone,whatsapp,email,city,state,qualification,college_name,class_year,stream,current_status,company_name,course_id,course_name_snapshot,preferred_timing,budget_range,source,status,priority,follow_up_date,assigned_to_name,hear_about_us,referred_by,created_at")
       .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
+    if (error) { toast.error(error.message); throw new Error(error.message); }
     const list = (data ?? []) as Enquiry[];
     setItems(list);
 
