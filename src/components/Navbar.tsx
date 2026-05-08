@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { whatsAppLinkSync } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 type NavItem = { label: string; href: string; isHash: boolean; isExternal: boolean };
 
