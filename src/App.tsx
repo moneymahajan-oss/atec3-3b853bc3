@@ -49,6 +49,8 @@ import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
 import FacultyList from "./pages/FacultyList.tsx";
 import FacultyDetail from "./pages/FacultyDetail.tsx";
+import Verification from "./pages/Verification.tsx";
+import AdminCertificates from "./pages/AdminCertificates.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient({
@@ -96,6 +98,7 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/enquire" element={<Enquire />} />
+                <Route path="/verification" element={<Verification />} />
                 <Route path="/c/:slug" element={<CoursePublic />} />
                 <Route path="/faculty" element={<FacultyList />} />
                 <Route path="/faculty/:slug" element={<FacultyDetail />} />
