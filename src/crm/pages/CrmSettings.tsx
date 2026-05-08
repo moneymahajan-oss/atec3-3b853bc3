@@ -50,12 +50,16 @@ export default function CrmSettings() {
   const { isAdmin, loading, hasAccess } = useCrmAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
-  useEffect(() => {
-    if (!hasAccess) return;
-    (async () => {
-      const { data } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
+  const loadSettings = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase.from("crm_institute_settings").select("*").maybeSingle();
+      if (error) throw new Error(error.message);
       if (data) {
         const raw = data as unknown as Record<string, unknown>;
         const rs = (raw.reminder_settings ?? {}) as Partial<ReminderSettingsValue>;
@@ -64,7 +68,18 @@ export default function CrmSettings() {
           reminder_settings: { ...DEFAULT_REMINDER, ...rs },
         });
       }
-    })();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to load settings";
+      setLoadError(msg);
+      console.error("[CrmSettings] load error", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!hasAccess) return;
+    loadSettings();
   }, [hasAccess]);
 
   // Auto-scroll to Danger Zone if URL hash matches (from sidebar link)
