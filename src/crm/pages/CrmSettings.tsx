@@ -123,7 +123,38 @@ export default function CrmSettings() {
     }
   };
 
-  if (!settings) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-4 w-96" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-card border rounded-2xl p-5 space-y-4">
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <div className="max-w-md mx-auto bg-card border rounded-2xl p-8 text-center space-y-4">
+          <h2 className="text-lg font-heading font-bold">Failed to load settings</h2>
+          <p className="text-muted-foreground text-sm">{loadError}</p>
+          <Button onClick={loadSettings}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!settings) return <div className="p-6 text-muted-foreground">No settings found.</div>;
 
   return (
     <div>
