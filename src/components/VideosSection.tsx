@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import VideoThumbnail from "@/components/VideoThumbnail";
+import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 const META: Record<string, { duration: string; category: string; desc: string }> = {
   "Introduction to Python": { duration: "12:45", category: "Programming", desc: "Beginner-friendly intro to Python syntax and logic." },
