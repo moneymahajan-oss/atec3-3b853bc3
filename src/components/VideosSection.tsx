@@ -50,7 +50,7 @@ export default function VideosSection() {
           <p className="text-muted-foreground max-w-2xl mx-auto">Bite-sized lessons from our top instructors</p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-4 max-w-5xl mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {videos.map((v: any, i: number) => {
             const meta = META[v.title] || { duration: "10:00", category: "Course", desc: v.description || "" };
             return (
@@ -61,23 +61,23 @@ export default function VideosSection() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
                 onClick={() => setActiveVideo(v.video_id)}
-                className="glass rounded-xl overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow flex"
+                className="glass rounded-2xl overflow-hidden group cursor-pointer hover:shadow-xl transition-shadow flex flex-col"
               >
-                <div className="relative w-32 sm:w-40 flex-shrink-0 overflow-hidden">
+                <div className="relative aspect-video w-full overflow-hidden">
                   <VideoThumbnail src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
-                    <div className="w-10 h-10 rounded-full gradient-accent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <Play className="w-4 h-4 text-accent-foreground ml-0.5" />
+                    <div className="w-16 h-16 rounded-full gradient-accent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <Play className="w-7 h-7 text-accent-foreground ml-1" />
                     </div>
                   </div>
-                  <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded inline-flex items-center gap-1">
+                  <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-semibold px-2 py-1 rounded inline-flex items-center gap-1">
                     <Clock className="w-3 h-3" />{meta.duration}
                   </span>
                 </div>
-                <div className="p-3 sm:p-4 flex flex-col justify-center min-w-0 flex-1">
-                  <Badge variant="outline" className="self-start mb-1.5 text-[10px] py-0 h-4 text-primary border-primary/30">{meta.category}</Badge>
-                  <h3 className="font-heading font-semibold text-foreground text-sm sm:text-base mb-1 line-clamp-1">{v.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{meta.desc}</p>
+                <div className="p-5 flex flex-col flex-1">
+                  <Badge variant="outline" className="self-start mb-2 text-xs text-primary border-primary/30">{meta.category}</Badge>
+                  <h3 className="font-heading font-semibold text-foreground text-lg mb-1.5 line-clamp-2">{v.title}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{meta.desc}</p>
                 </div>
               </motion.div>
             );
