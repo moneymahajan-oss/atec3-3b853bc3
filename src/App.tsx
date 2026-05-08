@@ -51,6 +51,8 @@ import FacultyList from "./pages/FacultyList.tsx";
 import FacultyDetail from "./pages/FacultyDetail.tsx";
 import Verification from "./pages/Verification.tsx";
 import AdminCertificates from "./pages/AdminCertificates.tsx";
+import AdminNav from "./pages/AdminNav.tsx";
+import AdminMockTests from "./pages/AdminMockTests.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 
 const queryClient = new QueryClient({
@@ -106,6 +108,8 @@ const App = () => {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/site-content" element={<AdminSiteContent />} />
                 <Route path="/admin/certificates" element={<AdminCertificates />} />
+                <Route path="/admin/navigation" element={<AdminNav />} />
+                <Route path="/admin/mock-tests-editor" element={<AdminMockTests />} />
                 <Route path="/admin/:table" element={<AdminTable />} />
 
                 <Route path="/crm/login" element={<CrmLogin />} />
