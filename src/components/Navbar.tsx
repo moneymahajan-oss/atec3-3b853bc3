@@ -110,10 +110,12 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-1">
             {navLinks.map(({ label, href }) => {
               const isHash = href.startsWith("#");
+              const isExternal = href.startsWith("http");
               return (
                 <a
                   key={href}
                   href={href}
+                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   onClick={isHash ? (e) => {
                     e.preventDefault();
                     const el = document.querySelector(href);
