@@ -99,11 +99,33 @@ export default function VideosSection() {
           })}
         </div>
       </div>
-      <Dialog open={!!activeEmbed} onOpenChange={() => setActiveEmbed(null)}>
-        <DialogContent className="max-w-3xl p-0 overflow-hidden">
-          {activeEmbed && (
-            <div className="aspect-video">
-              <iframe src={activeEmbed} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+      <Dialog open={!!active} onOpenChange={() => setActive(null)}>
+        <DialogContent
+          className={
+            active?.platform === "instagram"
+              ? "max-w-[420px] p-0 overflow-hidden bg-black border-0"
+              : active?.platform === "facebook"
+              ? "max-w-2xl p-0 overflow-hidden bg-black border-0"
+              : "max-w-3xl p-0 overflow-hidden bg-black border-0"
+          }
+        >
+          {active && (
+            <div
+              className={
+                active.platform === "instagram"
+                  ? "w-full h-[80vh]"
+                  : active.platform === "facebook"
+                  ? "w-full h-[70vh]"
+                  : "aspect-video w-full"
+              }
+            >
+              <iframe
+                src={active.embed}
+                className="w-full h-full"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                scrolling="no"
+              />
             </div>
           )}
         </DialogContent>
