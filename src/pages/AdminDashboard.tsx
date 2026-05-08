@@ -19,7 +19,7 @@ const sections = [
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
   { key: "gallery_items", label: "Gallery", icon: Image, color: "bg-green-500" },
   { key: "testimonials", label: "Testimonials", icon: MessageSquare, color: "bg-purple-500" },
-  { key: "faculties", label: "Faculty", icon: UserCog, color: "bg-rose-500", custom: true, href: "/crm/faculties" },
+  { key: "crm_faculties", label: "Faculty", icon: UserCog, color: "bg-rose-500" },
   { key: "youtube_videos", label: "Videos (Life/About/Testimonial)", icon: Video, color: "bg-red-500" },
   { key: "ai_use_cases", label: "AI Use Cases", icon: TrendingUp, color: "bg-fuchsia-500" },
   { key: "mock_tests", label: "Mock Tests (raw JSON)", icon: BookOpen, color: "bg-teal-500" },
