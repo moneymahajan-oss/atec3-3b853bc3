@@ -14,6 +14,7 @@ const navLinks = [
   { label: "Testimonials", href: "#testimonials" },
   { label: "AI Careers", href: "#ai-careers" },
   { label: "Mock Test", href: "#mock-test" },
+  { label: "Verification", href: "/verification" },
   { label: "Contact", href: "#contact" },
 ];
 
