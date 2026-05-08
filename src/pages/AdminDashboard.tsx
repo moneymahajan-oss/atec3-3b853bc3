@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   GraduationCap, LogOut, LayoutDashboard, Image, MessageSquare, Users,
   BookOpen, BarChart3, Video, Megaphone, Download, Settings, Mail, Sliders,
-  Eye, Pencil, TrendingUp, ShieldCheck
+  Eye, Pencil, TrendingUp, ShieldCheck, UserCog
 } from "lucide-react";
 
 const sections = [
@@ -19,6 +19,7 @@ const sections = [
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
   { key: "gallery_items", label: "Gallery", icon: Image, color: "bg-green-500" },
   { key: "testimonials", label: "Testimonials", icon: MessageSquare, color: "bg-purple-500" },
+  { key: "faculties", label: "Faculty", icon: UserCog, color: "bg-rose-500", custom: true, href: "/crm/faculties" },
   { key: "youtube_videos", label: "Videos (Life/About/Testimonial)", icon: Video, color: "bg-red-500" },
   { key: "ai_use_cases", label: "AI Use Cases", icon: TrendingUp, color: "bg-fuchsia-500" },
   { key: "mock_tests", label: "Mock Tests (raw JSON)", icon: BookOpen, color: "bg-teal-500" },
