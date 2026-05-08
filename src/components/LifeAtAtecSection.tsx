@@ -50,7 +50,7 @@ export default function LifeAtAtecSection() {
         {(heading || subheading) && (
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
             {heading && (
-              <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
+              <h2 className="text-3xl font-heading font-bold text-foreground mb-4 md:text-3xl font-sans">
                 {heading}
               </h2>
             )}
