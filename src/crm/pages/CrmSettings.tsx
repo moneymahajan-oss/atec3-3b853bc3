@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
