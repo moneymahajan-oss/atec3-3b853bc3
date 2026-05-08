@@ -171,6 +171,7 @@ export type Database = {
           syllabus_pdf_url: string | null
           thumbnail_url: string | null
           updated_at: string
+          video_url: string | null
           whatsapp_template_key: string | null
         }
         Insert: {
@@ -191,6 +192,7 @@ export type Database = {
           syllabus_pdf_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          video_url?: string | null
           whatsapp_template_key?: string | null
         }
         Update: {
@@ -211,6 +213,7 @@ export type Database = {
           syllabus_pdf_url?: string | null
           thumbnail_url?: string | null
           updated_at?: string
+          video_url?: string | null
           whatsapp_template_key?: string | null
         }
         Relationships: []
