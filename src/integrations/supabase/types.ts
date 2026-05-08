@@ -2220,6 +2220,36 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_certificate_logs: {
+        Row: {
+          action: string
+          certificate_id: string
+          created_at: string
+          diff: Json | null
+          id: string
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          certificate_id: string
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          certificate_id?: string
+          created_at?: string
+          diff?: Json | null
+          id?: string
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       verification_certificates: {
         Row: {
           certificate_id: string
