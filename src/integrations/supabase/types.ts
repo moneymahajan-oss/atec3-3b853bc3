@@ -98,6 +98,27 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          id: number
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          id?: number
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          id?: number
+          key?: string
+          updated_at?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           course_interest: string | null
@@ -2196,6 +2217,51 @@ export type Database = {
           review_text?: string | null
           student_name?: string
           youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      verification_certificates: {
+        Row: {
+          certificate_id: string
+          course_name: string
+          created_at: string
+          duration_hours: number
+          end_date: string
+          father_name: string
+          grade: string
+          is_active: boolean
+          issued_date: string
+          start_date: string
+          student_id: string
+          student_name: string
+        }
+        Insert: {
+          certificate_id: string
+          course_name: string
+          created_at?: string
+          duration_hours: number
+          end_date: string
+          father_name: string
+          grade: string
+          is_active?: boolean
+          issued_date: string
+          start_date: string
+          student_id: string
+          student_name: string
+        }
+        Update: {
+          certificate_id?: string
+          course_name?: string
+          created_at?: string
+          duration_hours?: number
+          end_date?: string
+          father_name?: string
+          grade?: string
+          is_active?: boolean
+          issued_date?: string
+          start_date?: string
+          student_id?: string
+          student_name?: string
         }
         Relationships: []
       }
