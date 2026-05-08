@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { whatsAppLinkSync } from "@/lib/whatsapp";
+import { supabase } from "@/integrations/supabase/client";
 
-const navLinks = [
+const baseNavLinks = [
   { label: "Home", href: "#home" },
   { label: "Courses", href: "#courses" },
   { label: "About", href: "#about" },
@@ -14,7 +15,6 @@ const navLinks = [
   { label: "Testimonials", href: "#testimonials" },
   { label: "AI Careers", href: "#ai-careers" },
   { label: "Mock Test", href: "#mock-test" },
-  { label: "Verification", href: "/verification" },
   { label: "Contact", href: "#contact" },
 ];
 
@@ -24,6 +24,23 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
   const [activeSection, setActiveSection] = useState("home");
+  const [navLinks, setNavLinks] = useState(() => [
+    ...baseNavLinks.slice(0, 7),
+    { label: "Verification", href: "/verification" },
+    ...baseNavLinks.slice(7),
+  ]);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key", "verification_mode").single().then(({ data }) => {
+      const mode = data?.value || "internal";
+      const vHref = mode === "external" ? "https://atecedu.com/verification" : "/verification";
+      setNavLinks([
+        ...baseNavLinks.slice(0, 7),
+        { label: "Verification", href: vHref },
+        ...baseNavLinks.slice(7),
+      ]);
+    });
+  }, []);
 
   useFavicon(settings.logo_url);
 
@@ -93,10 +110,12 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-1">
             {navLinks.map(({ label, href }) => {
               const isHash = href.startsWith("#");
+              const isExternal = href.startsWith("http");
               return (
                 <a
                   key={href}
                   href={href}
+                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                   onClick={isHash ? (e) => {
                     e.preventDefault();
                     const el = document.querySelector(href);
@@ -151,10 +170,12 @@ export default function Navbar() {
             <div className="flex flex-col p-6 gap-2">
               {navLinks.map(({ label, href }) => {
                 const isHash = href.startsWith("#");
+                const isExternal = href.startsWith("http");
                 return (
                   <a
                     key={label}
                     href={href}
+                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     onClick={isHash ? (e) => {
                       e.preventDefault();
                       setMobileOpen(false);
