@@ -53,6 +53,7 @@ const tableConfig: Record<string, {
       { key: "thumbnail_url", label: "Thumbnail URL", type: "text" },
       { key: "syllabus_pdf_url", label: "Syllabus PDF URL", type: "text" },
       { key: "brochure_pdf_url", label: "Brochure PDF URL", type: "text" },
+      { key: "video_url", label: "Course Video URL (YouTube/Instagram)", type: "text" },
       { key: "whatsapp_template_key", label: "WhatsApp Template Key", type: "text" },
       { key: "is_featured", label: "Featured", type: "boolean" },
       { key: "is_active", label: "Active", type: "boolean" },
