@@ -50,7 +50,7 @@ export default function LifeAtAtecSection() {
     const platform = (v.platform || detectPlatform(url)).toLowerCase();
     const embed = getEmbedUrl(url, platform as any);
     if (embed) {
-      setOpenVideo({ ...v, _embed: embed });
+      setOpenVideo({ ...v, platform, _embed: embed });
     } else if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     }
