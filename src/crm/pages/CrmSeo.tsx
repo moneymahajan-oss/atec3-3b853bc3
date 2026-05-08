@@ -38,7 +38,8 @@ export default function CrmSeo() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    const { data } = await supabase.from("crm_seo_meta").select("*").order("page_path");
+    const { data, error } = await supabase.from("crm_seo_meta").select("*").order("page_path");
+    if (error) throw new Error(error.message);
     setRows((data as any) || []);
   }
   useEffect(() => { load(); }, []);

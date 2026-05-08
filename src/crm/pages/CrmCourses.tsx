@@ -35,7 +35,8 @@ export default function CrmCourses() {
   const [sending, setSending] = useState<Course | null>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("crm_courses").select("*").order("display_order");
+    const { data, error } = await supabase.from("crm_courses").select("*").order("display_order");
+    if (error) throw new Error(error.message);
     setCourses(((data ?? []) as unknown) as Course[]);
   };
   useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
