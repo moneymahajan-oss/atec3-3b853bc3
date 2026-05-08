@@ -133,18 +133,24 @@ export default function CoursesSection() {
 
     let link: string;
 
-    if (dialogAction === "enquiry") {
-      // Enquiry: student sends TO ATEC
-      link = await buildWhatsAppLink("enquiry_button", commonVars, ATEC_WA);
-    } else if (dialogAction === "enroll") {
-      // Enroll: student sends TO ATEC
-      link = await buildWhatsAppLink("enroll_button", commonVars, ATEC_WA);
-    } else if (dialogAction === "share") {
-      // Share: ATEC sends TO student
-      link = await buildWhatsAppLink("syllabus_share", commonVars, `91${normPhone}`);
+    // All templates use their own configured wa_number (editable from admin).
+    // For enquiry/enroll: student sends TO ATEC (template wa_number = ATEC).
+    // For share/syllabus: ATEC sends TO student — wa_number in template is ATEC,
+    // but we override with the student's number so link opens chat with student.
+    const templateMap: Record<WaAction, string> = {
+      enquiry: "enquiry_button",
+      enroll: "enroll_button",
+      share: "syllabus_share",
+      syllabus: "syllabus_download",
+    };
+    const tplKey = templateMap[dialogAction];
+
+    if (dialogAction === "share" || dialogAction === "syllabus") {
+      // ATEC → student: wa.me link targets student's number
+      link = await buildWhatsAppLink(tplKey, commonVars, `91${normPhone}`);
     } else {
-      // Syllabus: ATEC sends TO student
-      link = await buildWhatsAppLink("syllabus_download", commonVars, `91${normPhone}`);
+      // Student → ATEC: use template's wa_number (defaults to ATEC)
+      link = await buildWhatsAppLink(tplKey, commonVars);
     }
 
     setSubmitting(false);
