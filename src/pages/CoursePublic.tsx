@@ -180,14 +180,15 @@ export default function CoursePublic() {
                 </Link>
               </Button>
               {settings.whatsapp_number && (
-                <Button asChild variant="outline">
-                  <a
-                    href={`https://wa.me/${settings.whatsapp_number.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi, I'm interested in ${course.name}.`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    WhatsApp Us
-                  </a>
+                <Button variant="outline" onClick={async () => {
+                  const link = await buildWhatsAppLink("enroll_button", {
+                    course_name: course.name,
+                    student_name: "",
+                    phone: "",
+                  }, "917009933289");
+                  window.open(link, "_blank", "noopener,noreferrer");
+                }}>
+                  WhatsApp Us
                 </Button>
               )}
             </div>
