@@ -4,23 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Play, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-
-function getYouTubeId(input: string): string | null {
-  if (!input) return null;
-  const trimmed = input.trim();
-  if (/^[A-Za-z0-9_-]{6,15}$/.test(trimmed)) return trimmed;
-  const m = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
-  return m ? m[1] : null;
-}
+import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 function thumbFor(v: any): string {
-  if (v.thumbnail_url) return v.thumbnail_url;
-  const platform = (v.platform || "youtube").toLowerCase();
-  if (platform === "youtube") {
-    const id = getYouTubeId(v.video_id || v.video_url || "");
-    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-  }
-  return "/placeholder.svg";
+  const url = (v.video_url || v.video_id || "").trim();
+  const platform = (v.platform || detectPlatform(url)).toLowerCase();
+  return deriveThumbnail(url, platform as any, v.thumbnail_url);
 }
 
 export default function LifeAtAtecSection() {
@@ -57,13 +46,13 @@ export default function LifeAtAtecSection() {
   if (isLoading || videos.length === 0) return null;
 
   const handleClick = (v: any) => {
-    const platform = (v.platform || "youtube").toLowerCase();
-    const ytId = getYouTubeId(v.video_id || v.video_url || "");
-    if (platform === "youtube" && ytId) {
-      setOpenVideo({ ...v, _ytId: ytId });
-    } else {
-      const url = v.video_url || v.video_id;
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    const url = (v.video_url || v.video_id || "").trim();
+    const platform = (v.platform || detectPlatform(url)).toLowerCase();
+    const embed = getEmbedUrl(url, platform as any);
+    if (embed) {
+      setOpenVideo({ ...v, _embed: embed });
+    } else if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -126,7 +115,7 @@ export default function LifeAtAtecSection() {
             </button>
             <div className="w-full max-w-4xl aspect-video" onClick={e => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${openVideo._ytId}?autoplay=1`}
+                src={openVideo._embed}
                 className="w-full h-full rounded-xl"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen

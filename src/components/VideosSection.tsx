@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import VideoThumbnail from "@/components/VideoThumbnail";
+import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 const META: Record<string, { duration: string; category: string; desc: string }> = {
   "Introduction to Python": { duration: "12:45", category: "Programming", desc: "Beginner-friendly intro to Python syntax and logic." },
@@ -17,7 +18,7 @@ const META: Record<string, { duration: string; category: string; desc: string }>
 };
 
 export default function VideosSection() {
-  const [activeVideo, setActiveVideo] = useState<string | null>(null);
+  const [activeEmbed, setActiveEmbed] = useState<string | null>(null);
 
   const { data: videos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['learn_videos'],
@@ -41,6 +42,17 @@ export default function VideosSection() {
 
   if (isLoading || videos.length === 0) return null;
 
+  const handlePlay = (v: any) => {
+    const url = (v.video_url || v.video_id || "").trim();
+    const platform = (v.platform || detectPlatform(url)).toLowerCase();
+    const embed = getEmbedUrl(url, platform as any);
+    if (embed) {
+      setActiveEmbed(embed);
+    } else if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <section id="videos" className="py-12 bg-white">
       <div className="container mx-auto px-4">
@@ -53,6 +65,9 @@ export default function VideosSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {videos.map((v: any, i: number) => {
             const meta = META[v.title] || { duration: "10:00", category: "Course", desc: v.description || "" };
+            const url = (v.video_url || v.video_id || "").trim();
+            const platform = (v.platform || detectPlatform(url)).toLowerCase();
+            const thumb = deriveThumbnail(url, platform as any, v.thumbnail_url);
             return (
               <motion.div
                 key={v.id}
@@ -60,11 +75,11 @@ export default function VideosSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.06 }}
-                onClick={() => setActiveVideo(v.video_id)}
+                onClick={() => handlePlay(v)}
                 className="glass rounded-2xl overflow-hidden group cursor-pointer hover:shadow-xl transition-shadow flex flex-col"
               >
                 <div className="relative aspect-video w-full overflow-hidden">
-                  <VideoThumbnail src={v.thumbnail_url} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <VideoThumbnail src={thumb} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
                     <div className="w-16 h-16 rounded-full gradient-accent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                       <Play className="w-7 h-7 text-accent-foreground ml-1" />
@@ -84,11 +99,11 @@ export default function VideosSection() {
           })}
         </div>
       </div>
-      <Dialog open={!!activeVideo} onOpenChange={() => setActiveVideo(null)}>
+      <Dialog open={!!activeEmbed} onOpenChange={() => setActiveEmbed(null)}>
         <DialogContent className="max-w-3xl p-0 overflow-hidden">
-          {activeVideo && (
+          {activeEmbed && (
             <div className="aspect-video">
-              <iframe src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1`} className="w-full h-full" allow="autoplay; encrypted-media" allowFullScreen />
+              <iframe src={activeEmbed} className="w-full h-full" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
             </div>
           )}
         </DialogContent>
@@ -96,3 +111,4 @@ export default function VideosSection() {
     </section>
   );
 }
+

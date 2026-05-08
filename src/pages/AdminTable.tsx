@@ -114,10 +114,10 @@ const tableConfig: Record<string, {
     canCreate: true, canDelete: true,
     fields: [
       { key: "title", label: "Title", type: "text", required: true },
-      { key: "platform", label: "Platform", type: "select", options: ["youtube", "facebook", "instagram"] },
-      { key: "video_url", label: "Video URL (full link)", type: "text" },
-      { key: "video_id", label: "YouTube Video ID (auto for YouTube if blank — paste full URL above)", type: "text", required: true },
-      { key: "thumbnail_url", label: "Thumbnail URL (optional for YouTube — auto-generated; required for FB/IG)", type: "text" },
+      { key: "video_url", label: "Video URL (paste any YouTube / Instagram / Facebook / Vimeo link)", type: "text", required: true },
+      { key: "platform", label: "Platform (auto-detected from URL — leave blank)", type: "select", options: ["youtube", "facebook", "instagram", "vimeo", "other"] },
+      { key: "video_id", label: "Video ID (auto-filled from URL — leave blank)", type: "text" },
+      { key: "thumbnail_url", label: "Thumbnail URL (auto-extracted when possible — paste image URL for IG/FB if needed)", type: "text" },
       { key: "section", label: "Section", type: "select", options: [{ value: "life", label: "Glimpses from ATEC" }, { value: "learn", label: "Watch and Learn" }] },
       { key: "description", label: "Description", type: "textarea" },
       { key: "is_active", label: "Active", type: "boolean" },
@@ -285,6 +285,23 @@ export default function AdminTable() {
         try { payload[f.key] = JSON.parse(payload[f.key]); } catch { /* keep as string */ }
       }
     });
+
+    // Auto-derive platform / video_id / thumbnail for youtube_videos
+    if (tableName === "youtube_videos") {
+      const { detectPlatform, extractVideoId, deriveThumbnail } = await import("@/lib/videoUtils");
+      const url: string = (payload.video_url || payload.video_id || "").trim();
+      const platform = (payload.platform && String(payload.platform).trim())
+        ? String(payload.platform).toLowerCase()
+        : detectPlatform(url);
+      payload.platform = platform;
+      if (!payload.video_id || !String(payload.video_id).trim()) {
+        payload.video_id = extractVideoId(url, platform as any) || url;
+      }
+      if (!payload.thumbnail_url || !String(payload.thumbnail_url).trim()) {
+        const thumb = deriveThumbnail(url, platform as any, null);
+        if (thumb && thumb !== "/placeholder.svg") payload.thumbnail_url = thumb;
+      }
+    }
 
     if (isNew) {
       const { error } = await supabase.from(tableName).insert(payload as any);
