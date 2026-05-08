@@ -105,7 +105,7 @@ const App = () => {
                 <Route path="/admin/:table" element={<AdminTable />} />
 
                 <Route path="/crm/login" element={<CrmLogin />} />
-                <Route path="/crm" element={<CrmLayout />}>
+                <Route path="/crm" element={<CRMErrorBoundary><CrmLayout /></CRMErrorBoundary>}>
                   <Route index element={<CrmDashboard />} />
                   <Route path="reminders" element={<CrmReminders />} />
                   <Route path="courses" element={<CrmCourses />} />
