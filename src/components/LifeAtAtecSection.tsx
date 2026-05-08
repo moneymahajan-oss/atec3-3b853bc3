@@ -46,13 +46,13 @@ export default function LifeAtAtecSection() {
   if (isLoading || videos.length === 0) return null;
 
   const handleClick = (v: any) => {
-    const platform = (v.platform || "youtube").toLowerCase();
-    const ytId = getYouTubeId(v.video_id || v.video_url || "");
-    if (platform === "youtube" && ytId) {
-      setOpenVideo({ ...v, _ytId: ytId });
-    } else {
-      const url = v.video_url || v.video_id;
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    const url = (v.video_url || v.video_id || "").trim();
+    const platform = (v.platform || detectPlatform(url)).toLowerCase();
+    const embed = getEmbedUrl(url, platform as any);
+    if (embed) {
+      setOpenVideo({ ...v, _embed: embed });
+    } else if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
 
