@@ -61,12 +61,13 @@ export default function CoursesSection() {
 
   const handleSubmit = async () => {
     if (!dialogCourse) return;
-    if (!studentName || !studentPhone) {
-      toast({ title: "Required", description: "Please enter your name and WhatsApp number.", variant: "destructive" });
+    const needsPhone = dialogAction === "share" || dialogAction === "syllabus";
+    if (!studentName || (needsPhone && !studentPhone)) {
+      toast({ title: "Required", description: needsPhone ? "Please enter your name and WhatsApp number." : "Please enter your name.", variant: "destructive" });
       return;
     }
     const normPhone = studentPhone.replace(/\D/g, "").slice(-10);
-    if (normPhone.length < 10) {
+    if (needsPhone && normPhone.length < 10) {
       toast({ title: "Invalid phone", description: "Please enter a 10-digit WhatsApp number.", variant: "destructive" });
       return;
     }
@@ -165,10 +166,10 @@ export default function CoursesSection() {
     syllabus: "Get Syllabus on WhatsApp",
   };
   const dialogDescriptions: Record<WaAction, string> = {
-    enquiry: "Enter your details. A WhatsApp enquiry message will be sent to ATEC.",
-    enroll: "Enter your details. An enrollment message will be sent to ATEC.",
-    share: "Enter student's WhatsApp number to send course details from ATEC.",
-    syllabus: "Enter your WhatsApp number to receive the syllabus from ATEC.",
+    enquiry: "Enter your name. A WhatsApp enquiry message will open to send to ATEC.",
+    enroll: "Enter your name. An enrollment message will open to send to ATEC.",
+    share: "Enter student's name & WhatsApp number to send course details from ATEC.",
+    syllabus: "Enter student's name & WhatsApp number to receive the syllabus from ATEC.",
   };
 
   if (isError) return (
@@ -291,7 +292,9 @@ export default function CoursesSection() {
           </p>
           <div className="space-y-3">
             <Input placeholder="Your Name" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
-            <Input placeholder="WhatsApp Number (10 digits)" type="tel" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} />
+            {(dialogAction === "share" || dialogAction === "syllabus") && (
+              <Input placeholder="Student WhatsApp Number (10 digits)" type="tel" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} />
+            )}
             <Button onClick={handleSubmit} disabled={submitting} className="w-full gradient-accent text-accent-foreground border-0">
               <Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Send to WhatsApp"}
             </Button>
