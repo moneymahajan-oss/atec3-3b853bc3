@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Save, X, GraduationCap,
-  LogOut, Eye, ChevronDown, ChevronUp, Search
+  LogOut, Eye, ChevronDown, ChevronUp, Search, UserCog
 } from "lucide-react";
 
 type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "downloads" | "contact_submissions" | "site_settings" | "offer_belt" | "ai_use_cases" | "whatsapp_templates" | "mock_tests" | "mock_test_results" | "leads" | "crm_faculties";
@@ -399,6 +399,7 @@ export default function AdminTable() {
             <span className="font-heading font-bold text-lg text-foreground">{config.label}</span>
           </div>
           <div className="flex items-center gap-3">
+            <Button variant="default" size="sm" asChild className="bg-rose-500 hover:bg-rose-600 text-white"><Link to="/admin/crm_faculties"><UserCog className="w-4 h-4 mr-1" /> Faculty</Link></Button>
             <Button variant="outline" size="sm" asChild><Link to="/"><Eye className="w-4 h-4 mr-1" /> View Site</Link></Button>
             <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="w-4 h-4 mr-1" /> Sign Out</Button>
           </div>
