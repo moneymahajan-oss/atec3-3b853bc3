@@ -14,6 +14,7 @@ import VideosSection from "@/components/VideosSection";
 import LifeAtAtecSection from "@/components/LifeAtAtecSection";
 import DownloadsSection from "@/components/DownloadsSection";
 import ContactSection from "@/components/ContactSection";
+import SocialConnectSection from "@/components/SocialConnectSection";
 import Footer from "@/components/Footer";
 import { SEO } from "@/components/SEO";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
