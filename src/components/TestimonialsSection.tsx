@@ -106,30 +106,30 @@ export default function TestimonialsSection() {
                 />
 
                 {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
 
                 {/* Play button */}
-                <div className="absolute inset-0 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
                     <Play className="w-7 h-7 text-white fill-white ml-1" />
                   </div>
                 </div>
 
                 {/* Bottom info */}
-                <div className="absolute bottom-0 left-0 right-0 p-3">
+                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/95 to-transparent">
+                  {t.review_text && (
+                    <p className="text-white text-xs leading-snug mb-2 line-clamp-3 italic">
+                      "{t.review_text}"
+                    </p>
+                  )}
                   <p className="text-white font-semibold text-sm leading-tight truncate">
                     {t.student_name}
                   </p>
                   {(t.course_name || t.batch_year) && (
-                    <p className="text-white/70 text-xs truncate mt-0.5">
+                    <p className="text-white/80 text-xs truncate mt-0.5">
                       {t.course_name}
                       {t.course_name && t.batch_year ? " • " : ""}
                       {t.batch_year && `Batch ${t.batch_year}`}
-                    </p>
-                  )}
-                  {t.review_text && (
-                    <p className="text-white/85 text-xs leading-snug mt-1.5 line-clamp-3">
-                      "{t.review_text}"
                     </p>
                   )}
                 </div>
