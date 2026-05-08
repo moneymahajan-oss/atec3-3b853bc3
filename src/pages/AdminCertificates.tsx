@@ -103,22 +103,41 @@ function AllCerts() {
     return !q || c.certificate_id.toLowerCase().includes(q) || c.student_id.toLowerCase().includes(q) || c.student_name.toLowerCase().includes(q);
   });
 
+  const logAction = async (action: string, certId: string, diff?: any) => {
+    const { data: u } = await supabase.auth.getUser();
+    await supabase.from("verification_certificate_logs").insert({
+      action, certificate_id: certId, user_id: u?.user?.id ?? null,
+      user_email: u?.user?.email ?? null, diff: diff ?? null,
+    });
+  };
+
   const toggleActive = async (c: Cert) => {
     await supabase.from("verification_certificates").update({ is_active: !c.is_active }).eq("certificate_id", c.certificate_id);
+    await logAction("toggle_active", c.certificate_id, { from: c.is_active, to: !c.is_active });
     load();
   };
 
   const deleteCert = async (id: string) => {
     if (!confirm("Delete this certificate?")) return;
+    const cert = certs.find(c => c.certificate_id === id);
     await supabase.from("verification_certificates").delete().eq("certificate_id", id);
+    await logAction("delete", id, cert ?? null);
     toast({ title: "Deleted" });
     load();
   };
 
   const saveEdit = async () => {
     if (!editCert) return;
+    const original = certs.find(c => c.certificate_id === editCert.certificate_id);
     const { created_at, ...rest } = editCert;
     await supabase.from("verification_certificates").update(rest).eq("certificate_id", editCert.certificate_id);
+    const changes: Record<string, { from: any; to: any }> = {};
+    if (original) {
+      for (const k of Object.keys(rest) as (keyof typeof rest)[]) {
+        if ((rest as any)[k] !== (original as any)[k]) changes[k] = { from: (original as any)[k], to: (rest as any)[k] };
+      }
+    }
+    await logAction("edit", editCert.certificate_id, changes);
     toast({ title: "Updated" });
     setEditCert(null);
     load();
