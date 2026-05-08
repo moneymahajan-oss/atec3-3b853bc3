@@ -118,7 +118,7 @@ const tableConfig: Record<string, {
       { key: "video_url", label: "Video URL (full link)", type: "text" },
       { key: "video_id", label: "YouTube Video ID (auto for YouTube if blank — paste full URL above)", type: "text", required: true },
       { key: "thumbnail_url", label: "Thumbnail URL (optional for YouTube — auto-generated; required for FB/IG)", type: "text" },
-      { key: "section", label: "Section", type: "select", options: ["about", "life", "testimonial", "general"] },
+      { key: "section", label: "Section", type: "select", options: [{ value: "life", label: "Glimpses from ATEC" }, { value: "learn", label: "Watch and Learn" }] },
       { key: "description", label: "Description", type: "textarea" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "display_order", label: "Order", type: "number" },
