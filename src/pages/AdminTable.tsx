@@ -286,6 +286,23 @@ export default function AdminTable() {
       }
     });
 
+    // Auto-derive platform / video_id / thumbnail for youtube_videos
+    if (tableName === "youtube_videos") {
+      const { detectPlatform, extractVideoId, deriveThumbnail } = await import("@/lib/videoUtils");
+      const url: string = (payload.video_url || payload.video_id || "").trim();
+      const platform = (payload.platform && String(payload.platform).trim())
+        ? String(payload.platform).toLowerCase()
+        : detectPlatform(url);
+      payload.platform = platform;
+      if (!payload.video_id || !String(payload.video_id).trim()) {
+        payload.video_id = extractVideoId(url, platform as any) || url;
+      }
+      if (!payload.thumbnail_url || !String(payload.thumbnail_url).trim()) {
+        const thumb = deriveThumbnail(url, platform as any, null);
+        if (thumb && thumb !== "/placeholder.svg") payload.thumbnail_url = thumb;
+      }
+    }
+
     if (isNew) {
       const { error } = await supabase.from(tableName).insert(payload as any);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
