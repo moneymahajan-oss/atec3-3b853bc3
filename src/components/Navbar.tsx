@@ -115,23 +115,24 @@ export default function Navbar() {
           </a>
 
           <div className="hidden lg:flex items-center gap-0">
-            {navLinks.map(({ label, href, isHash, isExternal }) => (
-              <a
-                key={`${label}-${href}`}
-                href={href}
-                {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                onClick={isHash ? (e) => {
-                  e.preventDefault();
-                  const el = document.querySelector(href);
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                } : undefined}
-                className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </a>
-            ))}
+            {navLinks.map(({ label, href, isHash, isExternal }) => {
+              const cls = `px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`;
+              if (isHash) {
+                return (
+                  <a key={`${label}-${href}`} href={href} onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.querySelector(href);
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }} className={cls}>{label}</a>
+                );
+              }
+              if (isExternal) {
+                return <a key={`${label}-${href}`} href={href} target="_blank" rel="noopener noreferrer" className={cls}>{label}</a>;
+              }
+              return <Link key={`${label}-${href}`} to={href} className={cls}>{label}</Link>;
+            })}
           </div>
 
           <div className="flex items-center gap-2">
