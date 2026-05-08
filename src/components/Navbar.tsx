@@ -47,7 +47,7 @@ export default function Navbar() {
       },
       { rootMargin: "-40% 0px -50% 0px" }
     );
-    navLinks.forEach(({ href }) => {
+    navLinks.filter(({ href }) => href.startsWith("#")).forEach(({ href }) => {
       const el = document.querySelector(href);
       if (el) observer.observe(el);
     });
