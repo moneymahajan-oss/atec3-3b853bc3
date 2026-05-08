@@ -91,22 +91,25 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {navLinks.map(({ label, href }) => (
-              <a
-                key={href}
-                href={href}
-                onClick={(e) => {
-                  e.preventDefault();
-                  const el = document.querySelector(href);
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </a>
-            ))}
+            {navLinks.map(({ label, href }) => {
+              const isHash = href.startsWith("#");
+              return (
+                <a
+                  key={href}
+                  href={href}
+                  onClick={isHash ? (e) => {
+                    e.preventDefault();
+                    const el = document.querySelector(href);
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  } : undefined}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </a>
+              );
+            })}
           </div>
 
           {/* Right side */}
