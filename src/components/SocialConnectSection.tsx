@@ -36,13 +36,6 @@ const platforms = [
 export default function SocialConnectSection() {
   const settings = useSiteSettings();
 
-  // Only show platforms that have a URL configured
-  const activePlatforms = platforms.filter(
-    (p) => settings[p.key] && (settings[p.key] as string).trim().length > 0
-  );
-
-  if (activePlatforms.length === 0) return null;
-
   return (
     <section className="py-14 bg-background">
       <div className="container mx-auto px-4">
@@ -61,28 +54,37 @@ export default function SocialConnectSection() {
         </motion.div>
 
         <div className="flex flex-wrap justify-center gap-6">
-          {activePlatforms.map((platform, i) => {
+          {platforms.map((platform, i) => {
             const Icon = platform.icon;
+            const url = (settings[platform.key] as string)?.trim();
+            const isActive = !!url;
+            const Tag: any = isActive ? motion.a : motion.div;
+            const linkProps = isActive ? { href: url, target: "_blank", rel: "noopener noreferrer" } : {};
             return (
-              <motion.a
+              <Tag
                 key={platform.key}
-                href={settings[platform.key] as string}
-                target="_blank"
-                rel="noopener noreferrer"
+                {...linkProps}
                 initial={{ opacity: 0, scale: 0.8 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1, type: "spring", stiffness: 200 }}
-                whileHover={{ y: -6, scale: 1.05 }}
-                className={`group flex flex-col items-center gap-3 w-36 h-36 rounded-2xl border border-border bg-card shadow-md justify-center transition-all duration-300 ${platform.hoverBg} hover:text-white hover:border-transparent hover:shadow-xl`}
+                whileHover={isActive ? { y: -6, scale: 1.05 } : undefined}
+                className={`group flex flex-col items-center gap-3 w-36 h-36 rounded-2xl border border-border bg-card shadow-md justify-center transition-all duration-300 ${
+                  isActive
+                    ? `${platform.hoverBg} hover:text-white hover:border-transparent hover:shadow-xl cursor-pointer`
+                    : "opacity-60 cursor-not-allowed"
+                }`}
               >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${platform.gradient} flex items-center justify-center group-hover:bg-white/20 transition-colors`}>
+                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${platform.gradient} flex items-center justify-center ${isActive ? "group-hover:bg-white/20" : ""} transition-colors`}>
                   <Icon className="w-7 h-7 text-white" />
                 </div>
-                <span className="text-sm font-medium text-foreground group-hover:text-white transition-colors">
+                <span className={`text-sm font-medium text-foreground ${isActive ? "group-hover:text-white" : ""} transition-colors`}>
                   {platform.label}
                 </span>
-              </motion.a>
+                {!isActive && (
+                  <span className="text-[10px] text-muted-foreground -mt-1">Coming soon</span>
+                )}
+              </Tag>
             );
           })}
         </div>
