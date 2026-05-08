@@ -107,7 +107,7 @@ export default function Navbar() {
           </a>
 
           {/* Desktop nav */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-0">
             {navLinks.map(({ label, href }) => {
               const isHash = href.startsWith("#");
               const isExternal = href.startsWith("http");
