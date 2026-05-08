@@ -39,6 +39,7 @@ const Index = () => {
       <SectionErrorBoundary name="Videos"><VideosSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Downloads"><DownloadsSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Contact"><ContactSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="SocialConnect"><SocialConnectSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Footer"><Footer /></SectionErrorBoundary>
     </div>
   );
