@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, IndianRupee, Download, Play, MessageCircle, ArrowLeft } from "lucide-react";
 import { resolveCourseOgImage, youtubeId, slugifyCourseName, coursePublicUrl } from "@/lib/courseLinks";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { buildWhatsAppLink } from "@/lib/whatsapp";
 
 interface CourseRow {
   id: string;
