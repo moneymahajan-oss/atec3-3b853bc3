@@ -1,44 +1,87 @@
+# 5-Fix Implementation Plan
 
-## Problem
+## Audit findings (so we don't duplicate)
+- `youtube_videos` exists with `section` ('about' | 'life'), `thumbnail_url`, `video_id`. No `platform` column.
+- `mock_tests` exists but stores **questions as JSONB** inside the same row (no separate `mock_questions` table).
+- Headings live in `site_settings` table (not `app_settings`). Currently both `GallerySection` and `LifeAtAtecSection` read the same key `life_section_heading` → that's the duplicate heading bug.
+- No `site_sections`, `social_links`, or `nav_items` tables exist.
+- Social URLs already exist as `site_settings` keys (`social_instagram_url`, etc.) — will reuse, not duplicate.
+- Navbar is hardcoded in `src/components/Navbar.tsx`.
 
-CRM pages (Enquiries, Students, Batches, Courses, Fees, Attendance, etc.) fire Supabase queries immediately on mount via `useEffect(() => { load(); }, [])`. However, the auth session may not be fully restored yet at that point.
+---
 
-All CRM tables have RLS policies requiring `has_any_crm_role(auth.uid())`. When `auth.uid()` is `null` (session not yet restored), every query returns 0 rows — making it look like data is permanently "loading" or empty.
+## FIX 1 — Independent Life@ATEC headings
+- Add 2 new keys to existing `site_settings`: `life_gallery_heading`, `life_videos_heading` (no new table needed — `site_settings` already serves this purpose).
+- `GallerySection.tsx` → read `life_gallery_heading` (fallback to old key).
+- `LifeAtAtecSection.tsx` → read `life_videos_heading` (fallback to old key).
+- Add both fields in `AdminSiteContent.tsx` under "Section Headings" group.
 
-## Root Cause
+## FIX 2 — Video cards with thumbnails + platform
+- Migration: add `platform text default 'youtube'`, `video_url text` columns to `youtube_videos`.
+- `LifeAtAtecSection.tsx`: render thumbnail (`thumbnail_url` if set, else auto YouTube `hqdefault`) with play overlay; click opens in modal (YouTube embed) or new tab (FB/IG).
+- New admin page `AdminVideos.tsx`: form with Title, Platform dropdown (YouTube/Facebook/Instagram), Video URL, Thumbnail URL (optional for YouTube), Section (about/life), is_active. Auto-extract YouTube ID for thumbnail when blank.
 
-The `CrmLayout` component checks `useCrmAuth().loading` and shows a spinner until auth is ready. But the child CRM pages mount their `useEffect` hooks immediately once `loading` becomes `false`, which can still race with the Supabase client's internal session restoration.
+## FIX 3 — Social QR codes in Connect With Us
+- Reuse existing `site_settings` social keys + `whatsapp_number`. No new table needed.
+- Add `social_<x>_visible` boolean keys (stored as 'true'/'false' strings).
+- Update `SocialConnectSection.tsx`: each card shows logo on top, QR code (qrcode.react) center, label below; click opens link. WhatsApp card encodes `https://wa.me/<number>`.
+- Admin: add show/hide toggle for each platform alongside existing URL fields in `AdminSiteContent.tsx`.
 
-More critically, many pages use `useEffect(() => { load(); }, [])` with no dependency on the auth state, so if the component mounts before the session token is attached to requests, RLS blocks everything.
+## FIX 4 — Manual mock-test question editor
+- Keep existing JSONB `questions` column on `mock_tests` (no schema change → no breaking refactor of mock test runner).
+- New admin page `AdminMockTests.tsx`:
+  - List tests; Add/Edit test (title, course).
+  - Per-test: question form (Question, Option A-D, Correct A/B/C/D) → appends to JSONB `questions` array via update.
+  - List existing questions with Edit/Delete (numbered).
+  - Keep "Import JSON" as secondary button.
+- Seed 4 tests with 10 real questions each (AI Tools, Busy Accounting, Python, Digital Marketing) via `INSERT … ON CONFLICT (title) DO NOTHING`. Will add unique index on `title` first.
 
-## Fix
+## FIX 5 — Admin-configurable navbar
+- New table `nav_items` (id serial, label, section_key, order_index, is_visible, external_url nullable).
+- Seed with current 9 items.
+- `Navbar.tsx`: fetch from `nav_items` where `is_visible`, ordered by `order_index`. Fallback to hardcoded list while loading.
+- New admin page `AdminNav.tsx`: list items with label edit, visibility toggle, up/down reorder buttons, add new (label + section_key).
+- Add `Site Settings` group on `AdminDashboard` linking to: Site Content, Videos, Mock Tests, Navigation.
 
-1. **Create a `useAuthReady` hook** that exposes `{ user, isReady }` — it waits for `supabase.auth.getSession()` to complete before setting `isReady = true`.
+---
 
-2. **Update all CRM pages** that fetch data on mount to:
-   - Import `useCrmAuth` (most already do) or `useAuthReady`
-   - Add `hasAccess` (or `user`) as a dependency in their `useEffect`
-   - Guard the `load()` call with `if (!hasAccess) return`
-   - This ensures queries only run after auth is confirmed
+## Migration (single SQL block)
+```sql
+-- Fix 2
+ALTER TABLE youtube_videos
+  ADD COLUMN IF NOT EXISTS platform text DEFAULT 'youtube',
+  ADD COLUMN IF NOT EXISTS video_url text;
 
-Affected pages (at minimum):
-- `CrmEnquiries.tsx` — `useEffect` line 177, add `hasAccess` dep
-- `CrmStudents.tsx` — `useEffect` line 77, add `hasAccess` dep  
-- `CrmBatches.tsx` — `useEffect` line 80, add `hasAccess` dep
-- `CrmCourses.tsx` — `useEffect` line 41, add `hasAccess` dep
-- `CrmFees.tsx` — `useEffect` line 36, add `hasAccess` dep
-- `CrmAttendance.tsx` — `useEffect` lines 45/50, add `hasAccess` dep
-- `CrmDashboard.tsx` — already guards with `hasAccess` (good)
-- Any other CRM pages with similar patterns
+-- Fix 4 prep
+CREATE UNIQUE INDEX IF NOT EXISTS mock_tests_title_unique ON mock_tests(title);
 
-3. **Pattern for each fix:**
-```typescript
-const { hasAccess } = useCrmAuth();
-
-useEffect(() => {
-  if (!hasAccess) return;
-  load();
-}, [hasAccess]);
+-- Fix 5
+CREATE TABLE IF NOT EXISTS nav_items (
+  id serial PRIMARY KEY,
+  label text NOT NULL,
+  section_key text NOT NULL,
+  external_url text,
+  order_index int NOT NULL DEFAULT 0,
+  is_visible boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE nav_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read nav" ON nav_items FOR SELECT USING (true);
+CREATE POLICY "Admins manage nav" ON nav_items FOR ALL TO authenticated
+  USING (is_admin(auth.uid())) WITH CHECK (is_admin(auth.uid()));
+-- + seed 9 nav items, 4 mock tests with 10 questions each, default site_settings keys
 ```
 
-This is a minimal, non-breaking change — no UI or styling modifications, just ensuring data fetches wait for authentication.
+---
+
+## Files touched
+**Created:** `src/pages/AdminVideos.tsx`, `src/pages/AdminMockTests.tsx`, `src/pages/AdminNav.tsx`, migration SQL.
+**Edited:** `GallerySection.tsx`, `LifeAtAtecSection.tsx`, `SocialConnectSection.tsx`, `Navbar.tsx`, `AdminSiteContent.tsx`, `AdminDashboard.tsx`, `App.tsx` (routes).
+**Untouched:** auth, courses, certificates, WhatsApp templates, CRM.
+
+## Notes / decisions
+- Keep `mock_tests.questions` as JSONB (avoids breaking the public test runner). Editor manipulates the array.
+- Reuse `site_settings` for headings & social toggles instead of adding `site_sections` / `social_links` tables — cleaner, avoids duplication, same admin surface already exists.
+- Navbar falls back to hardcoded list during the first paint to avoid layout flash.
+
+Confirm and I'll ship all 5 in one pass.
