@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap, MessageCircle, Send, RefreshCw, BookOpen } from "lucide-react";
+import { Clock, IndianRupee, Eye, Sparkles, Brain, Megaphone, Server, Calculator, Laptop, GraduationCap, MessageCircle, Send, RefreshCw, BookOpen, Play, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,7 +25,16 @@ const categories = ["All", "AI & Emerging Tech", "Digital Skills & Marketing", "
 
 const ATEC_WA = "917009933289";
 
-type WaAction = "enquiry" | "enroll" | "syllabus" | "share";
+type WaAction = "enquiry" | "enroll" | "syllabus" | "share" | "video";
+
+function getEmbedUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([^&\?\/]+)/);
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
+  const igMatch = url.match(/instagram\.com\/(reel|p)\/([^\/\?]+)/);
+  if (igMatch) return `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed`;
+  return url;
+}
 
 export default function CoursesSection() {
   const settings = useSiteSettings();
@@ -37,6 +46,7 @@ export default function CoursesSection() {
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [videoCourse, setVideoCourse] = useState<any | null>(null);
 
   const { data: courses = [], isError, refetch } = useQuery({
     queryKey: ['courses'],
@@ -59,6 +69,11 @@ export default function CoursesSection() {
     setStudentPhone("");
   };
 
+  const handleWatchVideo = async (course: any) => {
+    // Capture lead before showing video
+    openDialog(course, "video");
+  };
+
   const handleSubmit = async () => {
     if (!dialogCourse) return;
     const needsPhone = dialogAction === "share" || dialogAction === "syllabus";
@@ -73,50 +88,69 @@ export default function CoursesSection() {
     }
     setSubmitting(true);
 
-    // Save lead & create CRM enquiry
     const sourceMap: Record<WaAction, string> = {
       enquiry: "enquiry_button",
       enroll: "enroll_button",
       syllabus: "syllabus_request",
       share: "share_course",
+      video: "watch_video",
     };
+
+    // Save lead
     await supabase.from("leads").insert({
       source: sourceMap[dialogAction],
       student_name: studentName,
-      phone: normPhone,
+      phone: needsPhone ? normPhone : "",
       course_name: dialogCourse.name,
     });
 
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: dupe } = await supabase
-      .from("crm_enquiries")
-      .select("id")
-      .eq("phone", normPhone)
-      .eq("course_name_snapshot", dialogCourse.name)
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Create/update CRM enquiry (skip for video action if no phone)
+    if (dialogAction !== "video") {
+      const phoneToUse = needsPhone ? normPhone : "";
+      if (phoneToUse) {
+        const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: dupe } = await supabase
+          .from("crm_enquiries")
+          .select("id")
+          .eq("phone", phoneToUse)
+          .eq("course_name_snapshot", dialogCourse.name)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-    if (dupe?.id) {
-      await supabase
-        .from("crm_enquiries")
-        .update({
-          notes: `Re-enquiry via ${dialogAction} on ${new Date().toLocaleString()}`,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id", dupe.id);
-    } else {
-      await supabase.from("crm_enquiries").insert({
-        name: studentName,
-        phone: normPhone,
-        whatsapp: normPhone,
-        course_name_snapshot: dialogCourse.name,
-        source: "website_course_page",
-        status: "new",
-        priority: "medium",
-        notes: `Auto-created from website course card (${dialogAction})`,
-      } as never);
+        if (dupe?.id) {
+          await supabase
+            .from("crm_enquiries")
+            .update({
+              notes: `Re-enquiry via ${dialogAction} on ${new Date().toLocaleString()}`,
+              updated_at: new Date().toISOString(),
+            } as never)
+            .eq("id", dupe.id);
+        } else {
+          await supabase.from("crm_enquiries").insert({
+            name: studentName,
+            phone: phoneToUse,
+            whatsapp: phoneToUse,
+            course_name_snapshot: dialogCourse.name,
+            source: "website_course_page",
+            status: "new",
+            priority: "medium",
+            notes: `Auto-created from website course card (${dialogAction})`,
+          } as never);
+        }
+      }
+    }
+
+    // For video action: just show the video after lead capture
+    if (dialogAction === "video") {
+      setSubmitting(false);
+      const course = dialogCourse;
+      setDialogCourse(null);
+      setStudentName("");
+      setStudentPhone("");
+      setVideoCourse(course);
+      return;
     }
 
     const commonVars = {
@@ -131,13 +165,7 @@ export default function CoursesSection() {
       video_link: videoShareUrl(null, dialogCourse.name),
     };
 
-    let link: string;
-
-    // All templates use their own configured wa_number (editable from admin).
-    // For enquiry/enroll: student sends TO ATEC (template wa_number = ATEC).
-    // For share/syllabus: ATEC sends TO student — wa_number in template is ATEC,
-    // but we override with the student's number so link opens chat with student.
-    const templateMap: Record<WaAction, string> = {
+    const templateMap: Record<string, string> = {
       enquiry: "enquiry_button",
       enroll: "enroll_button",
       share: "syllabus_share",
@@ -145,11 +173,10 @@ export default function CoursesSection() {
     };
     const tplKey = templateMap[dialogAction];
 
+    let link: string;
     if (dialogAction === "share" || dialogAction === "syllabus") {
-      // ATEC → student: wa.me link targets student's number
       link = await buildWhatsAppLink(tplKey, commonVars, `91${normPhone}`);
     } else {
-      // Student → ATEC: use template's wa_number (defaults to ATEC)
       link = await buildWhatsAppLink(tplKey, commonVars);
     }
 
@@ -168,14 +195,16 @@ export default function CoursesSection() {
   const dialogTitles: Record<WaAction, string> = {
     enquiry: "Enquiry via WhatsApp",
     enroll: "Enroll via WhatsApp",
-    share: "Share Course Details",
+    share: "Share Syllabus",
     syllabus: "Get Syllabus on WhatsApp",
+    video: "Watch Course Video",
   };
   const dialogDescriptions: Record<WaAction, string> = {
     enquiry: "Enter your name. A WhatsApp enquiry message will open to send to ATEC.",
     enroll: "Enter your name. An enrollment message will open to send to ATEC.",
-    share: "Enter student's name & WhatsApp number to send course details from ATEC.",
+    share: "Enter student's name & WhatsApp number to send syllabus from ATEC.",
     syllabus: "Enter student's name & WhatsApp number to receive the syllabus from ATEC.",
+    video: "Enter your name to watch the course video.",
   };
 
   if (isError) return (
@@ -233,17 +262,19 @@ export default function CoursesSection() {
                     {course.duration && <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{course.duration}</span>}
                     {course.fee && <span className="flex items-center gap-1"><IndianRupee className="w-4 h-4" />{course.fee}</span>}
                   </div>
-                  <div className="flex flex-col gap-2 mt-auto">
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedCourse(course)}>
-                        <Eye className="w-4 h-4 mr-1" /> Syllabus
-                      </Button>
-                      <Button size="sm" className="flex-1 gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enquiry")}>
-                        <MessageCircle className="w-4 h-4 mr-1" /> Enquiry
-                      </Button>
-                    </div>
-                    <Button variant="ghost" size="sm" className="w-full text-accent" onClick={() => openDialog(course, "share")}>
-                      <Send className="w-4 h-4 mr-1" /> Share Course Details
+                  {/* 4 Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 mt-auto">
+                    <Button size="sm" className="gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enquiry")}>
+                      <MessageCircle className="w-4 h-4 mr-1" /> Enquire
+                    </Button>
+                    <Button size="sm" className="gradient-primary text-primary-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enroll")}>
+                      <GraduationCap className="w-4 h-4 mr-1" /> Enroll
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleWatchVideo(course)} disabled={!course.video_url}>
+                      <Play className="w-4 h-4 mr-1" /> Watch Video
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => openDialog(course, "share")}>
+                      <Share2 className="w-4 h-4 mr-1" /> Share Syllabus
                     </Button>
                   </div>
                 </div>
@@ -253,41 +284,24 @@ export default function CoursesSection() {
         </motion.div>
       </div>
 
-      {/* Syllabus Dialog */}
-      <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-          {selectedCourse && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="font-heading text-xl">{selectedCourse.name} — Syllabus</DialogTitle>
-              </DialogHeader>
-              <div className="flex gap-3 mb-4 text-sm text-muted-foreground">
-                {selectedCourse.duration && <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{selectedCourse.duration}</span>}
-                {selectedCourse.fee && <span className="flex items-center gap-1"><IndianRupee className="w-4 h-4" />{selectedCourse.fee}</span>}
-              </div>
-              <p className="text-sm text-muted-foreground mb-4">{selectedCourse.full_description}</p>
-              <ol className="space-y-2">
-                {(Array.isArray(selectedCourse.syllabus) ? selectedCourse.syllabus : []).map((topic: string, i: number) => (
-                  <li key={i} className="flex items-start gap-3 p-2 rounded-lg bg-muted/50">
-                    <span className="w-6 h-6 rounded-full gradient-primary text-primary-foreground text-xs flex items-center justify-center flex-shrink-0 font-bold">{i + 1}</span>
-                    <span className="text-sm text-foreground">{topic}</span>
-                  </li>
-                ))}
-              </ol>
-              <div className="flex gap-2 mt-4">
-                <Button className="flex-1 gradient-accent text-accent-foreground border-0" onClick={() => { setSelectedCourse(null); openDialog(selectedCourse, "enroll"); }}>
-                  <MessageCircle className="w-4 h-4 mr-2" /> Enroll via WhatsApp
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={() => { setSelectedCourse(null); openDialog(selectedCourse, "syllabus"); }}>
-                  <BookOpen className="w-4 h-4 mr-2" /> Get Syllabus on WhatsApp
-                </Button>
-              </div>
-            </>
+      {/* Video Player Dialog */}
+      <Dialog open={!!videoCourse} onOpenChange={(o) => !o && setVideoCourse(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-black border-none">
+          {videoCourse?.video_url && (
+            <div className="w-full aspect-video">
+              <iframe
+                src={getEmbedUrl(videoCourse.video_url) || ""}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={videoCourse.name}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Student Info Dialog for all WhatsApp actions */}
+      {/* Student Info Dialog for all WhatsApp actions + video lead capture */}
       <Dialog open={!!dialogCourse} onOpenChange={(o) => !o && setDialogCourse(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -302,7 +316,11 @@ export default function CoursesSection() {
               <Input placeholder="Student WhatsApp Number (10 digits)" type="tel" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} />
             )}
             <Button onClick={handleSubmit} disabled={submitting} className="w-full gradient-accent text-accent-foreground border-0">
-              <Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Send to WhatsApp"}
+              {dialogAction === "video" ? (
+                <><Play className="w-4 h-4 mr-2" /> {submitting ? "Loading..." : "Watch Now"}</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Send to WhatsApp"}</>
+              )}
             </Button>
           </div>
         </DialogContent>
