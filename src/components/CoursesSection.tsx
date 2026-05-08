@@ -47,6 +47,7 @@ export default function CoursesSection() {
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [videoCourse, setVideoCourse] = useState<any | null>(null);
+  const [syllabusCourse, setSyllabusCourse] = useState<any | null>(null);
 
   const { data: courses = [], isError, refetch } = useQuery({
     queryKey: ['courses'],
@@ -267,8 +268,8 @@ export default function CoursesSection() {
                     <Button size="sm" className="gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enquiry")}>
                       <MessageCircle className="w-4 h-4 mr-1" /> Enquire
                     </Button>
-                    <Button size="sm" className="gradient-primary text-primary-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enroll")}>
-                      <GraduationCap className="w-4 h-4 mr-1" /> Enroll
+                    <Button size="sm" className="gradient-primary text-primary-foreground border-0 hover:opacity-90" onClick={() => setSyllabusCourse(course)}>
+                      <BookOpen className="w-4 h-4 mr-1" /> View Syllabus
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleWatchVideo(course)} disabled={!course.video_url}>
                       <Play className="w-4 h-4 mr-1" /> Watch Video
@@ -323,6 +324,64 @@ export default function CoursesSection() {
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Syllabus Viewer Dialog */}
+      <Dialog open={!!syllabusCourse} onOpenChange={(o) => !o && setSyllabusCourse(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" /> {syllabusCourse?.name} — Syllabus
+            </DialogTitle>
+          </DialogHeader>
+          {syllabusCourse && (() => {
+            const syl = syllabusCourse.syllabus;
+            const items: any[] = Array.isArray(syl) ? syl : (syl ? [syl] : []);
+            if (items.length === 0 && !syllabusCourse.full_description) {
+              return <p className="text-sm text-muted-foreground">Syllabus details coming soon. Please contact us for more information.</p>;
+            }
+            return (
+              <div className="space-y-4">
+                {syllabusCourse.full_description && (
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{syllabusCourse.full_description}</p>
+                )}
+                {items.length > 0 && (
+                  <ol className="space-y-3">
+                    {items.map((item: any, i: number) => {
+                      const title = typeof item === "string" ? item : (item?.title || item?.name || item?.module || `Module ${i + 1}`);
+                      const desc = typeof item === "object" ? (item?.description || item?.desc || item?.content) : null;
+                      const topics = typeof item === "object" && Array.isArray(item?.topics) ? item.topics : null;
+                      return (
+                        <li key={i} className="glass rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-full gradient-primary text-primary-foreground text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-foreground">{title}</h4>
+                              {desc && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{desc}</p>}
+                              {topics && (
+                                <ul className="mt-2 space-y-1 list-disc list-inside text-sm text-muted-foreground">
+                                  {topics.map((t: any, j: number) => <li key={j}>{typeof t === "string" ? t : (t?.title || JSON.stringify(t))}</li>)}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                  <Button className="flex-1 gradient-accent text-accent-foreground border-0" onClick={() => { const c = syllabusCourse; setSyllabusCourse(null); openDialog(c, "enquiry"); }}>
+                    <MessageCircle className="w-4 h-4 mr-2" /> Enquire Now
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => { const c = syllabusCourse; setSyllabusCourse(null); openDialog(c, "share"); }}>
+                    <Share2 className="w-4 h-4 mr-2" /> Get on WhatsApp
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </section>
