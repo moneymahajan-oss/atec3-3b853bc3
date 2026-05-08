@@ -423,3 +423,51 @@ function SettingsTab() {
     </Card>
   );
 }
+
+/* ── Tab: Audit Logs ── */
+function AuditLogs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("verification_certificate_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => { setLogs(data || []); setLoading(false); });
+  }, []);
+
+  const actionColor = (a: string) => {
+    if (a === "delete") return "text-red-600 font-semibold";
+    if (a === "edit") return "text-amber-600 font-semibold";
+    return "text-blue-600";
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Time</TableHead><TableHead>Action</TableHead><TableHead>Certificate ID</TableHead>
+            <TableHead>User</TableHead><TableHead>Changes</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {logs.map(l => (
+            <TableRow key={l.id}>
+              <TableCell className="text-xs whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</TableCell>
+              <TableCell className={actionColor(l.action)}>{l.action}</TableCell>
+              <TableCell className="font-mono text-xs">{l.certificate_id}</TableCell>
+              <TableCell className="text-xs">{l.user_email || "—"}</TableCell>
+              <TableCell className="text-xs max-w-xs truncate">{l.diff ? JSON.stringify(l.diff) : "—"}</TableCell>
+            </TableRow>
+          ))}
+          {logs.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No logs yet</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
