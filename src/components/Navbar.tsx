@@ -24,6 +24,23 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
   const [activeSection, setActiveSection] = useState("home");
+  const [navLinks, setNavLinks] = useState(() => [
+    ...baseNavLinks.slice(0, 7),
+    { label: "Verification", href: "/verification" },
+    ...baseNavLinks.slice(7),
+  ]);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("value").eq("key", "verification_mode").single().then(({ data }) => {
+      const mode = data?.value || "internal";
+      const vHref = mode === "external" ? "https://atecedu.com/verification" : "/verification";
+      setNavLinks([
+        ...baseNavLinks.slice(0, 7),
+        { label: "Verification", href: vHref },
+        ...baseNavLinks.slice(7),
+      ]);
+    });
+  }, []);
 
   useFavicon(settings.logo_url);
 
