@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 const baseNavLinks = [
   { label: "Home", href: "#home" },
   { label: "Courses", href: "#courses" },
-  { label: "About", href: "#about" },
+  { label: "Life at ATEC", href: "#about" },
   { label: "Gallery", href: "#gallery" },
   { label: "Testimonials", href: "#testimonials" },
   { label: "AI Careers", href: "#ai-careers" },
