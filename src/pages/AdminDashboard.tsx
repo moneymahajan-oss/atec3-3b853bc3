@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import {
   GraduationCap, LogOut, LayoutDashboard, Image, MessageSquare, Users,
   BookOpen, BarChart3, Video, Megaphone, Download, Settings, Mail, Sliders,
-  Eye, Pencil, TrendingUp
+  Eye, Pencil, TrendingUp, ShieldCheck
 } from "lucide-react";
 
 const sections = [
+  { key: "certificates", label: "Certificate Verification", icon: ShieldCheck, color: "bg-emerald-600", custom: true, href: "/admin/certificates" },
   { key: "site_content", label: "Site Content", icon: Settings, color: "bg-slate-700", custom: true },
   { key: "hero_slides", label: "Hero Slides", icon: Sliders, color: "bg-blue-500" },
   { key: "offer_belt", label: "Offer Belt", icon: Megaphone, color: "bg-amber-500" },
