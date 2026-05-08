@@ -191,6 +191,7 @@ const tableConfig: Record<string, {
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
       { key: "template_key", label: "Template Key", type: "text", required: true },
+      { key: "wa_number", label: "WhatsApp Number (with country code, e.g. 917009933289)", type: "text" },
       { key: "message_body", label: "Message (vars: {course_name} {student_name} {phone} {syllabus_pdf_url} {brochure_pdf_url} {score} {total} {percentage} {pass_fail} {message})", type: "textarea", required: true },
       { key: "is_active", label: "Active", type: "boolean" },
     ],

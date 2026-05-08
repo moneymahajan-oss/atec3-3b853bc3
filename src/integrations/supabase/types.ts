@@ -2304,6 +2304,7 @@ export type Database = {
           name: string
           template_key: string
           updated_at: string
+          wa_number: string | null
         }
         Insert: {
           created_at?: string
@@ -2313,6 +2314,7 @@ export type Database = {
           name: string
           template_key: string
           updated_at?: string
+          wa_number?: string | null
         }
         Update: {
           created_at?: string
@@ -2322,6 +2324,7 @@ export type Database = {
           name?: string
           template_key?: string
           updated_at?: string
+          wa_number?: string | null
         }
         Relationships: []
       }
