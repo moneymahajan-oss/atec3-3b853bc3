@@ -72,12 +72,13 @@ export default function CrmCertificates() {
 
   async function load() {
     setLoading(true);
-    const [{ data: c }, { data: s }] = await Promise.all([
+    const [cRes, sRes] = await Promise.all([
       supabase.from("crm_certificates").select("*").order("created_at", { ascending: false }),
       supabase.from("crm_students").select("id,full_name,enrolment_no,course_name_snapshot,course_id,phone").order("full_name"),
     ]);
-    setCerts((c as any) || []);
-    setStudents((s as any) || []);
+    if (cRes.error) throw new Error(cRes.error.message);
+    setCerts((cRes.data as any) || []);
+    setStudents((sRes.data as any) || []);
     setLoading(false);
   }
   useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
