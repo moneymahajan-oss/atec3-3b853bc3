@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AdminTable from "./pages/AdminTable.tsx";
 import AdminSiteContent from "./pages/AdminSiteContent.tsx";
 import { CrmAuthProvider } from "./crm/hooks/useCrmAuth.tsx";
+import { CRMErrorBoundary } from "./components/CRMErrorBoundary.tsx";
 import { CrmLayout } from "./crm/components/CrmLayout.tsx";
 import CrmLogin from "./crm/pages/CrmLogin.tsx";
 import CrmDashboard from "./crm/pages/CrmDashboard.tsx";
