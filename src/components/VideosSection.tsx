@@ -47,7 +47,7 @@ export default function VideosSection() {
     const platform = (v.platform || detectPlatform(url)).toLowerCase();
     const embed = getEmbedUrl(url, platform as any);
     if (embed) {
-      setActiveEmbed(embed);
+      setActive({ embed, platform });
     } else if (url) {
       window.open(url, "_blank", "noopener,noreferrer");
     }
