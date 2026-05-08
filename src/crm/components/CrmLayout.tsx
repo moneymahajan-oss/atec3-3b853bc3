@@ -1,7 +1,8 @@
 import { Outlet, Navigate, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, LogOut, Moon, Search, Sun, ExternalLink } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, ExternalLink } from "lucide-react";
+import { CrmGlobalSearch } from "./CrmGlobalSearch";
 import { CrmSidebar } from "./CrmSidebar";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { useEffect, useState } from "react";
