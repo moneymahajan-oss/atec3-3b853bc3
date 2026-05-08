@@ -4,23 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Play, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-
-function getYouTubeId(input: string): string | null {
-  if (!input) return null;
-  const trimmed = input.trim();
-  if (/^[A-Za-z0-9_-]{6,15}$/.test(trimmed)) return trimmed;
-  const m = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
-  return m ? m[1] : null;
-}
+import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
 
 function thumbFor(v: any): string {
-  if (v.thumbnail_url) return v.thumbnail_url;
-  const platform = (v.platform || "youtube").toLowerCase();
-  if (platform === "youtube") {
-    const id = getYouTubeId(v.video_id || v.video_url || "");
-    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-  }
-  return "/placeholder.svg";
+  const url = (v.video_url || v.video_id || "").trim();
+  const platform = (v.platform || detectPlatform(url)).toLowerCase();
+  return deriveThumbnail(url, platform as any, v.thumbnail_url);
 }
 
 export default function LifeAtAtecSection() {
