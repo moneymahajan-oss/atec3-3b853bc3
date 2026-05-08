@@ -292,7 +292,9 @@ export default function CoursesSection() {
           </p>
           <div className="space-y-3">
             <Input placeholder="Your Name" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
-            <Input placeholder="WhatsApp Number (10 digits)" type="tel" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} />
+            {(dialogAction === "share" || dialogAction === "syllabus") && (
+              <Input placeholder="Student WhatsApp Number (10 digits)" type="tel" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} />
+            )}
             <Button onClick={handleSubmit} disabled={submitting} className="w-full gradient-accent text-accent-foreground border-0">
               <Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Send to WhatsApp"}
             </Button>
