@@ -20,7 +20,7 @@ type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | 
 
 const tableConfig: Record<string, {
   label: string;
-  fields: { key: string; label: string; type: "text" | "textarea" | "number" | "boolean" | "select" | "json"; options?: string[]; required?: boolean }[];
+  fields: { key: string; label: string; type: "text" | "textarea" | "number" | "boolean" | "select" | "json"; options?: (string | { value: string; label: string })[]; required?: boolean }[];
   canCreate?: boolean;
   canDelete?: boolean;
 }> = {
@@ -118,7 +118,7 @@ const tableConfig: Record<string, {
       { key: "video_url", label: "Video URL (full link)", type: "text" },
       { key: "video_id", label: "YouTube Video ID (auto for YouTube if blank — paste full URL above)", type: "text", required: true },
       { key: "thumbnail_url", label: "Thumbnail URL (optional for YouTube — auto-generated; required for FB/IG)", type: "text" },
-      { key: "section", label: "Section", type: "select", options: ["about", "life", "testimonial", "general"] },
+      { key: "section", label: "Section", type: "select", options: [{ value: "life", label: "Glimpses from ATEC" }, { value: "learn", label: "Watch and Learn" }] },
       { key: "description", label: "Description", type: "textarea" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "display_order", label: "Order", type: "number" },
@@ -465,7 +465,11 @@ export default function AdminTable() {
                     <Select value={editItem[f.key] || ""} onValueChange={v => setEditItem({ ...editItem, [f.key]: v })}>
                       <SelectTrigger className="bg-background"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {f.options?.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        {f.options?.map(o => {
+                          const val = typeof o === "string" ? o : o.value;
+                          const lab = typeof o === "string" ? o : o.label;
+                          return <SelectItem key={val} value={val}>{lab}</SelectItem>;
+                        })}
                       </SelectContent>
                     </Select>
                   ) : f.type === "textarea" || f.type === "json" ? (
