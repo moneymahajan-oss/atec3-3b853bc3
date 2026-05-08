@@ -1,0 +1,1 @@
+ALTER TABLE public.whatsapp_templates ADD COLUMN wa_number text DEFAULT '917009933289';
