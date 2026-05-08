@@ -170,10 +170,12 @@ export default function Navbar() {
             <div className="flex flex-col p-6 gap-2">
               {navLinks.map(({ label, href }) => {
                 const isHash = href.startsWith("#");
+                const isExternal = href.startsWith("http");
                 return (
                   <a
                     key={label}
                     href={href}
+                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     onClick={isHash ? (e) => {
                       e.preventDefault();
                       setMobileOpen(false);
