@@ -47,6 +47,7 @@ export default function CoursesSection() {
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [videoCourse, setVideoCourse] = useState<any | null>(null);
+  const [syllabusCourse, setSyllabusCourse] = useState<any | null>(null);
 
   const { data: courses = [], isError, refetch } = useQuery({
     queryKey: ['courses'],
