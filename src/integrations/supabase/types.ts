@@ -2190,6 +2190,7 @@ export type Database = {
           rating: number | null
           review_text: string | null
           student_name: string
+          thumbnail_url: string | null
           youtube_url: string | null
         }
         Insert: {
@@ -2203,6 +2204,7 @@ export type Database = {
           rating?: number | null
           review_text?: string | null
           student_name: string
+          thumbnail_url?: string | null
           youtube_url?: string | null
         }
         Update: {
@@ -2216,6 +2218,7 @@ export type Database = {
           rating?: number | null
           review_text?: string | null
           student_name?: string
+          thumbnail_url?: string | null
           youtube_url?: string | null
         }
         Relationships: []
