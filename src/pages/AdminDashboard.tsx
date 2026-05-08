@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   GraduationCap, LogOut, LayoutDashboard, Image, MessageSquare, Users,
   BookOpen, BarChart3, Video, Megaphone, Download, Settings, Mail, Sliders,
-  Eye, Pencil, TrendingUp, ShieldCheck
+  Eye, Pencil, TrendingUp, ShieldCheck, UserCog
 } from "lucide-react";
 
 const sections = [
