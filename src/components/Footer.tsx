@@ -1,4 +1,5 @@
-import { GraduationCap, MapPin, Phone, Mail, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
+import { GraduationCap, MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const quickLinks = [
   { label: "Home", href: "#home" },
@@ -11,13 +12,6 @@ const quickLinks = [
 const courseLinks = [
   "Generative AI", "Digital Marketing", "Full Stack Development",
   "Tally Prime", "Office Automation", "Student Combo Pack",
-];
-
-const socials = [
-  { icon: Facebook, href: "#", label: "Facebook" },
-  { icon: Instagram, href: "#", label: "Instagram" },
-  { icon: Youtube, href: "#", label: "YouTube" },
-  { icon: Linkedin, href: "#", label: "LinkedIn" },
 ];
 
 export default function Footer() {
