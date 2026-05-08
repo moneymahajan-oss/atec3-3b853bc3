@@ -64,11 +64,13 @@ export default function AdminCertificates() {
           <TabsTrigger value="all">All Certificates</TabsTrigger>
           <TabsTrigger value="add">Add Certificate</TabsTrigger>
           <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
+          <TabsTrigger value="logs">Audit Logs</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="all"><AllCerts /></TabsContent>
         <TabsContent value="add"><AddCert onAdded={() => setTab("all")} /></TabsContent>
         <TabsContent value="bulk"><BulkUpload onDone={() => setTab("all")} goSettings={() => setTab("settings")} /></TabsContent>
+        <TabsContent value="logs"><AuditLogs /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
       </Tabs>
     </div>
@@ -101,22 +103,41 @@ function AllCerts() {
     return !q || c.certificate_id.toLowerCase().includes(q) || c.student_id.toLowerCase().includes(q) || c.student_name.toLowerCase().includes(q);
   });
 
+  const logAction = async (action: string, certId: string, diff?: any) => {
+    const { data: u } = await supabase.auth.getUser();
+    await supabase.from("verification_certificate_logs").insert({
+      action, certificate_id: certId, user_id: u?.user?.id ?? null,
+      user_email: u?.user?.email ?? null, diff: diff ?? null,
+    });
+  };
+
   const toggleActive = async (c: Cert) => {
     await supabase.from("verification_certificates").update({ is_active: !c.is_active }).eq("certificate_id", c.certificate_id);
+    await logAction("toggle_active", c.certificate_id, { from: c.is_active, to: !c.is_active });
     load();
   };
 
   const deleteCert = async (id: string) => {
     if (!confirm("Delete this certificate?")) return;
+    const cert = certs.find(c => c.certificate_id === id);
     await supabase.from("verification_certificates").delete().eq("certificate_id", id);
+    await logAction("delete", id, cert ?? null);
     toast({ title: "Deleted" });
     load();
   };
 
   const saveEdit = async () => {
     if (!editCert) return;
+    const original = certs.find(c => c.certificate_id === editCert.certificate_id);
     const { created_at, ...rest } = editCert;
     await supabase.from("verification_certificates").update(rest).eq("certificate_id", editCert.certificate_id);
+    const changes: Record<string, { from: any; to: any }> = {};
+    if (original) {
+      for (const k of Object.keys(rest) as (keyof typeof rest)[]) {
+        if ((rest as any)[k] !== (original as any)[k]) changes[k] = { from: (original as any)[k], to: (rest as any)[k] };
+      }
+    }
+    await logAction("edit", editCert.certificate_id, changes);
     toast({ title: "Updated" });
     setEditCert(null);
     load();
@@ -400,5 +421,53 @@ function SettingsTab() {
         {updatedAt && <p className="text-xs text-muted-foreground">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+/* ── Tab: Audit Logs ── */
+function AuditLogs() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from("verification_certificate_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => { setLogs(data || []); setLoading(false); });
+  }, []);
+
+  const actionColor = (a: string) => {
+    if (a === "delete") return "text-red-600 font-semibold";
+    if (a === "edit") return "text-amber-600 font-semibold";
+    return "text-blue-600";
+  };
+
+  if (loading) return <p>Loading...</p>;
+
+  return (
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Time</TableHead><TableHead>Action</TableHead><TableHead>Certificate ID</TableHead>
+            <TableHead>User</TableHead><TableHead>Changes</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {logs.map(l => (
+            <TableRow key={l.id}>
+              <TableCell className="text-xs whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</TableCell>
+              <TableCell className={actionColor(l.action)}>{l.action}</TableCell>
+              <TableCell className="font-mono text-xs">{l.certificate_id}</TableCell>
+              <TableCell className="text-xs">{l.user_email || "—"}</TableCell>
+              <TableCell className="text-xs max-w-xs truncate">{l.diff ? JSON.stringify(l.diff) : "—"}</TableCell>
+            </TableRow>
+          ))}
+          {logs.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No logs yet</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
