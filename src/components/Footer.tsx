@@ -1,4 +1,5 @@
-import { GraduationCap, MapPin, Phone, Mail, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
+import { GraduationCap, MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const quickLinks = [
   { label: "Home", href: "#home" },
@@ -13,14 +14,15 @@ const courseLinks = [
   "Tally Prime", "Office Automation", "Student Combo Pack",
 ];
 
-const socials = [
-  { icon: Facebook, href: "#", label: "Facebook" },
-  { icon: Instagram, href: "#", label: "Instagram" },
-  { icon: Youtube, href: "#", label: "YouTube" },
-  { icon: Linkedin, href: "#", label: "LinkedIn" },
-];
-
 export default function Footer() {
+  const settings = useSiteSettings();
+
+  const socials = [
+    { icon: Facebook, href: settings.social_facebook_url as string || "#", label: "Facebook" },
+    { icon: Instagram, href: settings.social_instagram_url as string || "#", label: "Instagram" },
+    { icon: Youtube, href: settings.social_youtube_url as string || "#", label: "YouTube" },
+  ].filter(s => s.href && s.href !== "#");
+
   return (
     <footer className="gradient-primary text-primary-foreground pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -39,13 +41,15 @@ export default function Footer() {
             <p className="text-sm opacity-80 leading-relaxed mb-4">
               Gurdaspur's premier computer education institute — empowering students with cutting-edge skills since 2013.
             </p>
-            <div className="flex gap-3">
-              {socials.map((s) => (
-                <a key={s.label} href={s.href} aria-label={s.label} className="w-9 h-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors">
-                  <s.icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
+            {socials.length > 0 && (
+              <div className="flex gap-3">
+                {socials.map((s) => (
+                  <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="w-9 h-9 rounded-lg bg-primary-foreground/10 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors">
+                    <s.icon className="w-4 h-4" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}

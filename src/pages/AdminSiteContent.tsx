@@ -58,6 +58,15 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
       { key: "whatsapp_number", label: "WhatsApp Number (no + or spaces, e.g. 917009933289)" },
     ],
   },
+  {
+    label: "Social Media Links",
+    keys: [
+      { key: "social_instagram_url", label: "Instagram URL", placeholder: "https://instagram.com/yourpage" },
+      { key: "social_facebook_url", label: "Facebook URL", placeholder: "https://facebook.com/yourpage" },
+      { key: "social_youtube_url", label: "YouTube URL", placeholder: "https://youtube.com/@yourchannel" },
+      { key: "social_google_url", label: "Google My Business URL", placeholder: "https://g.page/yourbusiness" },
+    ],
+  },
 ];
 
 export default function AdminSiteContent() {

@@ -14,6 +14,7 @@ import VideosSection from "@/components/VideosSection";
 import LifeAtAtecSection from "@/components/LifeAtAtecSection";
 import DownloadsSection from "@/components/DownloadsSection";
 import ContactSection from "@/components/ContactSection";
+import SocialConnectSection from "@/components/SocialConnectSection";
 import Footer from "@/components/Footer";
 import { SEO } from "@/components/SEO";
 import { SectionErrorBoundary } from "@/components/SectionErrorBoundary";
@@ -38,6 +39,7 @@ const Index = () => {
       <SectionErrorBoundary name="Videos"><VideosSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Downloads"><DownloadsSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Contact"><ContactSection /></SectionErrorBoundary>
+      <SectionErrorBoundary name="SocialConnect"><SocialConnectSection /></SectionErrorBoundary>
       <SectionErrorBoundary name="Footer"><Footer /></SectionErrorBoundary>
     </div>
   );
