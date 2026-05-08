@@ -25,16 +25,15 @@ const categories = ["All", "AI & Emerging Tech", "Digital Skills & Marketing", "
 
 const ATEC_WA = "917009933289";
 
-type WaAction = "enroll" | "share" | "syllabus";
+type WaAction = "enquiry" | "enroll" | "syllabus" | "share";
 
 export default function CoursesSection() {
   const settings = useSiteSettings();
   const { toast } = useToast();
   const [active, setActive] = useState("All");
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
-  // Dialog state for collecting student info
   const [dialogCourse, setDialogCourse] = useState<any | null>(null);
-  const [dialogAction, setDialogAction] = useState<WaAction>("enroll");
+  const [dialogAction, setDialogAction] = useState<WaAction>("enquiry");
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -74,8 +73,14 @@ export default function CoursesSection() {
     setSubmitting(true);
 
     // Save lead & create CRM enquiry
+    const sourceMap: Record<WaAction, string> = {
+      enquiry: "enquiry_button",
+      enroll: "enroll_button",
+      syllabus: "syllabus_request",
+      share: "share_course",
+    };
     await supabase.from("leads").insert({
-      source: dialogAction === "enroll" ? "enroll_button" : dialogAction === "syllabus" ? "syllabus_request" : "share_course",
+      source: sourceMap[dialogAction],
       student_name: studentName,
       phone: normPhone,
       course_name: dialogCourse.name,
@@ -127,14 +132,17 @@ export default function CoursesSection() {
 
     let link: string;
 
-    if (dialogAction === "enroll") {
-      // Student sends TO ATEC number using enroll_button template
+    if (dialogAction === "enquiry") {
+      // Enquiry: student sends TO ATEC
+      link = await buildWhatsAppLink("enquiry_button", commonVars, ATEC_WA);
+    } else if (dialogAction === "enroll") {
+      // Enroll: student sends TO ATEC
       link = await buildWhatsAppLink("enroll_button", commonVars, ATEC_WA);
     } else if (dialogAction === "share") {
-      // ATEC sends TO student number using syllabus_share template
+      // Share: ATEC sends TO student
       link = await buildWhatsAppLink("syllabus_share", commonVars, `91${normPhone}`);
     } else {
-      // Syllabus: ATEC sends TO student number using syllabus_download template
+      // Syllabus: ATEC sends TO student
       link = await buildWhatsAppLink("syllabus_download", commonVars, `91${normPhone}`);
     }
 
@@ -142,17 +150,23 @@ export default function CoursesSection() {
     setDialogCourse(null);
     setStudentName("");
     setStudentPhone("");
-    toast({ title: "Opening WhatsApp", description: dialogAction === "enroll" ? "Send the message to ATEC to enroll!" : "Sending course details to the student." });
+
+    const toastMsg = (dialogAction === "enquiry" || dialogAction === "enroll")
+      ? "Send the message to ATEC!"
+      : "Sending details to the student.";
+    toast({ title: "Opening WhatsApp", description: toastMsg });
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
   const dialogTitles: Record<WaAction, string> = {
+    enquiry: "Enquiry via WhatsApp",
     enroll: "Enroll via WhatsApp",
     share: "Share Course Details",
     syllabus: "Get Syllabus on WhatsApp",
   };
   const dialogDescriptions: Record<WaAction, string> = {
-    enroll: "Enter your details. A WhatsApp message will be sent to ATEC for enrollment.",
+    enquiry: "Enter your details. A WhatsApp enquiry message will be sent to ATEC.",
+    enroll: "Enter your details. An enrollment message will be sent to ATEC.",
     share: "Enter student's WhatsApp number to send course details from ATEC.",
     syllabus: "Enter your WhatsApp number to receive the syllabus from ATEC.",
   };
@@ -217,8 +231,8 @@ export default function CoursesSection() {
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => setSelectedCourse(course)}>
                         <Eye className="w-4 h-4 mr-1" /> Syllabus
                       </Button>
-                      <Button size="sm" className="flex-1 gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enroll")}>
-                        <MessageCircle className="w-4 h-4 mr-1" /> Enroll
+                      <Button size="sm" className="flex-1 gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enquiry")}>
+                        <MessageCircle className="w-4 h-4 mr-1" /> Enquiry
                       </Button>
                     </div>
                     <Button variant="ghost" size="sm" className="w-full text-accent" onClick={() => openDialog(course, "share")}>
