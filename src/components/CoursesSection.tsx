@@ -61,12 +61,13 @@ export default function CoursesSection() {
 
   const handleSubmit = async () => {
     if (!dialogCourse) return;
-    if (!studentName || !studentPhone) {
-      toast({ title: "Required", description: "Please enter your name and WhatsApp number.", variant: "destructive" });
+    const needsPhone = dialogAction === "share" || dialogAction === "syllabus";
+    if (!studentName || (needsPhone && !studentPhone)) {
+      toast({ title: "Required", description: needsPhone ? "Please enter your name and WhatsApp number." : "Please enter your name.", variant: "destructive" });
       return;
     }
     const normPhone = studentPhone.replace(/\D/g, "").slice(-10);
-    if (normPhone.length < 10) {
+    if (needsPhone && normPhone.length < 10) {
       toast({ title: "Invalid phone", description: "Please enter a 10-digit WhatsApp number.", variant: "destructive" });
       return;
     }
