@@ -120,9 +120,16 @@ export default function TestimonialsSection() {
                   <p className="text-white font-semibold text-sm leading-tight truncate">
                     {t.student_name}
                   </p>
-                  {t.course_name && (
+                  {(t.course_name || t.batch_year) && (
                     <p className="text-white/70 text-xs truncate mt-0.5">
                       {t.course_name}
+                      {t.course_name && t.batch_year ? " • " : ""}
+                      {t.batch_year && `Batch ${t.batch_year}`}
+                    </p>
+                  )}
+                  {t.review_text && (
+                    <p className="text-white/85 text-xs leading-snug mt-1.5 line-clamp-3">
+                      "{t.review_text}"
                     </p>
                   )}
                 </div>
