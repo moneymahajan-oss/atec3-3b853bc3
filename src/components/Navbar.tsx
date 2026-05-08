@@ -149,21 +149,24 @@ export default function Navbar() {
             className="fixed inset-0 top-16 z-40 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             <div className="flex flex-col p-6 gap-2">
-              {navLinks.map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setMobileOpen(false);
-                    const el = document.querySelector(href);
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  }}
-                  className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
-                >
-                  {label}
-                </a>
-              ))}
+              {navLinks.map(({ label, href }) => {
+                const isHash = href.startsWith("#");
+                return (
+                  <a
+                    key={label}
+                    href={href}
+                    onClick={isHash ? (e) => {
+                      e.preventDefault();
+                      setMobileOpen(false);
+                      const el = document.querySelector(href);
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    } : () => setMobileOpen(false)}
+                    className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
+                  >
+                    {label}
+                  </a>
+                );
+              })}
               <Button className="mt-4 gradient-accent text-accent-foreground border-0 font-semibold text-lg py-6" asChild>
                 <a href={enrollLink} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
                   <MessageCircle className="w-5 h-5 mr-2" /> Enroll Now
