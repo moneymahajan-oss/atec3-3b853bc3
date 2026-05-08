@@ -73,7 +73,7 @@ export default function HeroSection() {
               <Button size="lg" className="gradient-accent text-accent-foreground border-0 font-semibold text-base px-8 hover:opacity-90 transition-opacity" asChild>
                 <a href={slide.cta_link}>{slide.cta_text}</a>
               </Button>
-              <Button size="lg" variant="outline" className="border-white/30 font-semibold text-base px-8 backdrop-blur-sm hover:bg-white/10" style={{ color: "white" }} asChild>
+              <Button size="lg" variant="outline" className="bg-transparent border-white/40 text-white font-semibold text-base px-8 backdrop-blur-sm hover:bg-white/10 hover:text-white" asChild>
                 <a href="#videos"><Play className="w-4 h-4 mr-2" />Watch Demo</a>
               </Button>
             </div>
