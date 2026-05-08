@@ -268,8 +268,8 @@ export default function CoursesSection() {
                     <Button size="sm" className="gradient-accent text-accent-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enquiry")}>
                       <MessageCircle className="w-4 h-4 mr-1" /> Enquire
                     </Button>
-                    <Button size="sm" className="gradient-primary text-primary-foreground border-0 hover:opacity-90" onClick={() => openDialog(course, "enroll")}>
-                      <GraduationCap className="w-4 h-4 mr-1" /> Enroll
+                    <Button size="sm" className="gradient-primary text-primary-foreground border-0 hover:opacity-90" onClick={() => setSyllabusCourse(course)}>
+                      <BookOpen className="w-4 h-4 mr-1" /> View Syllabus
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleWatchVideo(course)} disabled={!course.video_url}>
                       <Play className="w-4 h-4 mr-1" /> Watch Video
