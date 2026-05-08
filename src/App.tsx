@@ -105,6 +105,7 @@ const App = () => {
                 <Route path="/admin/login" element={<AdminLogin />} />
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/site-content" element={<AdminSiteContent />} />
+                <Route path="/admin/certificates" element={<AdminCertificates />} />
                 <Route path="/admin/:table" element={<AdminTable />} />
 
                 <Route path="/crm/login" element={<CrmLogin />} />
