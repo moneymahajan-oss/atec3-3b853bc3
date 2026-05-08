@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { whatsAppLinkSync } from "@/lib/whatsapp";
+import { supabase } from "@/integrations/supabase/client";
 
-const navLinks = [
+const baseNavLinks = [
   { label: "Home", href: "#home" },
   { label: "Courses", href: "#courses" },
   { label: "About", href: "#about" },
@@ -14,7 +15,6 @@ const navLinks = [
   { label: "Testimonials", href: "#testimonials" },
   { label: "AI Careers", href: "#ai-careers" },
   { label: "Mock Test", href: "#mock-test" },
-  { label: "Verification", href: "/verification" },
   { label: "Contact", href: "#contact" },
 ];
 
