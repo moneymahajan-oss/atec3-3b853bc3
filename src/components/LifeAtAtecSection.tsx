@@ -115,7 +115,7 @@ export default function LifeAtAtecSection() {
             </button>
             <div className="w-full max-w-4xl aspect-video" onClick={e => e.stopPropagation()}>
               <iframe
-                src={`https://www.youtube.com/embed/${openVideo._ytId}?autoplay=1`}
+                src={openVideo._embed}
                 className="w-full h-full rounded-xl"
                 allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
