@@ -166,10 +166,10 @@ export default function CoursesSection() {
     syllabus: "Get Syllabus on WhatsApp",
   };
   const dialogDescriptions: Record<WaAction, string> = {
-    enquiry: "Enter your details. A WhatsApp enquiry message will be sent to ATEC.",
-    enroll: "Enter your details. An enrollment message will be sent to ATEC.",
-    share: "Enter student's WhatsApp number to send course details from ATEC.",
-    syllabus: "Enter your WhatsApp number to receive the syllabus from ATEC.",
+    enquiry: "Enter your name. A WhatsApp enquiry message will open to send to ATEC.",
+    enroll: "Enter your name. An enrollment message will open to send to ATEC.",
+    share: "Enter student's name & WhatsApp number to send course details from ATEC.",
+    syllabus: "Enter student's name & WhatsApp number to receive the syllabus from ATEC.",
   };
 
   if (isError) return (
