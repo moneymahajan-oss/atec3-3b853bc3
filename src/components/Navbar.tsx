@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useFavicon } from "@/hooks/useFavicon";
 import { whatsAppLinkSync } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
 
 type NavItem = { label: string; href: string; isHash: boolean; isExternal: boolean };
 
@@ -114,23 +115,24 @@ export default function Navbar() {
           </a>
 
           <div className="hidden lg:flex items-center gap-0">
-            {navLinks.map(({ label, href, isHash, isExternal }) => (
-              <a
-                key={`${label}-${href}`}
-                href={href}
-                {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                onClick={isHash ? (e) => {
-                  e.preventDefault();
-                  const el = document.querySelector(href);
-                  if (el) el.scrollIntoView({ behavior: "smooth" });
-                } : undefined}
-                className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </a>
-            ))}
+            {navLinks.map(({ label, href, isHash, isExternal }) => {
+              const cls = `px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`;
+              if (isHash) {
+                return (
+                  <a key={`${label}-${href}`} href={href} onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.querySelector(href);
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  }} className={cls}>{label}</a>
+                );
+              }
+              if (isExternal) {
+                return <a key={`${label}-${href}`} href={href} target="_blank" rel="noopener noreferrer" className={cls}>{label}</a>;
+              }
+              return <Link key={`${label}-${href}`} to={href} className={cls}>{label}</Link>;
+            })}
           </div>
 
           <div className="flex items-center gap-2">
@@ -168,22 +170,23 @@ export default function Navbar() {
             className="fixed inset-0 top-16 z-40 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             <div className="flex flex-col p-6 gap-2">
-              {navLinks.map(({ label, href, isHash, isExternal }) => (
-                <a
-                  key={`${label}-${href}`}
-                  href={href}
-                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  onClick={isHash ? (e) => {
-                    e.preventDefault();
-                    setMobileOpen(false);
-                    const el = document.querySelector(href);
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  } : () => setMobileOpen(false)}
-                  className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
-                >
-                  {label}
-                </a>
-              ))}
+              {navLinks.map(({ label, href, isHash, isExternal }) => {
+                const cls = "px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted";
+                if (isHash) {
+                  return (
+                    <a key={`${label}-${href}`} href={href} onClick={(e) => {
+                      e.preventDefault();
+                      setMobileOpen(false);
+                      const el = document.querySelector(href);
+                      if (el) el.scrollIntoView({ behavior: "smooth" });
+                    }} className={cls}>{label}</a>
+                  );
+                }
+                if (isExternal) {
+                  return <a key={`${label}-${href}`} href={href} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)} className={cls}>{label}</a>;
+                }
+                return <Link key={`${label}-${href}`} to={href} onClick={() => setMobileOpen(false)} className={cls}>{label}</Link>;
+              })}
               <Button className="mt-4 gradient-accent text-accent-foreground border-0 font-semibold text-lg py-6" asChild>
                 <a href={enrollLink} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
                   <MessageCircle className="w-5 h-5 mr-2" /> Enroll Now
