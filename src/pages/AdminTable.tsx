@@ -20,7 +20,7 @@ type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | 
 
 const tableConfig: Record<string, {
   label: string;
-  fields: { key: string; label: string; type: "text" | "textarea" | "number" | "boolean" | "select" | "json"; options?: string[]; required?: boolean }[];
+  fields: { key: string; label: string; type: "text" | "textarea" | "number" | "boolean" | "select" | "json"; options?: (string | { value: string; label: string })[]; required?: boolean }[];
   canCreate?: boolean;
   canDelete?: boolean;
 }> = {
