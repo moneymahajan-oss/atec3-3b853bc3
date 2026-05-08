@@ -76,7 +76,8 @@ const tableConfig: Record<string, {
     fields: [
       { key: "student_name", label: "Student Name", type: "text", required: true },
       { key: "course_name", label: "Course", type: "text" },
-      { key: "youtube_url", label: "YouTube URL (video testimonial)", type: "text" },
+      { key: "youtube_url", label: "Video URL (YouTube / Instagram / any)", type: "text" },
+      { key: "thumbnail_url", label: "Thumbnail Image URL", type: "text" },
       { key: "rating", label: "Rating (1-5)", type: "number" },
       { key: "review_text", label: "Review", type: "textarea" },
       { key: "photo_url", label: "Photo URL", type: "text" },
