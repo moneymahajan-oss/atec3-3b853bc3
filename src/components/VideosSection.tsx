@@ -18,7 +18,7 @@ const META: Record<string, { duration: string; category: string; desc: string }>
 };
 
 export default function VideosSection() {
-  const [activeEmbed, setActiveEmbed] = useState<string | null>(null);
+  const [active, setActive] = useState<{ embed: string; platform: string } | null>(null);
 
   const { data: videos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['learn_videos'],
