@@ -379,12 +379,19 @@ function SettingsTab() {
   const { toast } = useToast();
   const [url, setUrl] = useState("");
   const [updatedAt, setUpdatedAt] = useState("");
+  const [mode, setMode] = useState("internal");
+  const [modeUpdatedAt, setModeUpdatedAt] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingMode, setSavingMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from("app_settings").select("*").eq("key", "verification_url").single().then(({ data }) => {
-      if (data) { setUrl(data.value || ""); setUpdatedAt(data.updated_at || ""); }
+    Promise.all([
+      supabase.from("app_settings").select("*").eq("key", "verification_url").single(),
+      supabase.from("app_settings").select("*").eq("key", "verification_mode").single(),
+    ]).then(([urlRes, modeRes]) => {
+      if (urlRes.data) { setUrl(urlRes.data.value || ""); setUpdatedAt(urlRes.data.updated_at || ""); }
+      if (modeRes.data) { setMode(modeRes.data.value || "internal"); setModeUpdatedAt(modeRes.data.updated_at || ""); }
       setLoading(false);
     });
   }, []);
@@ -400,27 +407,64 @@ function SettingsTab() {
     }
   };
 
+  const saveMode = async (newMode: string) => {
+    setMode(newMode);
+    setSavingMode(true);
+    const { error } = await supabase.from("app_settings").update({ value: newMode, updated_at: new Date().toISOString() }).eq("key", "verification_mode");
+    setSavingMode(false);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
+    else {
+      setModeUpdatedAt(new Date().toISOString());
+      toast({ title: "Verification mode updated", description: newMode === "external" ? "Navbar will redirect to atecedu.com/verification" : "Navbar will open this website's verification page" });
+    }
+  };
+
   if (loading) return <p>Loading...</p>;
 
   return (
-    <Card className="max-w-xl">
-      <CardHeader><CardTitle>QR Code &amp; Verification Redirect URL</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label>Verification URL</Label>
-          <Input value={url} onChange={e => setUrl(e.target.value)} />
-          <p className="text-xs text-muted-foreground mt-1">
-            This URL is encoded in every QR code shown on verification cards.
-            Currently pointing to atecedu.com/verification for already-printed certificates.
-            Once all old certificates are distributed, change this to https://ateceducation.in/verification
-          </p>
-        </div>
-        <Button onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-1" />} Save
-        </Button>
-        {updatedAt && <p className="text-xs text-muted-foreground">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
-      </CardContent>
-    </Card>
+    <div className="space-y-6 max-w-xl">
+      <Card>
+        <CardHeader><CardTitle>Verification Link Mode</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Choose where the "Verification" link in the navbar should point to:</p>
+          <div className="space-y-3">
+            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${mode === "external" ? "border-primary bg-primary/5" : "border-border"}`}>
+              <input type="radio" name="vmode" checked={mode === "external"} onChange={() => saveMode("external")} className="mt-1" />
+              <div>
+                <span className="font-medium">Option 1 — External Link</span>
+                <p className="text-xs text-muted-foreground">Redirects to <strong>atecedu.com/verification</strong> (external website)</p>
+              </div>
+            </label>
+            <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${mode === "internal" ? "border-primary bg-primary/5" : "border-border"}`}>
+              <input type="radio" name="vmode" checked={mode === "internal"} onChange={() => saveMode("internal")} className="mt-1" />
+              <div>
+                <span className="font-medium">Option 2 — This Website</span>
+                <p className="text-xs text-muted-foreground">Opens the built-in verification page on this website</p>
+              </div>
+            </label>
+          </div>
+          {savingMode && <p className="text-xs text-muted-foreground">Saving...</p>}
+          {modeUpdatedAt && <p className="text-xs text-muted-foreground">Last updated: {new Date(modeUpdatedAt).toLocaleString()}</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>QR Code &amp; Verification Redirect URL</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Verification URL</Label>
+            <Input value={url} onChange={e => setUrl(e.target.value)} />
+            <p className="text-xs text-muted-foreground mt-1">
+              This URL is encoded in every QR code shown on verification cards.
+            </p>
+          </div>
+          <Button onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-1" />} Save
+          </Button>
+          {updatedAt && <p className="text-xs text-muted-foreground">Last updated: {new Date(updatedAt).toLocaleString()}</p>}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
