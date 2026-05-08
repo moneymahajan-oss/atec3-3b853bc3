@@ -2073,6 +2073,36 @@ export type Database = {
         }
         Relationships: []
       }
+      nav_items: {
+        Row: {
+          created_at: string
+          external_url: string | null
+          id: number
+          is_visible: boolean
+          label: string
+          order_index: number
+          section_key: string
+        }
+        Insert: {
+          created_at?: string
+          external_url?: string | null
+          id?: number
+          is_visible?: boolean
+          label: string
+          order_index?: number
+          section_key: string
+        }
+        Update: {
+          created_at?: string
+          external_url?: string | null
+          id?: number
+          is_visible?: boolean
+          label?: string
+          order_index?: number
+          section_key?: string
+        }
+        Relationships: []
+      }
       offer_belt: {
         Row: {
           bg_color: string | null
@@ -2341,10 +2371,12 @@ export type Database = {
           display_order: number | null
           id: string
           is_active: boolean | null
+          platform: string | null
           section: string | null
           thumbnail_url: string | null
           title: string
           video_id: string
+          video_url: string | null
         }
         Insert: {
           created_at?: string
@@ -2352,10 +2384,12 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          platform?: string | null
           section?: string | null
           thumbnail_url?: string | null
           title: string
           video_id: string
+          video_url?: string | null
         }
         Update: {
           created_at?: string
@@ -2363,10 +2397,12 @@ export type Database = {
           display_order?: number | null
           id?: string
           is_active?: boolean | null
+          platform?: string | null
           section?: string | null
           thumbnail_url?: string | null
           title?: string
           video_id?: string
+          video_url?: string | null
         }
         Relationships: []
       }

@@ -7,15 +7,18 @@ import { useFavicon } from "@/hooks/useFavicon";
 import { whatsAppLinkSync } from "@/lib/whatsapp";
 import { supabase } from "@/integrations/supabase/client";
 
-const baseNavLinks = [
-  { label: "Home", href: "#home" },
-  { label: "Courses", href: "#courses" },
-  { label: "Life at ATEC", href: "#about" },
-  { label: "Gallery", href: "#gallery" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "AI Careers", href: "#ai-careers" },
-  { label: "Mock Test", href: "#mock-test" },
-  { label: "Contact", href: "#contact" },
+type NavItem = { label: string; href: string; isHash: boolean; isExternal: boolean };
+
+const fallbackLinks: NavItem[] = [
+  { label: "Home", href: "#home", isHash: true, isExternal: false },
+  { label: "Courses", href: "#courses", isHash: true, isExternal: false },
+  { label: "Life at ATEC", href: "#about", isHash: true, isExternal: false },
+  { label: "Gallery", href: "#gallery", isHash: true, isExternal: false },
+  { label: "Testimonials", href: "#testimonials", isHash: true, isExternal: false },
+  { label: "AI Careers", href: "#ai-careers", isHash: true, isExternal: false },
+  { label: "Mock Test", href: "#mock-test", isHash: true, isExternal: false },
+  { label: "Verification", href: "/verification", isHash: false, isExternal: false },
+  { label: "Contact", href: "#contact", isHash: true, isExternal: false },
 ];
 
 export default function Navbar() {
@@ -24,22 +27,27 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
   const [activeSection, setActiveSection] = useState("home");
-  const [navLinks, setNavLinks] = useState(() => [
-    ...baseNavLinks.slice(0, 7),
-    { label: "Verification", href: "/verification" },
-    ...baseNavLinks.slice(7),
-  ]);
+  const [navLinks, setNavLinks] = useState<NavItem[]>(fallbackLinks);
 
   useEffect(() => {
-    supabase.from("app_settings").select("value").eq("key", "verification_mode").single().then(({ data }) => {
-      const mode = data?.value || "internal";
-      const vHref = mode === "external" ? "https://atecedu.com/verification" : "/verification";
-      setNavLinks([
-        ...baseNavLinks.slice(0, 7),
-        { label: "Verification", href: vHref },
-        ...baseNavLinks.slice(7),
-      ]);
-    });
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("nav_items")
+        .select("label, section_key, external_url, order_index, is_visible")
+        .eq("is_visible", true)
+        .order("order_index");
+      if (data && data.length) {
+        setNavLinks(
+          data.map((r: any) => {
+            if (r.external_url) {
+              const ext = r.external_url.startsWith("http");
+              return { label: r.label, href: r.external_url, isHash: false, isExternal: ext };
+            }
+            return { label: r.label, href: `#${r.section_key}`, isHash: true, isExternal: false };
+          })
+        );
+      }
+    })();
   }, []);
 
   useFavicon(settings.logo_url);
@@ -64,12 +72,12 @@ export default function Navbar() {
       },
       { rootMargin: "-40% 0px -50% 0px" }
     );
-    navLinks.filter(({ href }) => href.startsWith("#")).forEach(({ href }) => {
+    navLinks.filter((l) => l.isHash).forEach(({ href }) => {
       const el = document.querySelector(href);
       if (el) observer.observe(el);
     });
     return () => observer.disconnect();
-  }, []);
+  }, [navLinks]);
 
   const waNumber = settings.whatsapp_number || "917009933289";
   const enrollLink = whatsAppLinkSync(waNumber, "Hi ATEC! I want to enroll in a course. Please share details.");
@@ -90,7 +98,6 @@ export default function Navbar() {
         }`}
       >
         <div className="container mx-auto px-4 flex items-center justify-between h-16 md:h-18">
-          {/* Logo */}
           <a href="#home" className="flex items-center gap-3 group">
             {logoUrl ? (
               <img
@@ -106,32 +113,26 @@ export default function Navbar() {
             <span className="font-bold text-base md:text-lg text-foreground hidden sm:block">{instituteName}</span>
           </a>
 
-          {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-0">
-            {navLinks.map(({ label, href }) => {
-              const isHash = href.startsWith("#");
-              const isExternal = href.startsWith("http");
-              return (
-                <a
-                  key={href}
-                  href={href}
-                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                  onClick={isHash ? (e) => {
-                    e.preventDefault();
-                    const el = document.querySelector(href);
-                    if (el) el.scrollIntoView({ behavior: "smooth" });
-                  } : undefined}
-                  className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {label}
-                </a>
-              );
-            })}
+            {navLinks.map(({ label, href, isHash, isExternal }) => (
+              <a
+                key={`${label}-${href}`}
+                href={href}
+                {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                onClick={isHash ? (e) => {
+                  e.preventDefault();
+                  const el = document.querySelector(href);
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                } : undefined}
+                className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  isHash && activeSection === href.slice(1) ? "text-foreground bg-muted" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {label}
+              </a>
+            ))}
           </div>
 
-          {/* Right side */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setDark(!dark)}
@@ -158,7 +159,6 @@ export default function Navbar() {
         </div>
       </motion.nav>
 
-      {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -168,26 +168,22 @@ export default function Navbar() {
             className="fixed inset-0 top-16 z-40 bg-card/95 backdrop-blur-xl lg:hidden"
           >
             <div className="flex flex-col p-6 gap-2">
-              {navLinks.map(({ label, href }) => {
-                const isHash = href.startsWith("#");
-                const isExternal = href.startsWith("http");
-                return (
-                  <a
-                    key={label}
-                    href={href}
-                    {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    onClick={isHash ? (e) => {
-                      e.preventDefault();
-                      setMobileOpen(false);
-                      const el = document.querySelector(href);
-                      if (el) el.scrollIntoView({ behavior: "smooth" });
-                    } : () => setMobileOpen(false)}
-                    className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
-                  >
-                    {label}
-                  </a>
-                );
-              })}
+              {navLinks.map(({ label, href, isHash, isExternal }) => (
+                <a
+                  key={`${label}-${href}`}
+                  href={href}
+                  {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                  onClick={isHash ? (e) => {
+                    e.preventDefault();
+                    setMobileOpen(false);
+                    const el = document.querySelector(href);
+                    if (el) el.scrollIntoView({ behavior: "smooth" });
+                  } : () => setMobileOpen(false)}
+                  className="px-4 py-3 rounded-xl text-lg font-medium text-foreground hover:bg-muted"
+                >
+                  {label}
+                </a>
+              ))}
               <Button className="mt-4 gradient-accent text-accent-foreground border-0 font-semibold text-lg py-6" asChild>
                 <a href={enrollLink} target="_blank" rel="noopener noreferrer" onClick={() => setMobileOpen(false)}>
                   <MessageCircle className="w-5 h-5 mr-2" /> Enroll Now

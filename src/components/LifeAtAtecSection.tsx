@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { RefreshCw } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw, Play, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -8,14 +9,25 @@ function getYouTubeId(input: string): string | null {
   if (!input) return null;
   const trimmed = input.trim();
   if (/^[A-Za-z0-9_-]{6,15}$/.test(trimmed)) return trimmed;
-  const match = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
-  return match ? match[1] : null;
+  const m = trimmed.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+function thumbFor(v: any): string {
+  if (v.thumbnail_url) return v.thumbnail_url;
+  const platform = (v.platform || "youtube").toLowerCase();
+  if (platform === "youtube") {
+    const id = getYouTubeId(v.video_id || v.video_url || "");
+    if (id) return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+  }
+  return "/placeholder.svg";
 }
 
 export default function LifeAtAtecSection() {
   const settings = useSiteSettings();
-  const heading = settings.life_section_heading?.trim();
+  const heading = (settings.life_videos_heading || settings.life_section_heading)?.trim();
   const subheading = settings.about_section_subheading?.trim();
+  const [openVideo, setOpenVideo] = useState<any | null>(null);
 
   const { data: videos = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['life_videos'],
@@ -44,13 +56,24 @@ export default function LifeAtAtecSection() {
 
   if (isLoading || videos.length === 0) return null;
 
+  const handleClick = (v: any) => {
+    const platform = (v.platform || "youtube").toLowerCase();
+    const ytId = getYouTubeId(v.video_id || v.video_url || "");
+    if (platform === "youtube" && ytId) {
+      setOpenVideo({ ...v, _ytId: ytId });
+    } else {
+      const url = v.video_url || v.video_id;
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <section id="life-at-atec" className="py-12 bg-white">
       <div className="container mx-auto px-4">
         {(heading || subheading) && (
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
             {heading && (
-              <h2 className="text-3xl font-heading font-bold text-foreground mb-4 md:text-3xl font-sans">
+              <h2 className="text-3xl font-heading font-bold text-foreground mb-4 md:text-3xl">
                 {heading}
               </h2>
             )}
@@ -59,30 +82,60 @@ export default function LifeAtAtecSection() {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {videos.map((v: any, i: number) => {
-            const id = getYouTubeId(v.video_id || v.youtube_url || "");
-            if (!id) return null;
-            return (
-              <motion.div
-                key={v.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl overflow-hidden shadow-md bg-black aspect-square"
-              >
-                <iframe
-                  src={`https://www.youtube.com/embed/${id}`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={v.title || "Life at ATEC"}
-                />
-              </motion.div>
-            );
-          })}
+          {videos.map((v: any, i: number) => (
+            <motion.button
+              key={v.id}
+              onClick={() => handleClick(v)}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+              whileHover={{ scale: 1.03 }}
+              className="relative group rounded-2xl overflow-hidden shadow-md aspect-square cursor-pointer bg-black"
+            >
+              <img
+                src={thumbFor(v)}
+                alt={v.title || "Life at ATEC"}
+                loading="lazy"
+                className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-white/90 group-hover:bg-white flex items-center justify-center shadow-xl transition-transform group-hover:scale-110">
+                  <Play className="w-7 h-7 text-black fill-black ml-1" />
+                </div>
+              </div>
+              {v.title && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 text-left">
+                  <p className="text-white text-sm font-medium line-clamp-2">{v.title}</p>
+                </div>
+              )}
+            </motion.button>
+          ))}
         </div>
       </div>
+
+      <AnimatePresence>
+        {openVideo && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setOpenVideo(null)}
+          >
+            <button className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white">
+              <X className="w-6 h-6" />
+            </button>
+            <div className="w-full max-w-4xl aspect-video" onClick={e => e.stopPropagation()}>
+              <iframe
+                src={`https://www.youtube.com/embed/${openVideo._ytId}?autoplay=1`}
+                className="w-full h-full rounded-xl"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                title={openVideo.title || "Video"}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

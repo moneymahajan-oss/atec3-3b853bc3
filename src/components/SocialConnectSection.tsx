@@ -1,40 +1,61 @@
 import { motion } from "framer-motion";
-import { Instagram, Facebook, Youtube, MapPin } from "lucide-react";
+import { Instagram, Facebook, Youtube, MessageCircle } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
-const platforms = [
+type Platform = {
+  key: string;
+  visibilityKey: string;
+  label: string;
+  icon: any;
+  color: string;
+  buildUrl: (settings: Record<string, string>) => string;
+};
+
+const platforms: Platform[] = [
+  {
+    key: "social_whatsapp",
+    visibilityKey: "social_whatsapp_visible",
+    label: "WhatsApp",
+    icon: MessageCircle,
+    color: "#25D366",
+    buildUrl: (s) => {
+      const num = (s.whatsapp_number || "917009933289").replace(/\D/g, "");
+      return num ? `https://wa.me/${num}` : "";
+    },
+  },
   {
     key: "social_instagram_url",
+    visibilityKey: "social_instagram_visible",
     label: "Instagram",
     icon: Instagram,
-    gradient: "from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]",
-    hoverBg: "hover:bg-gradient-to-br hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7]",
+    color: "#E1306C",
+    buildUrl: (s) => (s.social_instagram_url || "").trim(),
   },
   {
     key: "social_facebook_url",
+    visibilityKey: "social_facebook_visible",
     label: "Facebook",
     icon: Facebook,
-    gradient: "from-[#1877F2] to-[#0C5DC7]",
-    hoverBg: "hover:bg-gradient-to-br hover:from-[#1877F2] hover:to-[#0C5DC7]",
-  },
-  {
-    key: "social_google_url",
-    label: "Google My Business",
-    icon: MapPin,
-    gradient: "from-[#4285F4] via-[#EA4335] to-[#FBBC05]",
-    hoverBg: "hover:bg-gradient-to-br hover:from-[#4285F4] hover:via-[#EA4335] hover:to-[#FBBC05]",
+    color: "#1877F2",
+    buildUrl: (s) => (s.social_facebook_url || "").trim(),
   },
   {
     key: "social_youtube_url",
+    visibilityKey: "social_youtube_visible",
     label: "YouTube",
     icon: Youtube,
-    gradient: "from-[#FF0000] to-[#CC0000]",
-    hoverBg: "hover:bg-gradient-to-br hover:from-[#FF0000] hover:to-[#CC0000]",
+    color: "#FF0000",
+    buildUrl: (s) => (s.social_youtube_url || "").trim(),
   },
 ];
 
 export default function SocialConnectSection() {
   const settings = useSiteSettings();
+
+  const cards = platforms
+    .map((p) => ({ p, url: p.buildUrl(settings as any) }))
+    .filter(({ p }) => (settings[p.visibilityKey] ?? "true") !== "false");
 
   return (
     <section className="py-14 bg-background">
@@ -49,41 +70,46 @@ export default function SocialConnectSection() {
             Connect With Us
           </h2>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            Follow us on social media to stay updated with latest courses, events &amp; student achievements
+            Scan a QR or tap a card to follow us — stay updated with latest courses, events &amp; student wins
           </p>
         </motion.div>
 
-        <div className="flex flex-wrap justify-center gap-6">
-          {platforms.map((platform, i) => {
-            const Icon = platform.icon;
-            const url = (settings[platform.key] as string)?.trim();
-            const isActive = !!url;
-            const Tag: any = isActive ? motion.a : motion.div;
-            const linkProps = isActive ? { href: url, target: "_blank", rel: "noopener noreferrer" } : {};
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-4xl mx-auto">
+          {cards.map(({ p, url }, i) => {
+            const Icon = p.icon;
+            const active = !!url;
+            const Tag: any = active ? motion.a : motion.div;
+            const linkProps = active ? { href: url, target: "_blank", rel: "noopener noreferrer" } : {};
             return (
               <Tag
-                key={platform.key}
+                key={p.key}
                 {...linkProps}
-                initial={{ opacity: 0, scale: 0.8 }}
+                initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1, type: "spring", stiffness: 200 }}
-                whileHover={isActive ? { y: -6, scale: 1.05 } : undefined}
-                className={`group flex flex-col items-center gap-3 w-36 h-36 rounded-2xl border border-border bg-card shadow-md justify-center transition-all duration-300 ${
-                  isActive
-                    ? `${platform.hoverBg} hover:text-white hover:border-transparent hover:shadow-xl cursor-pointer`
-                    : "opacity-60 cursor-not-allowed"
+                transition={{ delay: i * 0.08, type: "spring", stiffness: 200 }}
+                whileHover={active ? { y: -4 } : undefined}
+                className={`flex flex-col items-center gap-3 p-5 rounded-2xl border border-border bg-card shadow-sm transition-all ${
+                  active ? "hover:shadow-xl cursor-pointer" : "opacity-60 cursor-not-allowed"
                 }`}
               >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${platform.gradient} flex items-center justify-center ${isActive ? "group-hover:bg-white/20" : ""} transition-colors`}>
-                  <Icon className="w-7 h-7 text-white" />
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: p.color }}
+                >
+                  <Icon className="w-6 h-6 text-white" />
                 </div>
-                <span className={`text-sm font-medium text-foreground ${isActive ? "group-hover:text-white" : ""} transition-colors`}>
-                  {platform.label}
-                </span>
-                {!isActive && (
-                  <span className="text-[10px] text-muted-foreground -mt-1">Coming soon</span>
-                )}
+                <div className="bg-white p-2 rounded-lg">
+                  <QRCodeSVG
+                    value={url || "https://atecedu.com"}
+                    size={112}
+                    level="M"
+                    includeMargin={false}
+                    fgColor={active ? "#000000" : "#999999"}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-foreground">{p.label}</span>
+                {!active && <span className="text-[10px] text-muted-foreground -mt-2">Coming soon</span>}
               </Tag>
             );
           })}

@@ -42,7 +42,7 @@ export default function GallerySection() {
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> Gallery</Badge>
           <h2 className="text-3xl md:text-4xl font-heading font-bold text-foreground mb-4">
-            {settings.life_section_heading || "Life at ATEC"}
+            {settings.life_gallery_heading || settings.life_section_heading || "Life at ATEC"}
           </h2>
         </motion.div>
 
