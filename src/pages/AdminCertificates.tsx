@@ -64,11 +64,13 @@ export default function AdminCertificates() {
           <TabsTrigger value="all">All Certificates</TabsTrigger>
           <TabsTrigger value="add">Add Certificate</TabsTrigger>
           <TabsTrigger value="bulk">Bulk Upload</TabsTrigger>
+          <TabsTrigger value="logs">Audit Logs</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="all"><AllCerts /></TabsContent>
         <TabsContent value="add"><AddCert onAdded={() => setTab("all")} /></TabsContent>
         <TabsContent value="bulk"><BulkUpload onDone={() => setTab("all")} goSettings={() => setTab("settings")} /></TabsContent>
+        <TabsContent value="logs"><AuditLogs /></TabsContent>
         <TabsContent value="settings"><SettingsTab /></TabsContent>
       </Tabs>
     </div>
