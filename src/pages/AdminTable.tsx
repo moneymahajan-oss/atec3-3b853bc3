@@ -87,7 +87,27 @@ const tableConfig: Record<string, {
       { key: "display_order", label: "Order", type: "number" },
     ],
   },
-  team_members: {
+  crm_faculties: {
+    label: "Faculty Profiles",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "name", label: "Name", type: "text", required: true },
+      { key: "designation", label: "Designation", type: "text" },
+      { key: "specialization", label: "Specialization", type: "text" },
+      { key: "qualifications", label: "Qualifications", type: "textarea" },
+      { key: "bio", label: "Bio", type: "textarea" },
+      { key: "photo_url", label: "Photo URL", type: "text" },
+      { key: "experience_years", label: "Experience (years)", type: "number" },
+      { key: "email", label: "Email", type: "text" },
+      { key: "phone", label: "Phone", type: "text" },
+      { key: "linkedin_url", label: "LinkedIn URL", type: "text" },
+      { key: "instagram_url", label: "Instagram URL", type: "text" },
+      { key: "joined_on", label: "Joined On (YYYY-MM-DD)", type: "text" },
+      { key: "is_active", label: "Active", type: "boolean" },
+      { key: "is_public", label: "Show on Website", type: "boolean" },
+      { key: "display_order", label: "Order", type: "number" },
+    ],
+  },
     label: "Team Members",
     canCreate: true, canDelete: true,
     fields: [
