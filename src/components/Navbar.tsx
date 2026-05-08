@@ -32,21 +32,48 @@ export default function Navbar() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase as any)
-        .from("nav_items")
-        .select("label, section_key, external_url, order_index, is_visible")
-        .eq("is_visible", true)
-        .order("order_index");
+      const [navRes, settingsRes] = await Promise.all([
+        (supabase as any)
+          .from("nav_items")
+          .select("label, section_key, external_url, order_index, is_visible")
+          .eq("is_visible", true)
+          .order("order_index"),
+        (supabase as any)
+          .from("app_settings")
+          .select("key, value")
+          .in("key", ["verification_mode", "verification_url"]),
+      ]);
+
+      const settingsMap: Record<string, string> = {};
+      (settingsRes.data || []).forEach((r: any) => { settingsMap[r.key] = r.value; });
+      const vMode = settingsMap.verification_mode || "internal";
+      const vUrl = settingsMap.verification_url || "https://atecedu.com/verification";
+
+      const applyVerification = (item: NavItem): NavItem => {
+        const isVerification =
+          item.label.toLowerCase().includes("verification") ||
+          item.href === "/verification" ||
+          item.href === "#verification";
+        if (!isVerification) return item;
+        if (vMode === "external") {
+          const ext = vUrl.startsWith("http");
+          return { label: item.label, href: vUrl, isHash: false, isExternal: ext };
+        }
+        return { label: item.label, href: "/verification", isHash: false, isExternal: false };
+      };
+
+      const data = navRes.data;
       if (data && data.length) {
         setNavLinks(
           data.map((r: any) => {
-            if (r.external_url) {
-              const ext = r.external_url.startsWith("http");
-              return { label: r.label, href: r.external_url, isHash: false, isExternal: ext };
-            }
-            return { label: r.label, href: `#${r.section_key}`, isHash: true, isExternal: false };
+            const base: NavItem = r.external_url
+              ? { label: r.label, href: r.external_url, isHash: false, isExternal: r.external_url.startsWith("http") }
+              : { label: r.label, href: `#${r.section_key}`, isHash: true, isExternal: false };
+            return applyVerification(base);
           })
         );
+      } else {
+        setNavLinks(fallbackLinks.map(applyVerification));
       }
     })();
   }, []);
