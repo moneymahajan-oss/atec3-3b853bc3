@@ -108,6 +108,7 @@ const tableConfig: Record<string, {
       { key: "display_order", label: "Order", type: "number" },
     ],
   },
+  team_members: {
     label: "Team Members",
     canCreate: true, canDelete: true,
     fields: [
