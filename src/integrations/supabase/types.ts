@@ -2515,10 +2515,7 @@ export type Database = {
       }
       grade_mock_test: {
         Args: { _answers: Json; _test_id: string }
-        Returns: {
-          score: number
-          total: number
-        }[]
+        Returns: Json
       }
       has_any_crm_role: { Args: { _user_id: string }; Returns: boolean }
       has_crm_role: {
