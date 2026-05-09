@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Search, Loader2 } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 interface CertResult {
   certificate_id: string;
@@ -69,6 +70,7 @@ export default function Verification() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <SEO />
       <div className="max-w-3xl mx-auto px-4 py-10">
         <h1 className="text-2xl md:text-3xl font-bold text-center mb-2">Certificate Verification</h1>
         <p className="text-center text-muted-foreground mb-8">ATEC — Avenue to Excellent Careers</p>

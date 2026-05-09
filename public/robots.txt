@@ -10,3 +10,5 @@ Disallow: /admin
 User-agent: Bingbot
 Allow: /
 Disallow: /admin
+
+Sitemap: https://atec3.lovable.app/sitemap.xml
