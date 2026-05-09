@@ -10,11 +10,9 @@ async function loadFavicon(): Promise<string | null> {
   if (cached !== null) return cached;
   if (inflight) return inflight;
   inflight = (async () => {
-    const { data } = await supabase
-      .from("crm_institute_settings")
-      .select("favicon_url")
-      .maybeSingle();
-    cached = (data as { favicon_url?: string | null } | null)?.favicon_url ?? "";
+    const { data } = await supabase.rpc("get_public_institute_settings");
+    const row = Array.isArray(data) ? data[0] : null;
+    cached = (row as { favicon_url?: string | null } | null)?.favicon_url ?? "";
     return cached;
   })();
   return inflight;

@@ -14,7 +14,6 @@ type Faculty = {
   qualifications: string | null; bio: string | null;
   photo_url: string | null; experience_years: number | null;
   linkedin_url: string | null; instagram_url: string | null;
-  is_public: boolean; is_active: boolean;
 };
 
 export default function FacultyDetail() {
@@ -26,9 +25,8 @@ export default function FacultyDetail() {
   useEffect(() => {
     (async () => {
       if (!slug) { setLoading(false); return; }
-      const { data: fac } = await supabase
-        .from("crm_faculties").select("*").eq("slug", slug)
-        .eq("is_active", true).eq("is_public", true).maybeSingle();
+      const { data: facData } = await supabase.rpc("get_public_faculty_by_slug", { _slug: slug });
+      const fac = Array.isArray(facData) ? facData[0] : null;
       setF((fac as Faculty) || null);
       if (fac) {
         const { data: bs } = await supabase

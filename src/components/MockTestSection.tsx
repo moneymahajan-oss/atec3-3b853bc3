@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Question {
   question: string;
   options: string[];
-  correct: number;
+  // 'correct' is intentionally NOT included on the public payload
 }
 
 interface Test {
@@ -37,14 +37,12 @@ export default function MockTestSection() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
+  const [correctIndices, setCorrectIndices] = useState<number[]>([]);
 
   const { data: tests = [] } = useQuery({
     queryKey: ['mock_tests'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mock_tests")
-        .select("*")
-        .eq("is_active", true);
+      const { data, error } = await supabase.rpc("get_public_mock_tests");
       if (error) throw error;
       if (!data) return [];
       return (data as any[]).map((t) => ({
@@ -104,15 +102,22 @@ export default function MockTestSection() {
 
   const handleSubmit = async () => {
     if (!activeTest) return;
-    let correct = 0;
-    activeTest.questions.forEach((q, i) => {
-      if (answers[i] === q.correct) correct += 1;
+    const { data: graded, error: gradeErr } = await supabase.rpc("grade_mock_test", {
+      _test_id: activeTest.id,
+      _answers: answers as any,
     });
-    const total = activeTest.questions.length;
-    const percentage = Math.round((correct / total) * 100);
+    if (gradeErr) {
+      toast({ title: "Could not grade test", description: gradeErr.message, variant: "destructive" });
+      return;
+    }
+    const result = (graded ?? {}) as { score?: number; total?: number; correct?: number[] };
+    const correct = result.score ?? 0;
+    const total = result.total ?? activeTest.questions.length;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passFail = percentage >= 60 ? "PASS ✅" : "Try Again 💪";
 
     setScore(correct);
+    setCorrectIndices(result.correct ?? []);
 
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
@@ -333,7 +338,8 @@ export default function MockTestSection() {
                 <summary className="cursor-pointer font-medium">Review Answers</summary>
                 <div className="mt-4 space-y-3">
                   {activeTest.questions.map((q, i) => {
-                    const isCorrect = answers[i] === q.correct;
+                    const correctIdx = correctIndices[i];
+                    const isCorrect = answers[i] === correctIdx;
                     return (
                       <div key={i} className="border rounded-lg p-3 text-sm">
                         <div className="flex items-start gap-2">
@@ -345,7 +351,7 @@ export default function MockTestSection() {
                           <div>
                             <p className="font-medium">{q.question}</p>
                             <p className="text-muted-foreground mt-1">
-                              Correct: {q.options[q.correct]}
+                              Correct: {correctIdx != null ? q.options[correctIdx] : "—"}
                             </p>
                           </div>
                         </div>

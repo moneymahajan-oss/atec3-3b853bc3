@@ -21,12 +21,8 @@ export default function FacultyList() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("crm_faculties")
-        .select("id,name,slug,designation,specialization,photo_url,experience_years,qualifications")
-        .eq("is_active", true).eq("is_public", true)
-        .order("display_order").order("name");
-      setItems((data ?? []) as Faculty[]);
+      const { data } = await supabase.rpc("get_public_faculties");
+      setItems(((data ?? []) as Faculty[]));
       setLoading(false);
     })();
   }, []);
