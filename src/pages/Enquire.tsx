@@ -94,14 +94,12 @@ export default function Enquire() {
           .eq("show_on_public", true)
           .order("sort_order"),
         supabase.from("crm_courses").select("id, name").eq("is_active", true).order("name"),
-        supabase
-          .from("crm_institute_settings")
-          .select("name, logo_url, favicon_url, self_fill_form_title, self_fill_form_subtitle, self_fill_thank_you_message, whatsapp_number, phone")
-          .maybeSingle(),
+        supabase.rpc("get_public_institute_settings"),
       ]);
       setFields((fRes.data ?? []) as unknown as FieldRow[]);
       setCourses((cRes.data ?? []) as Course[]);
-      setSettings((sRes.data ?? null) as Settings | null);
+      const sRow = Array.isArray(sRes.data) ? sRes.data[0] : null;
+      setSettings((sRow ?? null) as Settings | null);
       setLoading(false);
     })();
   }, []);
