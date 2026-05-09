@@ -37,14 +37,12 @@ export default function MockTestSection() {
   const [secondsLeft, setSecondsLeft] = useState(30 * 60);
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
+  const [correctIndices, setCorrectIndices] = useState<number[]>([]);
 
   const { data: tests = [] } = useQuery({
     queryKey: ['mock_tests'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("mock_tests")
-        .select("*")
-        .eq("is_active", true);
+      const { data, error } = await supabase.rpc("get_public_mock_tests");
       if (error) throw error;
       if (!data) return [];
       return (data as any[]).map((t) => ({
