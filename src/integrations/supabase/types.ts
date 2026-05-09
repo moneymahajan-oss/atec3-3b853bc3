@@ -2455,6 +2455,71 @@ export type Database = {
         }
       }
       crm_normalise_phone_value: { Args: { p: string }; Returns: string }
+      get_public_faculties: {
+        Args: never
+        Returns: {
+          bio: string
+          designation: string
+          display_order: number
+          experience_years: number
+          id: string
+          instagram_url: string
+          linkedin_url: string
+          name: string
+          photo_url: string
+          qualifications: string
+          slug: string
+          specialization: string
+        }[]
+      }
+      get_public_faculty_by_slug: {
+        Args: { _slug: string }
+        Returns: {
+          bio: string
+          designation: string
+          experience_years: number
+          id: string
+          instagram_url: string
+          joined_on: string
+          linkedin_url: string
+          name: string
+          photo_url: string
+          qualifications: string
+          slug: string
+          specialization: string
+        }[]
+      }
+      get_public_institute_settings: {
+        Args: never
+        Returns: {
+          collection_timings: string
+          favicon_url: string
+          logo_url: string
+          name: string
+          phone: string
+          self_fill_form_subtitle: string
+          self_fill_form_title: string
+          self_fill_thank_you_message: string
+          website: string
+          whatsapp_number: string
+        }[]
+      }
+      get_public_mock_tests: {
+        Args: never
+        Returns: {
+          course: string
+          id: string
+          questions: Json
+          title: string
+        }[]
+      }
+      grade_mock_test: {
+        Args: { _answers: Json; _test_id: string }
+        Returns: {
+          score: number
+          total: number
+        }[]
+      }
       has_any_crm_role: { Args: { _user_id: string }; Returns: boolean }
       has_crm_role: {
         Args: {
