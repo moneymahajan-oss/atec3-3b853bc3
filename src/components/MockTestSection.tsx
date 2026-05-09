@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 interface Question {
   question: string;
   options: string[];
-  correct: number;
+  // 'correct' is intentionally NOT included on the public payload
 }
 
 interface Test {
