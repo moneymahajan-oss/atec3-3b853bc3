@@ -1,66 +1,46 @@
-## Backup Button in Admin Panel
+# Install Google Tag Manager
 
-Add a one-click "Backup" action in the Admin Dashboard that produces a downloadable archive of the entire project's data and storage.
+Add GTM container `GTM-MDV2DRNT` to the site so it fires on every page (including future custom domain `ateceducation.in`).
 
-### UI
+## Changes
 
-- New tile/button on `src/pages/AdminDashboard.tsx` labeled **"Backup"** (slate color, `Database` icon), placed alongside existing tiles.
-- Clicking opens a dialog with:
-  - Checkboxes: ☑ Database (all tables as JSON) ☑ Storage files (all 7 buckets) ☑ Auth users list
-  - "Start backup" button → shows live progress (table-by-table, bucket-by-bucket counts)
-  - On completion: "Download backup.zip" button + last-backup timestamp
+**`index.html`** — two snippets per Google's official install guide:
 
-### What the backup contains
+1. **`<head>` (as high as possible)** — the GTM script loader:
+   ```html
+   <!-- Google Tag Manager -->
+   <script>(function(w,d,s,l,i){...})(window,document,'script','dataLayer','GTM-MDV2DRNT');</script>
+   <!-- End Google Tag Manager -->
+   ```
 
-A single `atec-backup-YYYY-MM-DD-HHmm.zip` containing:
+2. **Immediately after `<body>`** — the `<noscript>` iframe fallback:
+   ```html
+   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MDV2DRNT"
+   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+   ```
 
-```text
-/database/
-   <table>.json        ← one file per public table (full rows)
-   _manifest.json      ← table list + row counts + schema version
-/storage/
-   course-documents/...
-   gallery/...
-   crm-course-media/...
-   crm-student-docs/...
-   crm-receipts/...
-   crm-certificates/...
-   crm-faculty-photos/...
-   _manifest.json      ← every object: bucket, path, size, mime, public flag
-/auth/
-   users.json          ← id, email, phone, metadata, created_at (no password hashes — Supabase limitation)
-/README.md             ← restore instructions
-```
+(Per project rules, the `<noscript>` pixel goes in `<body>`, never in `<head>`.)
 
-Schema (DDL, RLS, functions, triggers) is **already versioned** in `supabase/migrations/*.sql` in the repo, so the backup focuses on data + files. The README points at the migrations folder for schema restore.
+No other files change. No npm packages needed. No backend changes.
 
-### Technical approach
+## Will it work on ateceducation.in?
 
-1. **Edge function** `supabase/functions/admin-backup/index.ts` (admin-only, verify_jwt + `is_admin` check):
-   - Uses `SUPABASE_SERVICE_ROLE_KEY` to bypass RLS
-   - Lists all `public.*` tables via `information_schema.tables`
-   - Streams each table as JSON (paginated, 1000 rows at a time)
-   - Lists every storage object across the 7 buckets
-   - Calls `auth.admin.listUsers()` paginated
-   - Builds the zip in-memory using `jszip` (or streams via Deno's `compress` if the dataset is large)
-   - Returns a signed URL to a temporary `crm-backups` bucket OR streams the zip directly in the response
+**Yes.** GTM is loaded purely client-side from `googletagmanager.com` and is domain-agnostic — the same container fires on:
+- `id-preview--…lovable.app` (preview)
+- `atec3.lovable.app` (current published URL)
+- `ateceducation.in` (once you connect the custom domain)
 
-2. **New private bucket** `crm-backups` (admin-only RLS) to hold the generated archive for 7 days, so large backups don't time out the browser request.
+No reconfiguration is required after switching domains. Two optional follow-ups you may want once `ateceducation.in` is live:
 
-3. **Frontend** calls the edge function, polls progress, then triggers download from the signed URL.
+1. **In GTM UI** → add a trigger condition or environment if you want to *exclude* preview/staging hostnames from firing tags.
+2. **If you add Google Analytics 4 via GTM** → add `ateceducation.in` to the GA4 property's data stream so traffic is attributed correctly.
 
-### Caveats shown in the dialog
+## Verification after deploy
 
-- Auth password hashes can't be exported (Supabase restriction) — users will need to reset passwords on a restored project.
-- Edge-function secrets (`LOVABLE_API_KEY` etc.) must be re-added manually.
-- For very large storage buckets (>500 MB), backup may take a few minutes.
+- Open the site → DevTools → Network → filter `gtm.js` → should return 200.
+- In GTM UI → **Preview** mode → enter the site URL → Tag Assistant should connect.
 
-### Files to create / modify
+## Out of scope
 
-- **New:** `supabase/functions/admin-backup/index.ts`
-- **New:** `src/pages/AdminBackup.tsx` (dialog + progress UI), or inline modal in dashboard
-- **Modified:** `src/pages/AdminDashboard.tsx` — add Backup tile
-- **Modified:** `src/App.tsx` — route `/admin/backup` (if separate page)
-- **Migration:** create private `crm-backups` bucket + RLS (admins only)
-
-Approve and I'll implement.
+- Creating tags inside the GTM container (GA4, Ads, Pixel, etc.) — done in the GTM web UI, not in code.
+- Cookie consent / GDPR banner gating for GTM — ask if you want this added.
