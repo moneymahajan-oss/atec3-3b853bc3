@@ -338,7 +338,8 @@ export default function MockTestSection() {
                 <summary className="cursor-pointer font-medium">Review Answers</summary>
                 <div className="mt-4 space-y-3">
                   {activeTest.questions.map((q, i) => {
-                    const isCorrect = answers[i] === q.correct;
+                    const correctIdx = correctIndices[i];
+                    const isCorrect = answers[i] === correctIdx;
                     return (
                       <div key={i} className="border rounded-lg p-3 text-sm">
                         <div className="flex items-start gap-2">
@@ -350,7 +351,7 @@ export default function MockTestSection() {
                           <div>
                             <p className="font-medium">{q.question}</p>
                             <p className="text-muted-foreground mt-1">
-                              Correct: {q.options[q.correct]}
+                              Correct: {correctIdx != null ? q.options[correctIdx] : "—"}
                             </p>
                           </div>
                         </div>
