@@ -113,6 +113,7 @@ const App = () => {
                 <Route path="/admin/navigation" element={<AdminNav />} />
                 <Route path="/admin/mock-tests-editor" element={<AdminMockTests />} />
                 <Route path="/admin/backup" element={<AdminBackup />} />
+                <Route path="/admin/restore" element={<AdminRestore />} />
                 <Route path="/admin/:table" element={<AdminTable />} />
 
                 <Route path="/crm/login" element={<CrmLogin />} />
