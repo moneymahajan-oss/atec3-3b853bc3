@@ -14,7 +14,6 @@ type Faculty = {
   qualifications: string | null; bio: string | null;
   photo_url: string | null; experience_years: number | null;
   linkedin_url: string | null; instagram_url: string | null;
-  is_public: boolean; is_active: boolean;
 };
 
 export default function FacultyDetail() {
