@@ -14,16 +14,9 @@ export default function FacultySection() {
   const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['public_faculties'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("crm_faculties")
-        .select("id,name,slug,designation,specialization,photo_url,experience_years")
-        .eq("is_active", true)
-        .eq("is_public", true)
-        .order("display_order")
-        .order("name")
-        .limit(8);
+      const { data, error } = await supabase.rpc("get_public_faculties");
       if (error) throw error;
-      return (data ?? []) as Faculty[];
+      return ((data ?? []) as Faculty[]).slice(0, 8);
     },
     placeholderData: [] as Faculty[],
     retry: 2,
