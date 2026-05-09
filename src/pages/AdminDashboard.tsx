@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import {
   GraduationCap, LogOut, LayoutDashboard, Image, MessageSquare, Users,
   BookOpen, BarChart3, Video, Megaphone, Download, Settings, Mail, Sliders,
-  Eye, Pencil, TrendingUp, ShieldCheck, UserCog, Database, RotateCcw
+  Eye, Pencil, TrendingUp, ShieldCheck, UserCog, Database, RotateCcw, Search
 } from "lucide-react";
 
 const sections = [
   { key: "backup", label: "Backup (DB + Storage)", icon: Database, color: "bg-slate-800", custom: true, href: "/admin/backup" },
   { key: "restore", label: "Restore from Backup", icon: RotateCcw, color: "bg-rose-700", custom: true, href: "/admin/restore" },
+  { key: "seo", label: "SEO Manager", icon: Search, color: "bg-violet-600", custom: true, href: "/crm/seo" },
   { key: "certificates", label: "Certificate Verification", icon: ShieldCheck, color: "bg-emerald-600", custom: true, href: "/admin/certificates" },
   { key: "site_content", label: "Site Content", icon: Settings, color: "bg-slate-700", custom: true, href: "/admin/site-content" },
   { key: "navigation", label: "Navigation Menu", icon: Sliders, color: "bg-indigo-600", custom: true, href: "/admin/navigation" },
