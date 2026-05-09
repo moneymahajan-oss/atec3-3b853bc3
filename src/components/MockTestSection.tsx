@@ -102,15 +102,22 @@ export default function MockTestSection() {
 
   const handleSubmit = async () => {
     if (!activeTest) return;
-    let correct = 0;
-    activeTest.questions.forEach((q, i) => {
-      if (answers[i] === q.correct) correct += 1;
+    const { data: graded, error: gradeErr } = await supabase.rpc("grade_mock_test", {
+      _test_id: activeTest.id,
+      _answers: answers as any,
     });
-    const total = activeTest.questions.length;
-    const percentage = Math.round((correct / total) * 100);
+    if (gradeErr) {
+      toast({ title: "Could not grade test", description: gradeErr.message, variant: "destructive" });
+      return;
+    }
+    const result = (graded ?? {}) as { score?: number; total?: number; correct?: number[] };
+    const correct = result.score ?? 0;
+    const total = result.total ?? activeTest.questions.length;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passFail = percentage >= 60 ? "PASS ✅" : "Try Again 💪";
 
     setScore(correct);
+    setCorrectIndices(result.correct ?? []);
 
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
