@@ -181,6 +181,24 @@ export default function CoursePublic() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{course.name}</h1>
+
+          <aside
+            aria-label="Quick Answer"
+            className="mb-6 rounded-2xl border-l-4 border-primary bg-primary/5 p-5"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
+              Quick Answer
+            </p>
+            <p className="text-foreground leading-relaxed">{quickAnswer}</p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+              <span><strong className="text-foreground">Duration:</strong> {course.duration || "Flexible"}</span>
+              <span><strong className="text-foreground">Mode:</strong> {course.mode}</span>
+              {course.total_fee > 0 && (
+                <span><strong className="text-foreground">Fee:</strong> ₹{course.total_fee.toLocaleString("en-IN")}</span>
+              )}
+            </div>
+          </aside>
+
           {course.concise_syllabus && (
             <p className="text-muted-foreground mb-6 whitespace-pre-line">{course.concise_syllabus}</p>
           )}
