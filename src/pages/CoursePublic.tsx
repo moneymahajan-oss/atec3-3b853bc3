@@ -247,6 +247,8 @@ export default function CoursePublic() {
             </section>
           )}
 
+          <FAQ items={COURSE_FAQS} title="Course FAQs" className="!py-0 mb-10" />
+
           <div className="rounded-2xl border p-6 bg-muted/30 text-center">
             <h3 className="font-bold text-lg mb-1">Ready to start?</h3>
             <p className="text-sm text-muted-foreground mb-4">
