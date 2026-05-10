@@ -101,9 +101,51 @@ export default function CoursePublic() {
   const canonical = coursePublicUrl(course.slug, course.name);
   const longSyllabus = course.detailed_syllabus_html?.replace(/<[^>]+>/g, "\n") || "";
 
+  const courseJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.name,
+    description,
+    provider: {
+      "@type": "Organization",
+      name: "ATEC Gurdaspur",
+      url: "https://ateceducation.in",
+    },
+    courseMode: "blended",
+    educationalLevel: "beginner",
+    ...(course.total_fee > 0 && {
+      offers: {
+        "@type": "Offer",
+        price: course.total_fee,
+        priceCurrency: "INR",
+        category: "Tuition",
+      },
+    }),
+  };
+
+  const breadcrumbsJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://ateceducation.in/" },
+      { "@type": "ListItem", position: 2, name: "Courses", item: "https://ateceducation.in/courses" },
+      { "@type": "ListItem", position: 3, name: course.name, item: canonical },
+    ],
+  };
+
+  const quickAnswer = `${course.name} at ATEC Gurdaspur — ${course.duration || "flexible duration"}, ${course.mode} mode. ${(course.concise_syllabus || "").replace(/<[^>]+>/g, "").split(/\n|\./)[0] || "Practical training with completion certificate."}.`;
+
   return (
     <>
-      <SEO title={title} description={description} canonical={canonical} ogImage={ogImage} ogType="article" />
+      <SEO
+        title={title}
+        description={description}
+        canonical={canonical}
+        ogImage={ogImage}
+        ogType="article"
+        hreflang="en-IN"
+        jsonLd={[courseJsonLd, breadcrumbsJsonLd]}
+      />
       <div className="min-h-screen bg-background">
         <header className="border-b">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
