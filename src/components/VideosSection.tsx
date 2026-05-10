@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Play, Clock, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import VideoThumbnail from "@/components/VideoThumbnail";
 import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
