@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
+type JsonLd = Record<string, any>;
+
 interface SEOProps {
   title?: string;
   description?: string;
@@ -10,7 +12,8 @@ interface SEOProps {
   ogImage?: string;
   ogType?: string;
   keywords?: string;
-  jsonLd?: Record<string, any> | Array<Record<string, any>>;
+  jsonLd?: JsonLd | JsonLd[];
+  hreflang?: string;
   /** When true, ignore admin overrides from crm_seo_meta and use props as-is */
   noOverride?: boolean;
 }
@@ -41,6 +44,7 @@ export function SEO({
   ogType = "website",
   keywords,
   jsonLd,
+  hreflang,
   noOverride,
 }: SEOProps) {
   const location = useLocation();
@@ -83,7 +87,12 @@ export function SEO({
     (typeof window !== "undefined"
       ? `${window.location.origin}${path}`
       : undefined);
-  const finalJsonLd = override?.json_ld || jsonLd;
+  const rawJsonLd = override?.json_ld || jsonLd;
+  const jsonLdArray: JsonLd[] = rawJsonLd
+    ? Array.isArray(rawJsonLd)
+      ? rawJsonLd
+      : [rawJsonLd]
+    : [];
 
   return (
     <Helmet>
@@ -105,11 +114,14 @@ export function SEO({
       <meta name="twitter:description" content={finalDescription} />
       {finalOgImage && <meta name="twitter:image" content={finalOgImage} />}
       {finalCanonical && <link rel="canonical" href={finalCanonical} />}
-      {finalJsonLd && (
-        <script type="application/ld+json">
-          {JSON.stringify(finalJsonLd)}
-        </script>
+      {hreflang && finalCanonical && (
+        <link rel="alternate" hrefLang={hreflang} href={finalCanonical} />
       )}
+      {jsonLdArray.map((obj, i) => (
+        <script key={i} type="application/ld+json">
+          {JSON.stringify(obj)}
+        </script>
+      ))}
     </Helmet>
   );
 }

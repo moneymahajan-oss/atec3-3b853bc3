@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Play, Clock, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import VideoThumbnail from "@/components/VideoThumbnail";
 import { detectPlatform, deriveThumbnail, getEmbedUrl } from "@/lib/videoUtils";
@@ -53,8 +54,31 @@ export default function VideosSection() {
     }
   };
 
+  const videoJsonLd = videos.map((v: any) => {
+    const url = (v.video_url || v.video_id || "").trim();
+    const platform = (v.platform || detectPlatform(url)).toLowerCase();
+    const thumb = deriveThumbnail(url, platform as any, v.thumbnail_url);
+    const meta = META[v.title] || { duration: "10:00", category: "Course", desc: v.description || "" };
+    return {
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      name: v.title,
+      description: v.description || meta.desc || v.title,
+      thumbnailUrl: thumb,
+      uploadDate: v.created_at || new Date().toISOString(),
+      ...(url && { contentUrl: url }),
+    };
+  });
+
   return (
-    <section id="videos" className="py-12 bg-white">
+    <section id="videos" aria-label="Videos" className="py-12 bg-white">
+      {videoJsonLd.length > 0 && (
+        <Helmet>
+          {videoJsonLd.map((obj, i) => (
+            <script key={i} type="application/ld+json">{JSON.stringify(obj)}</script>
+          ))}
+        </Helmet>
+      )}
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
           <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/5"><Sparkles className="w-3 h-3 mr-1" /> Videos</Badge>

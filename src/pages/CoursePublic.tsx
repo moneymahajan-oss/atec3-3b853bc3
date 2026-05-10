@@ -8,6 +8,25 @@ import { Clock, IndianRupee, Download, Play, MessageCircle, ArrowLeft } from "lu
 import { resolveCourseOgImage, youtubeId, slugifyCourseName, coursePublicUrl } from "@/lib/courseLinks";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { FAQ } from "@/components/FAQ";
+
+const COURSE_FAQS = [
+  {
+    question: "Who is this course suitable for?",
+    answer:
+      "This course is suitable for students, job seekers, and working professionals. No prior experience is required for beginner-level programs at ATEC Gurdaspur.",
+  },
+  {
+    question: "Is this course available online or offline?",
+    answer:
+      "ATEC offers classroom and hybrid learning options in Gurdaspur. Call +91-7009933289 to confirm availability for this specific course.",
+  },
+  {
+    question: "Will I get a certificate after completing this course?",
+    answer:
+      "Yes. A completion certificate is awarded to all students who finish the course and meet attendance requirements at ATEC.",
+  },
+];
 
 interface CourseRow {
   id: string;
@@ -82,9 +101,51 @@ export default function CoursePublic() {
   const canonical = coursePublicUrl(course.slug, course.name);
   const longSyllabus = course.detailed_syllabus_html?.replace(/<[^>]+>/g, "\n") || "";
 
+  const courseJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.name,
+    description,
+    provider: {
+      "@type": "Organization",
+      name: "ATEC Gurdaspur",
+      url: "https://ateceducation.in",
+    },
+    courseMode: "blended",
+    educationalLevel: "beginner",
+    ...(course.total_fee > 0 && {
+      offers: {
+        "@type": "Offer",
+        price: course.total_fee,
+        priceCurrency: "INR",
+        category: "Tuition",
+      },
+    }),
+  };
+
+  const breadcrumbsJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://ateceducation.in/" },
+      { "@type": "ListItem", position: 2, name: "Courses", item: "https://ateceducation.in/courses" },
+      { "@type": "ListItem", position: 3, name: course.name, item: canonical },
+    ],
+  };
+
+  const quickAnswer = `${course.name} at ATEC Gurdaspur — ${course.duration || "flexible duration"}, ${course.mode} mode. ${(course.concise_syllabus || "").replace(/<[^>]+>/g, "").split(/\n|\./)[0] || "Practical training with completion certificate."}.`;
+
   return (
     <>
-      <SEO title={title} description={description} canonical={canonical} ogImage={ogImage} ogType="article" />
+      <SEO
+        title={title}
+        description={description}
+        canonical={canonical}
+        ogImage={ogImage}
+        ogType="article"
+        hreflang="en-IN"
+        jsonLd={[courseJsonLd, breadcrumbsJsonLd]}
+      />
       <div className="min-h-screen bg-background">
         <header className="border-b">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -120,6 +181,24 @@ export default function CoursePublic() {
           </div>
 
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{course.name}</h1>
+
+          <aside
+            aria-label="Quick Answer"
+            className="mb-6 rounded-2xl border-l-4 border-primary bg-primary/5 p-5"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
+              Quick Answer
+            </p>
+            <p className="text-foreground leading-relaxed">{quickAnswer}</p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+              <span><strong className="text-foreground">Duration:</strong> {course.duration || "Flexible"}</span>
+              <span><strong className="text-foreground">Mode:</strong> {course.mode}</span>
+              {course.total_fee > 0 && (
+                <span><strong className="text-foreground">Fee:</strong> ₹{course.total_fee.toLocaleString("en-IN")}</span>
+              )}
+            </div>
+          </aside>
+
           {course.concise_syllabus && (
             <p className="text-muted-foreground mb-6 whitespace-pre-line">{course.concise_syllabus}</p>
           )}
@@ -167,6 +246,8 @@ export default function CoursePublic() {
               </div>
             </section>
           )}
+
+          <FAQ items={COURSE_FAQS} title="Course FAQs" className="!py-0 mb-10" />
 
           <div className="rounded-2xl border p-6 bg-muted/30 text-center">
             <h3 className="font-bold text-lg mb-1">Ready to start?</h3>

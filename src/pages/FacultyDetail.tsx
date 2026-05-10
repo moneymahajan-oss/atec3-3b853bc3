@@ -63,9 +63,41 @@ export default function FacultyDetail() {
     );
   }
 
+  const facultyJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: f.name,
+      ...(f.designation && { jobTitle: f.designation }),
+      ...(f.photo_url && { image: f.photo_url }),
+      ...(f.specialization && {
+        knowsAbout: f.specialization.split(",").map((s) => s.trim()),
+      }),
+      worksFor: {
+        "@type": "Organization",
+        name: "ATEC Gurdaspur",
+        url: "https://ateceducation.in",
+      },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://ateceducation.in/" },
+        { "@type": "ListItem", position: 2, name: "Faculty", item: "https://ateceducation.in/faculty" },
+        { "@type": "ListItem", position: 3, name: f.name },
+      ],
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      <SEO title={`${f.name} | ATEC Education`} description={f.designation || `Faculty profile of ${f.name}`} />
+      <SEO
+        title={`${f.name} | ATEC Education`}
+        description={f.designation || `Faculty profile of ${f.name}`}
+        jsonLd={facultyJsonLd}
+        hreflang="en-IN"
+      />
       <Navbar />
       <main className="container mx-auto px-4 py-10 md:py-16 max-w-4xl">
         <Link to="/faculty" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6">
