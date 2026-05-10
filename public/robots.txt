@@ -1,28 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /admin/
 
-User-agent: GPTBot
+User-agent: Googlebot
 Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Perplexity-User
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
+Disallow: /admin
 
 User-agent: Bingbot
 Allow: /
+Disallow: /admin
 
 Sitemap: https://ateceducation.in/sitemap.xml
