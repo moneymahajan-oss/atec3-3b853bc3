@@ -8,6 +8,25 @@ import { Clock, IndianRupee, Download, Play, MessageCircle, ArrowLeft } from "lu
 import { resolveCourseOgImage, youtubeId, slugifyCourseName, coursePublicUrl } from "@/lib/courseLinks";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
+import { FAQ } from "@/components/FAQ";
+
+const COURSE_FAQS = [
+  {
+    question: "Who is this course suitable for?",
+    answer:
+      "This course is suitable for students, job seekers, and working professionals. No prior experience is required for beginner-level programs at ATEC Gurdaspur.",
+  },
+  {
+    question: "Is this course available online or offline?",
+    answer:
+      "ATEC offers classroom and hybrid learning options in Gurdaspur. Call +91-7009933289 to confirm availability for this specific course.",
+  },
+  {
+    question: "Will I get a certificate after completing this course?",
+    answer:
+      "Yes. A completion certificate is awarded to all students who finish the course and meet attendance requirements at ATEC.",
+  },
+];
 
 interface CourseRow {
   id: string;
