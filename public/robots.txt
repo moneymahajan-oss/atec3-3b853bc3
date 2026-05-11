@@ -1,14 +1,16 @@
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /admin/
+Disallow: /crm
+Disallow: /api/
 
-User-agent: Googlebot
+# Block AI scrapers from sensitive routes
+User-agent: GPTBot
 Allow: /
 Disallow: /admin
+Disallow: /crm
 
-User-agent: Bingbot
+User-agent: Google-Extended
 Allow: /
-Disallow: /admin
 
 Sitemap: https://ateceducation.in/sitemap.xml

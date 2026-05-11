@@ -1,0 +1,25 @@
+{
+  "name": "ATEC Education — Avenue to Excellent Careers",
+  "short_name": "ATEC",
+  "description": "Gurdaspur's premier AI-powered computer education institute. AI, Tally, Digital Marketing, Full Stack & more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "lang": "en-IN",
+  "orientation": "portrait-primary",
+  "categories": ["education"],
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-course-default.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "ATEC Education Homepage"
+    }
+  ]
+}
