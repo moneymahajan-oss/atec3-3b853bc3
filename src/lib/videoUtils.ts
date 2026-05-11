@@ -82,3 +82,15 @@ export function getEmbedUrl(url: string, platform: VideoPlatform): string | null
   }
   return null;
 }
+export function getDialogSize(platform: VideoPlatform): string {
+  switch (platform) {
+    case "youtube":
+    case "vimeo":
+      return "lg";
+    case "instagram":
+    case "facebook":
+      return "md";
+    default:
+      return "md";
+  }
+}
