@@ -1,3 +1,5 @@
+
+import FounderSection from "@/components/FounderSection";
 import Navbar from "@/components/Navbar";
 import OfferBelt from "@/components/OfferBelt";
 import HeroSection from "@/components/HeroSection";
@@ -163,6 +165,9 @@ const Index = () => {
           <section aria-label="About ATEC Education Gurdaspur" id="about">
             <AboutSection />
           </section>
+        </SectionErrorBoundary>
+        <SectionErrorBoundary name="Founder">
+          <FounderSection />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="Gallery">

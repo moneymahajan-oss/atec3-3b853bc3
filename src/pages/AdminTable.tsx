@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Save, X, GraduationCap,
-  LogOut, Eye, ChevronDown, ChevronUp, Search, UserCog
+  LogOut, Eye, ChevronDown, ChevronUp, Search, UserCog, MessageSquare, Phone
 } from "lucide-react";
 
 type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "downloads" | "contact_submissions" | "site_settings" | "offer_belt" | "ai_use_cases" | "whatsapp_templates" | "mock_tests" | "mock_test_results" | "leads" | "crm_faculties";
@@ -34,6 +34,7 @@ const tableConfig: Record<string, {
       { key: "cta_link", label: "CTA Link", type: "text" },
       { key: "image_url", label: "Image URL", type: "text" },
       { key: "badge_text", label: "Badge Text", type: "text" },
+      { key: "demo_video_url", label: "Watch Demo Video URL (YouTube / Instagram Reel)", type: "text" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "display_order", label: "Order", type: "number" },
     ],
@@ -247,7 +248,7 @@ const tableConfig: Record<string, {
     canCreate: false, canDelete: true,
     fields: [
       { key: "student_name", label: "Name", type: "text" },
-      { key: "phone", label: "Phone", type: "text" },
+      { key: "phone", label: "Phone / WhatsApp", type: "text" },
       { key: "email", label: "Email", type: "text" },
       { key: "course_name", label: "Course", type: "text" },
       { key: "source", label: "Source", type: "text" },
@@ -455,7 +456,26 @@ export default function AdminTable() {
                         </td>
                       ))}
                       <td className="px-4 py-3 text-right">
-                        <div className="inline-flex gap-1">
+                        <div className="inline-flex gap-1 items-center">
+                          {/* WhatsApp direct message button — shows for leads table when phone exists */}
+                          {table === "leads" && row.phone && (
+                            <>
+                              <Button size="sm" variant="ghost" asChild title="Call">
+                                <a href={`tel:${row.phone}`}>
+                                  <Phone className="w-4 h-4 text-blue-500" />
+                                </a>
+                              </Button>
+                              <Button size="sm" variant="ghost" asChild title="Send WhatsApp message">
+                                <a
+                                  href={`https://wa.me/91${row.phone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Hi ${row.student_name || ""},\n\nThank you for your enquiry about *${row.course_name || "our courses"}* at ATEC Education, Gurdaspur.\n\nWe'd love to help you get started. Please let us know a convenient time to connect.\n\nRegards,\nATEC Team\n+91-7009933289`)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                                </a>
+                              </Button>
+                            </>
+                          )}
                           <Button size="sm" variant="ghost" onClick={() => {
                             const item = { ...row };
                             config.fields.forEach(f => {
