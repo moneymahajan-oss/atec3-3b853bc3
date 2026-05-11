@@ -12,7 +12,6 @@ import {
   deriveThumbnail,
   getEmbedUrl,
   getDialogSize,
-  extractInstagramCode,
 } from "@/lib/videoUtils";
 
 const META: Record<string, { duration: string; category: string; desc: string }> = {
