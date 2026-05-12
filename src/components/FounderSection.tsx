@@ -24,7 +24,7 @@ Join us and let's build your future together.`,
     { label: "Courses Offered", value: "15+", icon: GraduationCap },
   ],
   // Put your YouTube or Instagram Reel intro video link here
-  video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // ← replace with real link
+  video_url: "https://youtu.be/k5l4MhYNL2M?si=MPyE3GOP97pHBiZ7", // ← replace with real link
   // Optional: poster image shown before video plays
   poster_url: "",
 };
