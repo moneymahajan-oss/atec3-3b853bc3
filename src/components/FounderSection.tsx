@@ -36,7 +36,7 @@ My belief is simple: the right skill at the right time changes a life. Whether i
 
 Join us and let's build your future together.`,
   video_url: "https://youtu.be/k5l4MhYNL2M?si=MPyE3GOP97pHBiZ7",
-  poster_url: "",
+ poster_url: "https://images.unsplash.com/photo-1778619419218-a466963e61f8?q=80&w=747&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
