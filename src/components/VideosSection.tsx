@@ -141,9 +141,7 @@ export default function VideosSection() {
               >
                 {/* Thumbnail — portrait for reels, landscape for YouTube */}
                 <div
-                  className={`relative w-full overflow-hidden ${
-                    isReel ? "aspect-[9/16] max-h-[320px]" : "aspect-video"
-                  }`}
+                  className="relative w-full overflow-hidden aspect-video"
                 >
                   <VideoThumbnail
                     src={thumb}
