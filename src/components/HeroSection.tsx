@@ -57,7 +57,7 @@ export default function HeroSection() {
     if (slides.length === 0) return;
     const timer = setInterval(
       () => setCurrent((p) => (p + 1) % slides.length),
-      5000
+      8000
     );
     return () => clearInterval(timer);
   }, [slides.length]);
