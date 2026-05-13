@@ -64,7 +64,7 @@ export function deriveThumbnail(
 export function getEmbedUrl(url: string, platform: VideoPlatform): string | null {
   if (platform === "youtube") {
     const id = extractYouTubeId(url);
-    return id ? `https://www.youtube.com/embed/${id}?autoplay=1` : null;
+    return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0` : null;
   }
   if (platform === "vimeo") {
     const id = extractVimeoId(url);
@@ -82,15 +82,32 @@ export function getEmbedUrl(url: string, platform: VideoPlatform): string | null
   }
   return null;
 }
-export function getDialogSize(platform: VideoPlatform): string {
+export function getDialogSize(platform: VideoPlatform): {
+  dialogClass: string;
+  containerClass: string;
+} {
   switch (platform) {
     case "youtube":
     case "vimeo":
-      return "lg";
+      return {
+        dialogClass: "max-w-4xl w-full p-0 bg-black border-0",
+        containerClass: "aspect-video w-full",
+      };
     case "instagram":
+      return {
+        dialogClass: "max-w-sm w-full p-0 bg-black border-0",
+        containerClass: "w-full",
+      };
     case "facebook":
-      return "md";
+      return {
+        dialogClass: "max-w-2xl w-full p-0 bg-black border-0",
+        containerClass: "aspect-video w-full",
+      };
     default:
-      return "md";
+      return {
+        dialogClass: "max-w-3xl w-full p-0 bg-black border-0",
+        containerClass: "aspect-video w-full",
+      };
   }
 }
+
