@@ -102,7 +102,7 @@ export default function FounderSection() {
               <Quote className="w-3 h-3 mr-1" /> From the Founder's Desk
             </Badge>
             <h2 className="text-3xl md:text-4xl font-heading font-bold text-white">
-              Meet the Visionary Behind ATEC
+              Redefining Education for the Digital Era
             </h2>
           </motion.div>
 
