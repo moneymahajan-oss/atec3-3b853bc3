@@ -203,7 +203,7 @@ export default function VideosSection() {
                   <iframe
                     src={active.embed}
                     className="w-full h-full border-0"
-                    allow="autoplay; encrypted-media; picture-in-picture"
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                     allowFullScreen
                     title="Video player"
                   />
