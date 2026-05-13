@@ -103,6 +103,7 @@ const tableConfig: Record<string, {
       { key: "phone", label: "Phone", type: "text" },
       { key: "linkedin_url", label: "LinkedIn URL", type: "text" },
       { key: "instagram_url", label: "Instagram URL", type: "text" },
+      { key: "slug", label: "Slug (URL-friendly name, e.g. rajesh-kumar)", type: "text" },
       { key: "joined_on", label: "Joined On (YYYY-MM-DD)", type: "text" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "is_public", label: "Show on Website", type: "boolean" },
