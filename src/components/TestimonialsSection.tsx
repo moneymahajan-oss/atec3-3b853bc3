@@ -11,16 +11,11 @@ function getEmbedUrl(url?: string | null): string | null {
   if (!url) return null;
   // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([^&\?\/]+)/);
-  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0`;
+  if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1`;
   // Instagram reel/post
   const igMatch = url.match(/instagram\.com\/(reel|p)\/([^\/\?]+)/);
   if (igMatch) return `https://www.instagram.com/${igMatch[1]}/${igMatch[2]}/embed`;
   // Generic — try as-is in iframe
-
-function isYouTubeUrl(url?: string | null): boolean {
-  if (!url) return false;
-  return url.includes("youtube.com") || url.includes("youtu.be");
-}
   return url;
 }
 
@@ -39,7 +34,7 @@ export default function TestimonialsSection() {
       if (error) throw error;
       return data ?? [];
     },
-    placeholderData: [] as never[],
+    placeholderData: (prev: any) => prev,
     retry: 2,
     retryDelay: 1000,
   });
@@ -187,26 +182,13 @@ export default function TestimonialsSection() {
         open={!!activeVideo}
         onOpenChange={(open) => !open && setActiveVideo(null)}
       >
-        <DialogContent
-          className={
-            activeVideo && isYouTubeUrl(activeVideo.url)
-              ? "max-w-4xl w-full p-0 overflow-hidden bg-black border-none"
-              : "max-w-sm w-full p-0 overflow-hidden bg-black border-none"
-          }
-        >
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-black border-none">
           {activeVideo && (
-            <div
-              className="w-full"
-              style={
-                isYouTubeUrl(activeVideo.url)
-                  ? { aspectRatio: "16/9" }
-                  : { aspectRatio: "9/16", maxHeight: "85vh" }
-              }
-            >
+            <div className="w-full" style={{ aspectRatio: "9/16", maxHeight: "85vh" }}>
               <iframe
                 src={getEmbedUrl(activeVideo.url) || ""}
                 className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
                 title={activeVideo.name}
               />
@@ -217,3 +199,4 @@ export default function TestimonialsSection() {
     </section>
   );
 }
+
