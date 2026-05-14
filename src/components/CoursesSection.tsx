@@ -18,12 +18,13 @@ import { useToast } from "@/hooks/use-toast";
 import { detectPlatform, getEmbedUrl, getDialogSize } from "@/lib/videoUtils";
 
 const categoryIcons: Record<string, React.ElementType> = {
-  "AI & Emerging Tech": Brain,
-  "Digital Skills & Marketing": Megaphone,
-  "Full Stack & Networking": Server,
-  "Finance & Accounting": Calculator,
+  "AI Programs": Brain,
+  "Digital Marketing Stack": Megaphone,
+  "Tally Certifications": Server,
+  "Commerce Courses": Calculator,
   "Office & Productivity": Laptop,
-  "Student Courses": GraduationCap,
+  "AI Kids Prgrams": GraduationCap,
+  "Programming": GraduationCap,
 };
 
 const categories = [
