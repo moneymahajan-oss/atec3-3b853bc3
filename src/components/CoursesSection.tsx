@@ -29,12 +29,13 @@ const categoryIcons: Record<string, React.ElementType> = {
 
 const categories = [
   "All",
-  "AI & Emerging Tech",
-  "Digital Skills & Marketing",
-  "Full Stack & Networking",
-  "Finance & Accounting",
+  "AI Programs",
+  "Digital Marketing Stack",
+  "Tally Certifications",
+  "Commerce Courses",
   "Office & Productivity",
-  "Student Courses",
+  "AI Kids Prgrams",
+  "Programming",
 ];
 
 type WaAction = "enquiry" | "enroll" | "syllabus" | "share" | "video";
