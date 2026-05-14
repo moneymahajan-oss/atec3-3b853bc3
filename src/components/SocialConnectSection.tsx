@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Instagram, Facebook, Youtube, MessageCircle } from "lucide-react";
+import { Instagram, Facebook, Youtube, MessageCircle, MapPin } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -48,6 +48,14 @@ const platforms: Platform[] = [
     color: "#FF0000",
     buildUrl: (s) => (s.social_youtube_url || "").trim(),
   },
+  {
+    key: "social_gmb_url",
+    visibilityKey: "social_gmb_visible",
+    label: "Google Reviews",
+    icon: MapPin,
+    color: "#4285F4",
+    buildUrl: (s) => (s.social_gmb_url || "").trim(),
+  },
 ];
 
 export default function SocialConnectSection() {
@@ -74,7 +82,7 @@ export default function SocialConnectSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-4xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-5 max-w-4xl mx-auto">
           {cards.map(({ p, url }, i) => {
             const Icon = p.icon;
             const active = !!url;
@@ -118,3 +126,4 @@ export default function SocialConnectSection() {
     </section>
   );
 }
+
