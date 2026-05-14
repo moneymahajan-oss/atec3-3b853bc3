@@ -44,7 +44,7 @@ const tableConfig: Record<string, {
     canCreate: true, canDelete: true,
     fields: [
       { key: "name", label: "Name", type: "text", required: true },
-      { key: "category", label: "Category", type: "select", options: ["AI & Emerging Tech", "Digital Skills & Marketing", "Full Stack & Networking", "Finance & Accounting", "Office & Productivity", "Student Courses"], required: true },
+      { key: "category", label: "Category", type: "select", options: ["AI Programs", "Digital Marketing Stack", "Tally Certifications", "Commerce Courses", "Office & Productivity", "AI Kids Programs", "Programming"], required: true },
       { key: "short_description", label: "Short Description", type: "textarea" },
       { key: "full_description", label: "Full Description", type: "textarea" },
       { key: "syllabus", label: "Syllabus (JSON array)", type: "json" },
@@ -103,7 +103,6 @@ const tableConfig: Record<string, {
       { key: "phone", label: "Phone", type: "text" },
       { key: "linkedin_url", label: "LinkedIn URL", type: "text" },
       { key: "instagram_url", label: "Instagram URL", type: "text" },
-      { key: "slug", label: "Slug (URL-friendly name, e.g. rajesh-kumar)", type: "text" },
       { key: "joined_on", label: "Joined On (YYYY-MM-DD)", type: "text" },
       { key: "is_active", label: "Active", type: "boolean" },
       { key: "is_public", label: "Show on Website", type: "boolean" },
