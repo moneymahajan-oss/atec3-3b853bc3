@@ -23,7 +23,7 @@ const categoryIcons: Record<string, React.ElementType> = {
   "Tally Certifications": Server,
   "Commerce Courses": Calculator,
   "Office & Productivity": Laptop,
-  "AI Kids Prgrams": GraduationCap,
+  "AI Kids Programs": GraduationCap,
   "Programming": GraduationCap,
 };
 
@@ -34,7 +34,7 @@ const categories = [
   "Tally Certifications",
   "Commerce Courses",
   "Office & Productivity",
-  "AI Kids Prgrams",
+  "AI Kids Programs",
   "Programming",
 ];
 
