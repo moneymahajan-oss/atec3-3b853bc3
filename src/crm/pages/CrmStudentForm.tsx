@@ -100,7 +100,7 @@ export default function CrmStudentForm() {
   const [newNote, setNewNote] = useState("");
 
   useEffect(() => {
-    supabase.from("crm_courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
+    supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
     supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
       .then(({ data }) => setBatches((data ?? []) as never));
@@ -763,3 +763,4 @@ export default function CrmStudentForm() {
     </div>
   );
 }
+
