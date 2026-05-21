@@ -49,7 +49,7 @@ export default function CrmAddEnrolment() {
       const [stu, enr, crs, bts] = await Promise.all([
         supabase.from("crm_students").select("id,full_name,phone,email").eq("id", studentId).maybeSingle(),
         getStudentEnrolments(studentId),
-        supabase.from("crm_courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name"),
+        supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name"),
         supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false }),
       ]);
       setStudent((stu.data ?? null) as Student | null);
