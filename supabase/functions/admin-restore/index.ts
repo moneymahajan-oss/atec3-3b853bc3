@@ -29,7 +29,7 @@ const TABLE_ORDER = [
   "courses", "course_documents", "mock_tests", "mock_test_results",
   "leads", "contact_submissions",
   "crm_user_roles", "crm_settings", "crm_faculties",
-  "crm_courses", "crm_course_media",
+  "courses", "crm_course_media",
   "crm_enquiries", "crm_enquiry_followups",
   "crm_students", "crm_student_enrolments", "crm_student_docs",
   "crm_batches", "crm_batch_students", "crm_attendance",
