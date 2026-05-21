@@ -16,7 +16,7 @@ export default function CrmDashboard() {
     if (!hasAccess) return;
     (async () => {
       const [c, t, s, e] = await Promise.all([
-        supabase.from("crm_courses").select("id", { count: "exact", head: true }),
+        supabase.from("courses").select("id", { count: "exact", head: true }),
         supabase.from("crm_whatsapp_templates").select("id", { count: "exact", head: true }),
         supabase.from("crm_students").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("crm_enquiries").select("id", { count: "exact", head: true })
