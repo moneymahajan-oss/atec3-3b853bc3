@@ -179,7 +179,7 @@ export default function CrmEnquiries() {
   useEffect(() => {
     if (!hasAccess) return;
     load();
-    supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
+    supabase.from("courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as { id: string; name: string }[]));
     supabase.from("crm_institute_settings").select("name").maybeSingle()
       .then(({ data }) => { if (data?.name) setInstituteName(data.name as string); });
