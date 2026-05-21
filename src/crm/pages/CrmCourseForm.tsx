@@ -65,7 +65,7 @@ export default function CrmCourseForm() {
   useEffect(() => {
     if (!id || id === "new") return;
     (async () => {
-      const { data, error } = await supabase.from("crm_courses").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await supabase.from("courses").select("*").eq("id", id).maybeSingle();
       if (error) { toast.error(error.message); return; }
       if (data) {
         setDraft({
@@ -136,13 +136,13 @@ export default function CrmCourseForm() {
       next_batch_date: draft.next_batch_date || null,
     };
     if (draft.id) {
-      const { error } = await supabase.from("crm_courses").update(payload).eq("id", draft.id);
+      const { error } = await supabase.from("courses").update(payload).eq("id", draft.id);
       setSaving(false);
       if (error) return toast.error(error.message);
       logAudit("update", "course", draft.id);
       toast.success("Course updated");
     } else {
-      const { data, error } = await supabase.from("crm_courses").insert(payload).select("id").single();
+      const { data, error } = await supabase.from("courses").insert(payload).select("id").single();
       setSaving(false);
       if (error) return toast.error(error.message);
       logAudit("create", "course", data?.id ?? null);
@@ -154,7 +154,7 @@ export default function CrmCourseForm() {
   const remove = async () => {
     if (!draft.id) return;
     if (!confirm("Delete this course? This cannot be undone.")) return;
-    const { error } = await supabase.from("crm_courses").delete().eq("id", draft.id);
+    const { error } = await supabase.from("courses").delete().eq("id", draft.id);
     if (error) return toast.error(error.message);
     logAudit("delete", "course", draft.id);
     toast.success("Course deleted");
