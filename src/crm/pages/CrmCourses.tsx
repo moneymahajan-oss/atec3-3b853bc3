@@ -35,14 +35,14 @@ export default function CrmCourses() {
   const [sending, setSending] = useState<Course | null>(null);
 
   const load = async () => {
-    const { data, error } = await supabase.from("crm_courses").select("*").order("display_order");
+    const { data, error } = await supabase.from("courses").select("*").order("display_order");
     if (error) throw new Error(error.message);
     setCourses(((data ?? []) as unknown) as Course[]);
   };
   useEffect(() => { if (hasAccess) load(); }, [hasAccess]);
 
   const toggleActive = async (c: Course) => {
-    const { error } = await supabase.from("crm_courses").update({ is_active: !c.is_active }).eq("id", c.id);
+    const { error } = await supabase.from("courses").update({ is_active: !c.is_active }).eq("id", c.id);
     if (error) return toast.error(error.message);
     logAudit("toggle_active", "course", c.id, { from: c.is_active, to: !c.is_active });
     load();
