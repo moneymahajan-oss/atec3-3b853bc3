@@ -52,6 +52,8 @@ const empty = {
   // attribution
   hear_about_us: "",
   referred_by: "",
+  assigned_to: "",
+  assigned_to_name: "",
 };
 
 const SOURCES = ["walk_in","phone","whatsapp","website","instagram","facebook","referral","google","youtube","crm_walk_in","other"];
@@ -83,6 +85,7 @@ export default function CrmEnquiryForm() {
   const { user, isAdmin } = useCrmAuth();
   const [form, setForm] = useState<typeof empty & { course_name_snapshot?: string | null }>(empty);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [staffList, setStaffList] = useState<{ user_id: string; display_name: string | null }[]>([]);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -129,6 +132,8 @@ export default function CrmEnquiryForm() {
         budget_range: data.budget_range ?? "",
         hear_about_us: data.hear_about_us ?? "",
         referred_by: data.referred_by ?? "",
+        assigned_to: (data as any).assigned_to ?? "",
+        assigned_to_name: (data as any).assigned_to_name ?? "",
         course_name_snapshot: data.course_name_snapshot,
       });
       setCreatedAt(data.created_at ?? null);
@@ -189,6 +194,8 @@ export default function CrmEnquiryForm() {
       budget_range: (form.budget_range || null) as never,
       hear_about_us: form.hear_about_us || null,
       referred_by: form.referred_by || null,
+      assigned_to: form.assigned_to || null,
+      assigned_to_name: form.assigned_to_name || null,
     };
     if (isNew) {
       const { data, error } = await supabase.from("crm_enquiries").insert({
@@ -503,6 +510,23 @@ export default function CrmEnquiryForm() {
                 <div>
                   <Label>Follow-up date</Label>
                   <Input type="date" value={form.follow_up_date} onChange={(e) => set("follow_up_date", e.target.value)} />
+                </div>
+                <div>
+                  <Label>Assigned to (counsellor)</Label>
+                  <Select value={form.assigned_to || "unset"} onValueChange={(v) => {
+                    if (v === "unset") { set("assigned_to", ""); set("assigned_to_name", ""); return; }
+                    const staff = staffList.find((s) => s.user_id === v);
+                    set("assigned_to", v);
+                    set("assigned_to_name", staff?.display_name || v);
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="— Unassigned —" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">— Unassigned —</SelectItem>
+                      {staffList.map((s) => (
+                        <SelectItem key={s.user_id} value={s.user_id}>{s.display_name || s.user_id}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {form.status === "lost" && (
                   <div className="sm:col-span-2">
