@@ -15,7 +15,7 @@ import { addEnrolment, getStudentEnrolments, type Enrolment } from "../lib/enrol
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
 
-type Course = { id: string; name: string; total_fee: number; registration_fee: number };
+type Course = { id: string; name: string; total_fee: number | null; registration_fee: number | null };
 type Student = { id: string; full_name: string; phone: string; email: string | null };
 type Batch = { id: string; name: string; course_id: string | null };
 
