@@ -250,6 +250,7 @@ export default function CrmEnquiries() {
       );
       case "stage": return <Badge variant="secondary" className={statusColors[e.status] || ""}>{e.status.replace("_", " ")}</Badge>;
       case "counsellor": return <span className="text-sm">{e.assigned_to_name || "—"}</span>;
+      case "priority": return <Badge variant="secondary" className={e.priority === "high" ? "bg-red-100 text-red-700" : e.priority === "medium" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-600"}>{e.priority || "—"}</Badge>;
       case "follow_up_date": return <span className="text-sm">{e.follow_up_date || "—"}</span>;
       case "how_heard": return <span className="text-sm">{e.hear_about_us || "—"}</span>;
       case "referred_by": return <span className="text-sm">{e.referred_by || "—"}</span>;
