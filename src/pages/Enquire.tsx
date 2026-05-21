@@ -93,7 +93,7 @@ export default function Enquire() {
           .select("field_key, field_label, required_on_public, dropdown_options, sort_order")
           .eq("show_on_public", true)
           .order("sort_order"),
-        supabase.from("crm_courses").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("courses").select("id, name").eq("is_active", true).order("name"),
         supabase.rpc("get_public_institute_settings"),
       ]);
       setFields((fRes.data ?? []) as unknown as FieldRow[]);
