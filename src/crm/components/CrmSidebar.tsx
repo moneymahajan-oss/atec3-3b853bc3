@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, GraduationCap, Wallet, CalendarDays,
   ClipboardCheck, Award, Receipt, BarChart3, FileSpreadsheet, MessageSquare,
   Settings, Megaphone, Search as SearchIcon, GraduationCap as GradIcon, BellRing, Ban,
-  AlertTriangle, UserCog, Copy,
+  AlertTriangle, UserCog, Copy, UserCheck,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -41,6 +41,7 @@ const tools: NavItem[] = [
   { title: "Import / Export", url: "/crm/import-export", icon: FileSpreadsheet },
   { title: "SEO Meta", url: "/crm/seo", icon: SearchIcon, adminOnly: true },
   { title: "Enquiry Config", url: "/crm/enquiry-settings", icon: Settings, adminOnly: true },
+  { title: "Staff & Roles", url: "/crm/staff", icon: UserCheck, adminOnly: true },
 ];
 
 const system: NavItem[] = [
