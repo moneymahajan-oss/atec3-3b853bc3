@@ -313,7 +313,7 @@ export default function CrmEnquiryForm() {
             >
               <Send className="w-4 h-4 mr-2" /> Send Form Link
             </Button>
-            {!isNew && form.status !== "converted" && (
+            {!isNew && (
               <Button variant="secondary" onClick={convertToStudent}>
                 <UserPlus className="w-4 h-4 mr-2" /> Convert to Student
               </Button>
