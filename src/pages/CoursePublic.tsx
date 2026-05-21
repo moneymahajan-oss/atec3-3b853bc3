@@ -60,7 +60,7 @@ export default function CoursePublic() {
     (async () => {
       // 1) try by slug column
       let { data } = await supabase
-        .from("crm_courses")
+        .from("courses")
         .select("*")
         .eq("slug", slug)
         .eq("is_active", true)
@@ -69,7 +69,7 @@ export default function CoursePublic() {
       // 2) fallback: match slugified name
       if (!data) {
         const { data: all } = await supabase
-          .from("crm_courses")
+          .from("courses")
           .select("*")
           .eq("is_active", true);
         data = (all || []).find((c: { name: string }) => slugifyCourseName(c.name) === slug) || null;
