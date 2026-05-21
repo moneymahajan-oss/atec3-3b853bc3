@@ -21,7 +21,7 @@ import { DuplicateAlert } from "../components/DuplicateAlert";
 import { normalisePhone } from "../lib/dedupe";
 import { toast } from "sonner";
 
-type Course = { id: string; name: string; total_fee: number; registration_fee: number };
+type Course = { id: string; name: string; total_fee: number | null; registration_fee: number | null };
 type NoteRow = { id: string; body: string; note_type: string; staff_name: string | null; created_at: string };
 
 const empty = {
