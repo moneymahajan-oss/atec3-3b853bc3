@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
         "navigation_links", "offer_belt", "site_settings", "stats",
         "team_members", "testimonials", "whatsapp_templates", "youtube_videos",
         // CRM
-        "crm_user_roles", "crm_settings", "crm_courses", "crm_course_media",
+        "crm_user_roles", "crm_settings", "courses", "crm_course_media",
         "crm_enquiries", "crm_enquiry_followups", "crm_students",
         "crm_student_enrolments", "crm_student_docs", "crm_batches",
         "crm_batch_students", "crm_attendance", "crm_fee_plans",
