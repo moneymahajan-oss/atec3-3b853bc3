@@ -65,7 +65,7 @@ export default function CrmCampaigns() {
   async function load() {
     const [{ data: cs }, { data: co }, { data: bt }] = await Promise.all([
       supabase.from("crm_campaigns").select("*").order("created_at", { ascending: false }),
-      supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("courses").select("id,name").eq("is_active", true).order("name"),
       supabase.from("crm_batches").select("id,name,course_name_snapshot").order("name"),
     ]);
     setCampaigns((cs as any) || []);
