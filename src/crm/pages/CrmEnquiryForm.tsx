@@ -94,7 +94,7 @@ export default function CrmEnquiryForm() {
   const [institute, setInstitute] = useState<{ name: string | null; phone: string | null; whatsapp_number: string | null; website: string | null } | null>(null);
 
   useEffect(() => {
-    supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name")
+    supabase.from("courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
   }, []);
 
@@ -147,7 +147,7 @@ export default function CrmEnquiryForm() {
   // Load course details when course_id changes
   useEffect(() => {
     if (!form.course_id) { setCourseDetails(null); return; }
-    supabase.from("crm_courses")
+    supabase.from("courses")
       .select("id, name, slug, total_fee, duration, mode, brochure_url, video_url, youtube_url, instagram_url, concise_syllabus, detailed_syllabus_html, next_batch_date")
       .eq("id", form.course_id).maybeSingle()
       .then(({ data }) => setCourseDetails((data as never) ?? null));
