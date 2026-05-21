@@ -57,7 +57,7 @@ export default function CrmBatches() {
     setLoading(true);
     const [bRes, cRes, lsRes, atRes] = await Promise.all([
       supabase.from("crm_batches").select("*").order("created_at", { ascending: false }),
-      supabase.from("crm_courses").select("id,name").eq("is_active", true).order("name"),
+      supabase.from("courses").select("id,name").eq("is_active", true).order("name"),
       supabase.from("crm_students").select("batch_id").eq("status", "active"),
       supabase.from("crm_attendance").select("batch_id,attended_on"),
     ]);
