@@ -44,6 +44,7 @@ import CrmVoided from "./crm/pages/CrmVoided.tsx";
 import CrmEnquirySettings from "./crm/pages/CrmEnquirySettings.tsx";
 import CrmFaculties from "./crm/pages/CrmFaculties.tsx";
 import CrmDuplicates from "./crm/pages/CrmDuplicates.tsx";
+import CrmStaff from "./crm/pages/CrmStaff.tsx";
 import CrmAddEnrolment from "./crm/pages/CrmAddEnrolment.tsx";
 import Enquire from "./pages/Enquire.tsx";
 import CoursePublic from "./pages/CoursePublic.tsx";
@@ -145,6 +146,7 @@ const App = () => {
                   <Route path="seo" element={<CrmSeo />} />
                   <Route path="campaigns" element={<CrmCampaigns />} />
                   <Route path="duplicates" element={<CrmDuplicates />} />
+                  <Route path="staff" element={<CrmStaff />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
