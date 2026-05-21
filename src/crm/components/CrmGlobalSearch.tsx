@@ -28,7 +28,7 @@ export function CrmGlobalSearch() {
       const term = `%${q}%`;
       const [students, courses, enquiries] = await Promise.all([
         supabase.from("crm_students").select("id, full_name, phone, enrolment_no").or(`full_name.ilike.${term},phone.ilike.${term},enrolment_no.ilike.${term}`).limit(5),
-        supabase.from("crm_courses").select("id, name, category").ilike("name", term).limit(5),
+        supabase.from("courses").select("id, name, category").ilike("name", term).limit(5),
         supabase.from("crm_enquiries").select("id, name, phone, status").or(`name.ilike.${term},phone.ilike.${term}`).limit(5),
       ]);
 
