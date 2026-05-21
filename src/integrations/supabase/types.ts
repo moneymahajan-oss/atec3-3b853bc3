@@ -452,7 +452,7 @@ export type Database = {
             foreignKeyName: "crm_batches_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "crm_courses"
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
@@ -634,87 +634,6 @@ export type Database = {
         }
         Relationships: []
       }
-      crm_courses: {
-        Row: {
-          brochure_url: string | null
-          category: Database["public"]["Enums"]["crm_course_category"]
-          certificate_title: string | null
-          concise_syllabus: string | null
-          created_at: string
-          detailed_syllabus_html: string | null
-          display_order: number
-          duration: string | null
-          emi_options: Json
-          id: string
-          instagram_url: string | null
-          is_active: boolean
-          meta_description: string | null
-          meta_title: string | null
-          mode: Database["public"]["Enums"]["crm_course_mode"]
-          name: string
-          next_batch_date: string | null
-          og_image_url: string | null
-          registration_fee: number
-          slug: string | null
-          total_fee: number
-          updated_at: string
-          video_url: string | null
-          youtube_url: string | null
-        }
-        Insert: {
-          brochure_url?: string | null
-          category: Database["public"]["Enums"]["crm_course_category"]
-          certificate_title?: string | null
-          concise_syllabus?: string | null
-          created_at?: string
-          detailed_syllabus_html?: string | null
-          display_order?: number
-          duration?: string | null
-          emi_options?: Json
-          id?: string
-          instagram_url?: string | null
-          is_active?: boolean
-          meta_description?: string | null
-          meta_title?: string | null
-          mode?: Database["public"]["Enums"]["crm_course_mode"]
-          name: string
-          next_batch_date?: string | null
-          og_image_url?: string | null
-          registration_fee?: number
-          slug?: string | null
-          total_fee?: number
-          updated_at?: string
-          video_url?: string | null
-          youtube_url?: string | null
-        }
-        Update: {
-          brochure_url?: string | null
-          category?: Database["public"]["Enums"]["crm_course_category"]
-          certificate_title?: string | null
-          concise_syllabus?: string | null
-          created_at?: string
-          detailed_syllabus_html?: string | null
-          display_order?: number
-          duration?: string | null
-          emi_options?: Json
-          id?: string
-          instagram_url?: string | null
-          is_active?: boolean
-          meta_description?: string | null
-          meta_title?: string | null
-          mode?: Database["public"]["Enums"]["crm_course_mode"]
-          name?: string
-          next_batch_date?: string | null
-          og_image_url?: string | null
-          registration_fee?: number
-          slug?: string | null
-          total_fee?: number
-          updated_at?: string
-          video_url?: string | null
-          youtube_url?: string | null
-        }
-        Relationships: []
-      }
       crm_duplicate_exceptions: {
         Row: {
           created_at: string
@@ -884,7 +803,7 @@ export type Database = {
             foreignKeyName: "crm_enquiries_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "crm_courses"
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]
@@ -1749,7 +1668,7 @@ export type Database = {
             foreignKeyName: "crm_students_course_id_fkey"
             columns: ["course_id"]
             isOneToOne: false
-            referencedRelation: "crm_courses"
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
           {
