@@ -14,15 +14,15 @@ import { logAudit } from "../lib/audit";
 interface Course {
   id: string;
   name: string;
-  category: "finance" | "computer";
+  category: string;
   duration: string | null;
-  mode: "offline" | "online" | "hybrid";
-  total_fee: number;
+  mode: string | null;
+  total_fee: number | null;
   brochure_url: string | null;
   youtube_url: string | null;
   video_url: string | null;
   is_active: boolean;
-  display_order: number;
+  display_order: number | null;
   concise_syllabus: string | null;
   next_batch_date: string | null;
 }
@@ -91,7 +91,7 @@ export default function CrmCourses() {
             <div className="text-xs text-muted-foreground mb-3 flex flex-wrap gap-x-3 gap-y-1">
               {c.duration && <span>⏱ {c.duration}</span>}
               <span>📋 {c.mode}</span>
-              <span>💰 ₹{c.total_fee.toLocaleString("en-IN")}</span>
+              <span>💰 ₹{(c.total_fee ?? 0).toLocaleString("en-IN")}</span>
             </div>
             {c.concise_syllabus && (
               <p className="text-xs text-muted-foreground line-clamp-3 mb-4 flex-1">{c.concise_syllabus}</p>
