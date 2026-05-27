@@ -79,11 +79,7 @@ export default function CrmStudentForm() {
   const [loading, setLoading] = useState(!isNew);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [newNote, setNewNote] = useState("");
-
-  // DB-driven dropdown options — same as enquiry form
   const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
-
-  // Raw enquiry data stored separately so we can apply it once courses are ready
   const [enquiryPrefill, setEnquiryPrefill] = useState<Record<string, unknown> | null>(null);
 
   // Load dropdown options from crm_enquiry_form_fields
@@ -106,7 +102,7 @@ export default function CrmStudentForm() {
 
   const opts = (key: string) => dbOpts[key] ?? [];
 
-// Load courses and batches
+  // Load courses and batches
   useEffect(() => {
     supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
@@ -114,15 +110,14 @@ export default function CrmStudentForm() {
       .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
-  // Step A: As soon as enquiry loads, set ALL text fields immediately (no waiting for courses)
+  // Step A: Prefill all fields immediately from enquiry
   useEffect(() => {
     if (!isNew || !fromEnquiry) return;
     supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        // Store raw enquiry for course matching later
         setEnquiryPrefill(data as Record<string, unknown>);
-        // Immediately prefill every non-course field so they're never blank
+        // Immediately set all text fields — no waiting for courses
         setForm((f) => ({
           ...f,
           full_name: data.name ?? "",
@@ -140,18 +135,40 @@ export default function CrmStudentForm() {
           designation: data.designation ?? "",
           hear_about_us: data.hear_about_us ?? "",
           referred_by: data.referred_by ?? "",
-          // Set course_id too — Select will show it if courses already loaded
           course_id: data.course_id ?? "",
           course_name_snapshot: data.course_name_snapshot ?? "",
         }));
+
+        // Fetch the exact course by ID directly — no is_active filter, guaranteed match
+        if (data.course_id) {
+          supabase.from("courses")
+            .select("id,name,total_fee,registration_fee")
+            .eq("id", data.course_id)
+            .maybeSingle()
+            .then(({ data: courseData }) => {
+              if (!courseData) return;
+              // Inject into courses list so the Select can find it
+              setCourses((prev) => {
+                const already = prev.find((c) => c.id === courseData.id);
+                return already ? prev : [...prev, courseData as Course];
+              });
+              // Confirm course fields in form
+              setForm((f) => ({
+                ...f,
+                course_id: courseData.id,
+                course_name_snapshot: courseData.name,
+                total_fee: (courseData as Course).total_fee ?? 0,
+              }));
+            });
+        }
       });
   }, [isNew, fromEnquiry]);
 
-  // Step B: Once courses load, patch in the matched course + fee (handles the race condition)
+  // Step B: Backup patch — once general courses list loads, re-apply course if matched
   useEffect(() => {
     if (!isNew || !enquiryPrefill || courses.length === 0) return;
     const matchedCourse = courses.find((c) => c.id === (enquiryPrefill.course_id as string));
-    if (!matchedCourse) return; // course_id was empty or not found — nothing to patch
+    if (!matchedCourse) return;
     setForm((f) => ({
       ...f,
       course_id: matchedCourse.id,
@@ -163,8 +180,6 @@ export default function CrmStudentForm() {
   // Load existing student for edit mode
   useEffect(() => {
     if (isNew) return;
-
-    
     (async () => {
       const { data, error } = await supabase.from("crm_students").select("*").eq("id", id!).maybeSingle();
       if (error || !data) { toast.error("Student not found"); navigate("/crm/students"); return; }
@@ -578,14 +593,13 @@ export default function CrmStudentForm() {
             <CardHeader><CardTitle>Course & enrolment</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-
-                
                 <div>
                   <Label>Course *</Label>
-                  <Select key={`course-select-${courses.length}-${form.course_id}`} value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
-
-
-                    
+                  <Select
+                    key={`course-${courses.length}-${form.course_id}`}
+                    value={form.course_id || "none"}
+                    onValueChange={(v) => onCourse(v === "none" ? "" : v)}
+                  >
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— None —</SelectItem>
@@ -595,7 +609,11 @@ export default function CrmStudentForm() {
                 </div>
                 <div>
                   <Label>Batch</Label>
-                  <Select value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
+                  <Select
+                    key={`batch-${batches.length}-${form.batch_id}`}
+                    value={form.batch_id || "none"}
+                    onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}
+                  >
                     <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Unassigned —</SelectItem>
