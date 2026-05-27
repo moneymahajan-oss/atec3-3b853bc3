@@ -21,7 +21,8 @@ import { DuplicateAlert } from "../components/DuplicateAlert";
 import { normalisePhone } from "../lib/dedupe";
 import { toast } from "sonner";
 
-type Course = { id: string; name: string; total_fee: number | null; registration_fee: number | null };
+// Only select columns that definitely exist in the courses table per schema
+type Course = { id: string; name: string };
 type NoteRow = { id: string; body: string; note_type: string; staff_name: string | null; created_at: string };
 
 const empty = {
@@ -81,14 +82,12 @@ export default function CrmStudentForm() {
   const [newNote, setNewNote] = useState("");
   const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
 
-  // Track loading states separately so we only render Course Select when BOTH are ready
+  // Track when each async source is done — Select only renders when both are ready
   const [coursesLoaded, setCoursesLoaded] = useState(false);
-  const [enquiryLoaded, setEnquiryLoaded] = useState(!fromEnquiry); // true if no enquiry to load
-
-  // Course Select only renders when both data sources are ready — prevents Radix caching blank
+  const [enquiryLoaded, setEnquiryLoaded] = useState(!fromEnquiry);
   const courseSelectReady = coursesLoaded && enquiryLoaded;
 
-  // Load dropdown options from crm_enquiry_form_fields
+  // Load dropdown options
   useEffect(() => {
     supabase
       .from("crm_enquiry_form_fields")
@@ -108,60 +107,66 @@ export default function CrmStudentForm() {
 
   const opts = (key: string) => dbOpts[key] ?? [];
 
-  // Load ALL courses (no is_active filter — admin needs all courses)
+  // Load courses — MUST use is_active=true (RLS policy enforces it for CRM users)
+  // MUST only select id,name (total_fee/registration_fee not in base courses schema)
   useEffect(() => {
-    supabase.from("courses").select("id,name,total_fee,registration_fee").order("name")
-      .then(({ data }) => {
+    supabase
+      .from("courses")
+      .select("id,name")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Courses load error:", error);
+          toast.error("Could not load courses: " + error.message);
+        }
         setCourses((data ?? []) as Course[]);
         setCoursesLoaded(true);
       });
-    supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
+
+    supabase
+      .from("crm_batches")
+      .select("id,name,course_id")
+      .order("created_at", { ascending: false })
       .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
-  // Prefill from enquiry — load enquiry data and set form
+  // Load enquiry and prefill form — mark enquiryLoaded when done
   useEffect(() => {
     if (!isNew || !fromEnquiry) return;
-    supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle()
-      .then(({ data }) => {
-        if (!data) { setEnquiryLoaded(true); return; }
-        setForm((f) => ({
-          ...f,
-          full_name: data.name ?? "",
-          phone: data.phone ?? "",
-          alt_phone: data.alt_phone ?? "",
-          email: data.email ?? "",
-          city: data.city ?? "",
-          state: data.state ?? "",
-          qualification: data.qualification ?? "",
-          college_name: data.college_name ?? "",
-          class_year: data.class_year ?? "",
-          stream: data.stream ?? "",
-          current_status: data.current_status ?? "",
-          company_name: data.company_name ?? "",
-          designation: data.designation ?? "",
-          hear_about_us: data.hear_about_us ?? "",
-          referred_by: data.referred_by ?? "",
-          course_id: data.course_id ?? "",
-          course_name_snapshot: data.course_name_snapshot ?? "",
-        }));
+    supabase
+      .from("crm_enquiries")
+      .select("*")
+      .eq("id", fromEnquiry)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) console.error("Enquiry load error:", error);
+        if (data) {
+          setForm((f) => ({
+            ...f,
+            full_name: data.name ?? "",
+            phone: data.phone ?? "",
+            alt_phone: data.alt_phone ?? "",
+            email: data.email ?? "",
+            city: data.city ?? "",
+            state: data.state ?? "",
+            qualification: data.qualification ?? "",
+            college_name: data.college_name ?? "",
+            class_year: data.class_year ?? "",
+            stream: data.stream ?? "",
+            current_status: data.current_status ?? "",
+            company_name: data.company_name ?? "",
+            designation: data.designation ?? "",
+            hear_about_us: data.hear_about_us ?? "",
+            referred_by: data.referred_by ?? "",
+            course_id: data.course_id ?? "",
+            course_name_snapshot: data.course_name_snapshot ?? "",
+          }));
+        }
+        // Always mark done so Select is not blocked
         setEnquiryLoaded(true);
       });
   }, [isNew, fromEnquiry]);
-
-  // Once BOTH courses and enquiry are loaded, patch total_fee from matched course
-  useEffect(() => {
-    if (!courseSelectReady || !isNew || !form.course_id) return;
-    const matched = courses.find((c) => c.id === form.course_id);
-    if (!matched) return;
-    setForm((f) => ({
-      ...f,
-      course_id: matched.id,
-      course_name_snapshot: matched.name,
-      total_fee: matched.total_fee ?? 0,
-    }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseSelectReady]); // Only run once when both become ready
 
   // Load existing student for edit mode
   useEffect(() => {
@@ -226,20 +231,13 @@ export default function CrmStudentForm() {
       ...f,
       course_id: cid,
       course_name_snapshot: c?.name ?? f.course_name_snapshot,
-      total_fee: isNew && c ? c.total_fee : f.total_fee,
     }));
   };
 
   const upload = async (file: File, kind: "photo" | "id" | "addr") => {
     if (kind === "photo") {
-      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-        toast.error("Photo must be JPG, PNG or WebP");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Photo must be under 5 MB");
-        return;
-      }
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) { toast.error("Photo must be JPG, PNG or WebP"); return; }
+      if (file.size > 5 * 1024 * 1024) { toast.error("Photo must be under 5 MB"); return; }
     }
     setUploading(kind);
     const bucket = kind === "photo" ? "crm-course-media" : "crm-student-docs";
@@ -259,22 +257,15 @@ export default function CrmStudentForm() {
     toast.success("Uploaded");
   };
 
-  const removePhoto = () => {
-    set("photo_url", "");
-    toast.success("Photo removed. Don't forget to Save.");
-  };
+  const removePhoto = () => { set("photo_url", ""); toast.success("Photo removed. Don't forget to Save."); };
 
   const netPayable = Math.max(0, (Number(form.total_fee) || 0) - (Number(form.discount_amount) || 0));
 
   const save = async () => {
     if (!form.full_name || !form.phone) { toast.error("Name and phone required"); return; }
-    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, "").slice(-10))) {
-      toast.error("Phone must be 10 digits"); return;
-    }
+    if (!/^\d{10}$/.test(form.phone.replace(/\D/g, "").slice(-10))) { toast.error("Phone must be 10 digits"); return; }
     if (form.pin && !/^\d{6}$/.test(form.pin)) { toast.error("PIN must be 6 digits"); return; }
-    if (Number(form.discount_amount) > 0 && !form.discount_reason.trim()) {
-      toast.error("Discount reason is required when discount > 0"); return;
-    }
+    if (Number(form.discount_amount) > 0 && !form.discount_reason.trim()) { toast.error("Discount reason required when discount > 0"); return; }
     setSaving(true);
     const courseRow = courses.find((c) => c.id === form.course_id);
     const payload = {
@@ -322,48 +313,33 @@ export default function CrmStudentForm() {
       if (!linkedEnquiry) {
         const norm = normalisePhone(form.phone);
         if (norm) {
-          const { data: existingEnq } = await supabase
-            .from("crm_enquiries")
-            .select("id")
-            .eq("phone", norm)
-            .neq("status", "converted" as never)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data: existingEnq } = await supabase.from("crm_enquiries").select("id").eq("phone", norm)
+            .neq("status", "converted" as never).order("created_at", { ascending: false }).limit(1).maybeSingle();
           if (existingEnq?.id) linkedEnquiry = existingEnq.id;
         }
       }
       const { data, error } = await supabase.from("crm_students").insert({
-        ...payload,
-        source_enquiry_id: linkedEnquiry || null,
-        created_by: user?.id,
+        ...payload, source_enquiry_id: linkedEnquiry || null, created_by: user?.id,
       }).select("id, course_name_snapshot").maybeSingle();
       if (error) { toast.error(error.message); setSaving(false); return; }
       if (linkedEnquiry && data?.id) {
-        await supabase.from("crm_enquiries")
-          .update({ status: "converted" as never, converted_student_id: data.id })
-          .eq("id", linkedEnquiry);
+        await supabase.from("crm_enquiries").update({ status: "converted" as never, converted_student_id: data.id }).eq("id", linkedEnquiry);
       }
       if (data?.id && form.course_id) {
         await supabase.from("crm_student_enrolments" as never).insert({
-          student_id: data.id,
-          course_id: form.course_id,
+          student_id: data.id, course_id: form.course_id,
           course_name_snapshot: payload.course_name_snapshot,
-          batch_id: form.batch_id || null,
-          enrolment_no: null,
-          enrolment_date: payload.enrolment_date,
-          status: "active",
-          total_fee: payload.total_fee,
-          discount_amount: payload.discount_amount,
+          batch_id: form.batch_id || null, enrolment_no: null,
+          enrolment_date: payload.enrolment_date, status: "active",
+          total_fee: payload.total_fee, discount_amount: payload.discount_amount,
           discount_reason: payload.discount_reason,
           registration_fee_paid: payload.registration_fee_paid,
-          source_enquiry_id: linkedEnquiry || null,
-          notes: payload.notes,
+          source_enquiry_id: linkedEnquiry || null, notes: payload.notes,
           created_by: user?.id ?? null,
         } as never);
       }
       await logAudit("crm_students", "create", data?.id, payload);
-      toast.success(linkedEnquiry && !fromEnquiry ? "Student enrolled & linked to existing enquiry" : "Student enrolled");
+      toast.success(linkedEnquiry && !fromEnquiry ? "Student enrolled & linked to enquiry" : "Student enrolled");
       navigate(`/crm/students/${data?.id}`);
     } else {
       const { error } = await supabase.from("crm_students").update(payload).eq("id", id!);
@@ -377,11 +353,8 @@ export default function CrmStudentForm() {
   const addNote = async () => {
     if (!newNote.trim() || isNew) return;
     const { data, error } = await supabase.from("crm_admission_notes").insert({
-      student_id: id!,
-      body: newNote.trim(),
-      note_type: "note",
-      staff_id: user?.id,
-      staff_name: user?.user_metadata?.full_name || user?.email || null,
+      student_id: id!, body: newNote.trim(), note_type: "note",
+      staff_id: user?.id, staff_name: user?.user_metadata?.full_name || user?.email || null,
     }).select("*").maybeSingle();
     if (error) { toast.error(error.message); return; }
     setNotes((n) => [data as NoteRow, ...n]);
@@ -410,16 +383,11 @@ export default function CrmStudentForm() {
         description={form.enrolment_no ? `Enrolment № ${form.enrolment_no}` : "Enrolment number will be generated on save."}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate("/crm/students")}>
-              <ArrowLeft className="w-4 h-4 mr-2" /> Back
-            </Button>
-            <Button onClick={save} disabled={saving}>
-              <Save className="w-4 h-4 mr-2" /> {saving ? "Saving…" : "Save"}
-            </Button>
+            <Button variant="outline" onClick={() => navigate("/crm/students")}><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
+            <Button onClick={save} disabled={saving}><Save className="w-4 h-4 mr-2" /> {saving ? "Saving…" : "Save"}</Button>
           </div>
         }
       />
-
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -427,26 +395,11 @@ export default function CrmStudentForm() {
             <CardContent className="space-y-4">
               <DuplicateAlert phone={form.phone} excludeId={isNew ? undefined : id} />
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Full name *</Label>
-                  <Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Phone (10 digits) *</Label>
-                  <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} />
-                </div>
-                <div>
-                  <Label>Alt phone</Label>
-                  <Input value={form.alt_phone} onChange={(e) => set("alt_phone", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Date of birth</Label>
-                  <Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} />
-                </div>
+                <div><Label>Full name *</Label><Input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} /></div>
+                <div><Label>Phone (10 digits) *</Label><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} maxLength={15} /></div>
+                <div><Label>Alt phone</Label><Input value={form.alt_phone} onChange={(e) => set("alt_phone", e.target.value)} /></div>
+                <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
+                <div><Label>Date of birth</Label><Input type="date" value={form.dob} onChange={(e) => set("dob", e.target.value)} /></div>
                 <div>
                   <Label>Gender</Label>
                   <Select value={form.gender || "unset"} onValueChange={(v) => set("gender", v === "unset" ? "" : v)}>
@@ -466,23 +419,11 @@ export default function CrmStudentForm() {
           <Card>
             <CardHeader><CardTitle>Address</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label>Address line</Label>
-                <Textarea rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} />
-              </div>
+              <div><Label>Address line</Label><Textarea rows={2} value={form.address} onChange={(e) => set("address", e.target.value)} /></div>
               <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <Label>City</Label>
-                  <Input value={form.city} onChange={(e) => set("city", e.target.value)} />
-                </div>
-                <div>
-                  <Label>State</Label>
-                  <Input value={form.state} onChange={(e) => set("state", e.target.value)} />
-                </div>
-                <div>
-                  <Label>PIN (6 digits)</Label>
-                  <Input value={form.pin} onChange={(e) => set("pin", e.target.value)} maxLength={6} />
-                </div>
+                <div><Label>City</Label><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></div>
+                <div><Label>State</Label><Input value={form.state} onChange={(e) => set("state", e.target.value)} /></div>
+                <div><Label>PIN (6 digits)</Label><Input value={form.pin} onChange={(e) => set("pin", e.target.value)} maxLength={6} /></div>
               </div>
             </CardContent>
           </Card>
@@ -491,30 +432,12 @@ export default function CrmStudentForm() {
             <CardHeader><CardTitle>Family & emergency</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Father's name</Label>
-                  <Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Father's occupation</Label>
-                  <Input value={form.father_occupation} onChange={(e) => set("father_occupation", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Father's phone</Label>
-                  <Input value={form.father_phone} onChange={(e) => set("father_phone", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Mother's name</Label>
-                  <Input value={form.mother_name} onChange={(e) => set("mother_name", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Emergency contact name</Label>
-                  <Input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Emergency contact phone</Label>
-                  <Input value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)} />
-                </div>
+                <div><Label>Father's name</Label><Input value={form.father_name} onChange={(e) => set("father_name", e.target.value)} /></div>
+                <div><Label>Father's occupation</Label><Input value={form.father_occupation} onChange={(e) => set("father_occupation", e.target.value)} /></div>
+                <div><Label>Father's phone</Label><Input value={form.father_phone} onChange={(e) => set("father_phone", e.target.value)} /></div>
+                <div><Label>Mother's name</Label><Input value={form.mother_name} onChange={(e) => set("mother_name", e.target.value)} /></div>
+                <div><Label>Emergency contact name</Label><Input value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)} /></div>
+                <div><Label>Emergency contact phone</Label><Input value={form.emergency_contact_phone} onChange={(e) => set("emergency_contact_phone", e.target.value)} /></div>
               </div>
             </CardContent>
           </Card>
@@ -545,30 +468,15 @@ export default function CrmStudentForm() {
                 </div>
                 {isStudentBg && (
                   <>
-                    <div>
-                      <Label>College / school</Label>
-                      <Input value={form.college_name} onChange={(e) => set("college_name", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Class / year</Label>
-                      <Input value={form.class_year} onChange={(e) => set("class_year", e.target.value)} />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label>Stream</Label>
-                      <Input value={form.stream} onChange={(e) => set("stream", e.target.value)} />
-                    </div>
+                    <div><Label>College / school</Label><Input value={form.college_name} onChange={(e) => set("college_name", e.target.value)} /></div>
+                    <div><Label>Class / year</Label><Input value={form.class_year} onChange={(e) => set("class_year", e.target.value)} /></div>
+                    <div className="sm:col-span-2"><Label>Stream</Label><Input value={form.stream} onChange={(e) => set("stream", e.target.value)} /></div>
                   </>
                 )}
                 {isWorkingBg && (
                   <>
-                    <div>
-                      <Label>Company</Label>
-                      <Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Designation</Label>
-                      <Input value={form.designation} onChange={(e) => set("designation", e.target.value)} />
-                    </div>
+                    <div><Label>Company</Label><Input value={form.company_name} onChange={(e) => set("company_name", e.target.value)} /></div>
+                    <div><Label>Designation</Label><Input value={form.designation} onChange={(e) => set("designation", e.target.value)} /></div>
                   </>
                 )}
               </div>
@@ -581,43 +489,32 @@ export default function CrmStudentForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Course *</Label>
-                  {/* Only render Select when courses AND enquiry are both loaded.
-                      First render has correct value + options — Radix never sees blank state. */}
+                  {/* Deferred render: Select only mounts after BOTH courses and enquiry are loaded.
+                      This guarantees Radix never sees a blank options list on first mount. */}
                   {courseSelectReady ? (
-                    <Select
-                      value={form.course_id || "none"}
-                      onValueChange={(v) => onCourse(v === "none" ? "" : v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <Select value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
+                      <SelectTrigger><SelectValue placeholder="Select course" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">— None —</SelectItem>
                         {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   ) : (
-                    <div className="h-10 w-full rounded-md border border-input bg-muted animate-pulse" />
+                    <div className="h-10 rounded-md border border-input bg-muted animate-pulse" title="Loading courses…" />
                   )}
                 </div>
                 <div>
                   <Label>Batch</Label>
-                  <Select
-                    key={`batch-${batches.length}-${form.batch_id}`}
-                    value={form.batch_id || "none"}
-                    onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}
-                  >
+                  <Select key={`batch-${batches.length}-${form.batch_id}`} value={form.batch_id || "none"} onValueChange={(v) => set("batch_id", v === "none" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Unassigned —</SelectItem>
-                      {batches
-                        .filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
+                      {batches.filter((b) => !form.course_id || !b.course_id || b.course_id === form.course_id)
                         .map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>Enrolment date</Label>
-                  <Input type="date" value={form.enrolment_date} onChange={(e) => set("enrolment_date", e.target.value)} />
-                </div>
+                <div><Label>Enrolment date</Label><Input type="date" value={form.enrolment_date} onChange={(e) => set("enrolment_date", e.target.value)} /></div>
                 <div>
                   <Label>Status</Label>
                   <Select value={form.status} onValueChange={(v) => set("status", v)}>
@@ -635,24 +532,12 @@ export default function CrmStudentForm() {
             <CardHeader><CardTitle>Fees</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Total fee (₹)</Label>
-                  <Input type="number" value={form.total_fee} onChange={(e) => set("total_fee", Number(e.target.value))} />
-                </div>
-                <div>
-                  <Label>Discount (₹)</Label>
-                  <Input type="number" value={form.discount_amount} onChange={(e) => set("discount_amount", Number(e.target.value))} />
-                </div>
+                <div><Label>Total fee (₹)</Label><Input type="number" value={form.total_fee} onChange={(e) => set("total_fee", Number(e.target.value))} /></div>
+                <div><Label>Discount (₹)</Label><Input type="number" value={form.discount_amount} onChange={(e) => set("discount_amount", Number(e.target.value))} /></div>
                 {Number(form.discount_amount) > 0 && (
-                  <div className="sm:col-span-2">
-                    <Label>Discount reason *</Label>
-                    <Input value={form.discount_reason} onChange={(e) => set("discount_reason", e.target.value)} placeholder="Required when discount > 0" />
-                  </div>
+                  <div className="sm:col-span-2"><Label>Discount reason *</Label><Input value={form.discount_reason} onChange={(e) => set("discount_reason", e.target.value)} placeholder="Required when discount > 0" /></div>
                 )}
-                <div>
-                  <Label>Registration paid (₹)</Label>
-                  <Input type="number" value={form.registration_fee_paid} onChange={(e) => set("registration_fee_paid", Number(e.target.value))} />
-                </div>
+                <div><Label>Registration paid (₹)</Label><Input type="number" value={form.registration_fee_paid} onChange={(e) => set("registration_fee_paid", Number(e.target.value))} /></div>
                 <div className="flex items-end">
                   <div className="bg-primary/10 border border-primary/20 rounded-md px-4 py-2 w-full">
                     <p className="text-xs text-muted-foreground">Net payable</p>
@@ -667,24 +552,13 @@ export default function CrmStudentForm() {
             <CardHeader><CardTitle>Attribution & notes</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>How did they hear about us?</Label>
-                  <Input value={form.hear_about_us} onChange={(e) => set("hear_about_us", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Referred by</Label>
-                  <Input value={form.referred_by} onChange={(e) => set("referred_by", e.target.value)} />
-                </div>
+                <div><Label>How did they hear about us?</Label><Input value={form.hear_about_us} onChange={(e) => set("hear_about_us", e.target.value)} /></div>
+                <div><Label>Referred by</Label><Input value={form.referred_by} onChange={(e) => set("referred_by", e.target.value)} /></div>
               </div>
-              <div>
-                <Label>General notes</Label>
-                <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-              </div>
+              <div><Label>General notes</Label><Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} /></div>
               {!isNew && isAdmin && (
                 <div className="pt-4 border-t">
-                  <Button variant="destructive" size="sm" onClick={remove}>
-                    <Trash2 className="w-4 h-4 mr-2" /> Delete student
-                  </Button>
+                  <Button variant="destructive" size="sm" onClick={remove}><Trash2 className="w-4 h-4 mr-2" /> Delete student</Button>
                 </div>
               )}
             </CardContent>
@@ -702,9 +576,7 @@ export default function CrmStudentForm() {
                 <Avatar className="h-32 w-32 border-2 border-dashed">
                   {form.photo_url ? <AvatarImage src={form.photo_url} alt={form.full_name || "Student photo"} /> : null}
                   <AvatarFallback className="text-2xl">
-                    {form.full_name
-                      ? form.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
-                      : <User className="w-10 h-10 text-muted-foreground" />}
+                    {form.full_name ? form.full_name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() : <User className="w-10 h-10 text-muted-foreground" />}
                   </AvatarFallback>
                 </Avatar>
                 <div className="w-full grid grid-cols-2 gap-2">
@@ -712,23 +584,17 @@ export default function CrmStudentForm() {
                     <label className="cursor-pointer">
                       <Upload className="w-3.5 h-3.5 mr-1" />
                       {uploading === "photo" ? "Uploading…" : form.photo_url ? "Replace" : "Upload"}
-                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp"
-                        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
+                      <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
                     </label>
                   </Button>
                   <Button asChild variant="outline" size="sm" disabled={uploading === "photo"}>
                     <label className="cursor-pointer">
                       <Camera className="w-3.5 h-3.5 mr-1" /> Camera
-                      <input type="file" className="hidden" accept="image/*" capture="user"
-                        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
+                      <input type="file" className="hidden" accept="image/*" capture="user" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "photo")} />
                     </label>
                   </Button>
                 </div>
-                {form.photo_url && (
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={removePhoto}>
-                    <X className="w-3.5 h-3.5 mr-1" /> Remove photo
-                  </Button>
-                )}
+                {form.photo_url && (<Button variant="ghost" size="sm" className="text-destructive" onClick={removePhoto}><X className="w-3.5 h-3.5 mr-1" /> Remove photo</Button>)}
                 <p className="text-[11px] text-muted-foreground text-center">JPG / PNG / WebP, max 5 MB</p>
               </div>
             </CardContent>
@@ -739,52 +605,32 @@ export default function CrmStudentForm() {
             <CardContent className="space-y-5">
               <div>
                 <Label>ID proof (private)</Label>
-                {form.id_proof_url && (
-                  <p className="text-xs text-muted-foreground my-2 truncate">📎 {form.id_proof_url.split("/").pop()}</p>
-                )}
-                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "id"}
-                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "id")} />
+                {form.id_proof_url && (<p className="text-xs text-muted-foreground my-2 truncate">📎 {form.id_proof_url.split("/").pop()}</p>)}
+                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "id"} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "id")} />
               </div>
               <div>
                 <Label>Address proof (private)</Label>
-                {form.address_proof_url && (
-                  <p className="text-xs text-muted-foreground my-2 truncate">📎 {form.address_proof_url.split("/").pop()}</p>
-                )}
-                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "addr"}
-                  onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "addr")} />
+                {form.address_proof_url && (<p className="text-xs text-muted-foreground my-2 truncate">📎 {form.address_proof_url.split("/").pop()}</p>)}
+                <Input type="file" accept="image/*,application/pdf" disabled={uploading === "addr"} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], "addr")} />
               </div>
             </CardContent>
           </Card>
 
           <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
-                <Lock className="w-4 h-4" /> Internal admission notes
-              </CardTitle>
-              <p className="text-xs text-amber-800/70 dark:text-amber-300/70">
-                Private — never shown to students. Visible to CRM staff only.
-              </p>
+              <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200"><Lock className="w-4 h-4" /> Internal admission notes</CardTitle>
+              <p className="text-xs text-amber-800/70 dark:text-amber-300/70">Private — never shown to students. Visible to CRM staff only.</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {isNew ? (
                 <p className="text-sm text-amber-900/70 dark:text-amber-200/70">Save the student first to add notes.</p>
               ) : (
                 <>
-                  <Textarea
-                    rows={2}
-                    placeholder="Add an internal note…"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    className="bg-white dark:bg-background"
-                  />
-                  <Button size="sm" onClick={addNote} disabled={!newNote.trim()}>
-                    <Plus className="w-4 h-4 mr-1" /> Add note
-                  </Button>
+                  <Textarea rows={2} placeholder="Add an internal note…" value={newNote} onChange={(e) => setNewNote(e.target.value)} className="bg-white dark:bg-background" />
+                  <Button size="sm" onClick={addNote} disabled={!newNote.trim()}><Plus className="w-4 h-4 mr-1" /> Add note</Button>
                   <div className="space-y-3 pt-2 max-h-[400px] overflow-y-auto">
                     {notes.length === 0 ? (
-                      <p className="text-sm text-amber-900/70 dark:text-amber-200/70 flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" /> No notes yet.
-                      </p>
+                      <p className="text-sm text-amber-900/70 dark:text-amber-200/70 flex items-center gap-1"><MessageSquare className="w-3 h-3" /> No notes yet.</p>
                     ) : notes.map((n) => (
                       <div key={n.id} className="border-l-2 border-amber-500/60 pl-3 bg-white/60 dark:bg-background/40 rounded-r p-2">
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
