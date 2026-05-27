@@ -578,9 +578,14 @@ export default function CrmStudentForm() {
             <CardHeader><CardTitle>Course & enrolment</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
+
+                
                 <div>
                   <Label>Course *</Label>
-                  <Select value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
+                  <Select key={`course-select-${courses.length}-${form.course_id}`} value={form.course_id || "none"} onValueChange={(v) => onCourse(v === "none" ? "" : v)}>
+
+
+                    
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— None —</SelectItem>
