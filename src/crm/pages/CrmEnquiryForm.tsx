@@ -115,6 +115,8 @@ export default function CrmEnquiryForm() {
   useEffect(() => {
     supabase.from("courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
+    supabase.from("crm_user_roles").select("user_id, display_name").order("display_name")
+      .then(({ data }) => setStaffList((data ?? []) as { user_id: string; display_name: string | null }[]));
   }, []);
 
   useEffect(() => {
