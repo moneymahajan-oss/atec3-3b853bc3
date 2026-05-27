@@ -103,19 +103,21 @@ export default function CrmStudentForm() {
 
   // Helper: get options for a field
   const opts = (key: string) => dbOpts[key] ?? [];
-
   useEffect(() => {
-    supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
-      .then(({ data }) => setCourses((data ?? []) as Course[]));
-    supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
-      .then(({ data }) => setBatches((data ?? []) as never));
-  }, []);
+    // Load courses and batches always
+    Promise.all([
+      supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name"),
+      supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false }),
+    ]).then(([{ data: courseData }, { data: batchData }]) => {
+      const loadedCourses = (courseData ?? []) as Course[];
+      setCourses(loadedCourses);
+      setBatches((batchData ?? []) as never);
 
-  useEffect(() => {
-    if (isNew) {
-      if (fromEnquiry) {
+      // Pre-fill from enquiry AFTER courses are loaded so the Select can match
+      if (isNew && fromEnquiry) {
         supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle().then(({ data }) => {
           if (!data) return;
+          const matchedCourse = loadedCourses.find((c) => c.id === data.course_id);
           setForm((f) => ({
             ...f,
             full_name: data.name ?? "",
@@ -125,7 +127,8 @@ export default function CrmStudentForm() {
             city: data.city ?? "",
             state: data.state ?? "",
             course_id: data.course_id ?? "",
-            course_name_snapshot: data.course_name_snapshot,
+            course_name_snapshot: matchedCourse?.name ?? data.course_name_snapshot ?? "",
+            total_fee: matchedCourse?.total_fee ?? 0,
             qualification: data.qualification ?? "",
             college_name: data.college_name ?? "",
             class_year: data.class_year ?? "",
@@ -138,9 +141,13 @@ export default function CrmStudentForm() {
           }));
         });
       }
-      return;
-    }
-    (async () => {
+    });
+  }, [isNew, fromEnquiry]);
+
+  useEffect(() => {
+    if (isNew) return;
+
+      (async () => {
       const { data, error } = await supabase.from("crm_students").select("*").eq("id", id!).maybeSingle();
       if (error || !data) { toast.error("Student not found"); navigate("/crm/students"); return; }
       setForm({
