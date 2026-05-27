@@ -106,7 +106,7 @@ export default function CrmStudentForm() {
 
   const opts = (key: string) => dbOpts[key] ?? [];
 
-  // Step 1: Load courses and batches
+// Load courses and batches
   useEffect(() => {
     supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
@@ -114,44 +114,57 @@ export default function CrmStudentForm() {
       .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
-  // Step 2: Load enquiry data into a staging state (independent of courses)
+  // Step A: As soon as enquiry loads, set ALL text fields immediately (no waiting for courses)
   useEffect(() => {
     if (!isNew || !fromEnquiry) return;
     supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle()
-      .then(({ data }) => { if (data) setEnquiryPrefill(data as Record<string, unknown>); });
+      .then(({ data }) => {
+        if (!data) return;
+        // Store raw enquiry for course matching later
+        setEnquiryPrefill(data as Record<string, unknown>);
+        // Immediately prefill every non-course field so they're never blank
+        setForm((f) => ({
+          ...f,
+          full_name: data.name ?? "",
+          phone: data.phone ?? "",
+          alt_phone: data.alt_phone ?? "",
+          email: data.email ?? "",
+          city: data.city ?? "",
+          state: data.state ?? "",
+          qualification: data.qualification ?? "",
+          college_name: data.college_name ?? "",
+          class_year: data.class_year ?? "",
+          stream: data.stream ?? "",
+          current_status: data.current_status ?? "",
+          company_name: data.company_name ?? "",
+          designation: data.designation ?? "",
+          hear_about_us: data.hear_about_us ?? "",
+          referred_by: data.referred_by ?? "",
+          // Set course_id too — Select will show it if courses already loaded
+          course_id: data.course_id ?? "",
+          course_name_snapshot: data.course_name_snapshot ?? "",
+        }));
+      });
   }, [isNew, fromEnquiry]);
 
-  // Step 3: Apply prefill ONLY when BOTH courses and enquiry data are ready
+  // Step B: Once courses load, patch in the matched course + fee (handles the race condition)
   useEffect(() => {
     if (!isNew || !enquiryPrefill || courses.length === 0) return;
-    const data = enquiryPrefill;
-    const matchedCourse = courses.find((c) => c.id === data.course_id);
+    const matchedCourse = courses.find((c) => c.id === (enquiryPrefill.course_id as string));
+    if (!matchedCourse) return; // course_id was empty or not found — nothing to patch
     setForm((f) => ({
       ...f,
-      full_name: (data.name as string) ?? "",
-      phone: (data.phone as string) ?? "",
-      alt_phone: (data.alt_phone as string) ?? "",
-      email: (data.email as string) ?? "",
-      city: (data.city as string) ?? "",
-      state: (data.state as string) ?? "",
-      course_id: (data.course_id as string) ?? "",
-      course_name_snapshot: matchedCourse?.name ?? (data.course_name_snapshot as string) ?? "",
-      total_fee: matchedCourse?.total_fee ?? 0,
-      qualification: (data.qualification as string) ?? "",
-      college_name: (data.college_name as string) ?? "",
-      class_year: (data.class_year as string) ?? "",
-      stream: (data.stream as string) ?? "",
-      current_status: (data.current_status as string) ?? "",
-      company_name: (data.company_name as string) ?? "",
-      designation: (data.designation as string) ?? "",
-      hear_about_us: (data.hear_about_us as string) ?? "",
-      referred_by: (data.referred_by as string) ?? "",
+      course_id: matchedCourse.id,
+      course_name_snapshot: matchedCourse.name,
+      total_fee: matchedCourse.total_fee ?? 0,
     }));
   }, [isNew, enquiryPrefill, courses]);
 
   // Load existing student for edit mode
   useEffect(() => {
     if (isNew) return;
+
+    
     (async () => {
       const { data, error } = await supabase.from("crm_students").select("*").eq("id", id!).maybeSingle();
       if (error || !data) { toast.error("Student not found"); navigate("/crm/students"); return; }
