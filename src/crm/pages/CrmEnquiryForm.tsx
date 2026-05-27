@@ -23,24 +23,11 @@ import { toast } from "sonner";
 type Course = { id: string; name: string };
 type NoteRow = { id: string; body: string; note_type: string; staff_name: string | null; created_at: string };
 
-// Dropdown options loaded from DB (crm_enquiry_form_fields.dropdown_options)
-type FieldOptions = {
-  qualification: string[];
-  current_status: string[];
-  preferred_mode: string[];
-  preferred_timing: string[];
-  budget_range: string[];
-  source: string[];
-};
-
-const DEFAULT_FIELD_OPTIONS: FieldOptions = {
-  qualification: [],
-  current_status: [],
-  preferred_mode: ["Offline", "Online", "Hybrid"],
-  preferred_timing: [],
-  budget_range: [],
-  source: ["Walk-in", "Phone", "WhatsApp", "Website", "Instagram", "Facebook", "Referral", "Google", "YouTube", "Other"],
-};
+// source has no DB config row — keep hardcoded as fallback
+const SOURCES = [
+  "Walk-in","Phone","WhatsApp","Website","Instagram",
+  "Facebook","Referral","Google","YouTube","Other",
+];
 
 const empty = {
   name: "",
@@ -87,31 +74,38 @@ export default function CrmEnquiryForm() {
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [createdByName, setCreatedByName] = useState<string | null>(null);
   const [prevStatus, setPrevStatus] = useState<string>("new");
-  const [courseDetails, setCourseDetails] = useState<{ id: string; name: string; total_fee: number | null; duration: string | null; mode: string | null; brochure_url: string | null; video_url: string | null; instagram_url: string | null; concise_syllabus: string | null; detailed_syllabus_html: string | null; next_batch_date: string | null } | null>(null);
-  const [institute, setInstitute] = useState<{ name: string | null; phone: string | null; whatsapp_number: string | null; website: string | null } | null>(null);
-  const [fieldOptions, setFieldOptions] = useState<FieldOptions>(DEFAULT_FIELD_OPTIONS);
+  const [courseDetails, setCourseDetails] = useState<{
+    id: string; name: string; total_fee: number | null; duration: string | null;
+    mode: string | null; brochure_url: string | null; video_url: string | null;
+    instagram_url: string | null; concise_syllabus: string | null;
+    detailed_syllabus_html: string | null; next_batch_date: string | null;
+  } | null>(null);
+  const [institute, setInstitute] = useState<{
+    name: string | null; phone: string | null; whatsapp_number: string | null; website: string | null;
+  } | null>(null);
+
+  // DB-driven dropdown options — keyed by field_key
+  const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
 
   // Load dropdown options from crm_enquiry_form_fields
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("crm_enquiry_form_fields")
-        .select("field_key, dropdown_options")
-        .not("dropdown_options", "is", null);
-
-      if (!data) return;
-
-      const opts: Partial<FieldOptions> = {};
-      for (const row of data as { field_key: string; dropdown_options: string[] | null }[]) {
-        const key = row.field_key as keyof FieldOptions;
-        if (row.dropdown_options && row.dropdown_options.length > 0) {
-          opts[key] = row.dropdown_options;
+    supabase
+      .from("crm_enquiry_form_fields")
+      .select("field_key, dropdown_options")
+      .not("dropdown_options", "is", null)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string[]> = {};
+        for (const row of data as { field_key: string; dropdown_options: string[] | null }[]) {
+          if (row.dropdown_options && row.dropdown_options.length > 0) {
+            map[row.field_key] = row.dropdown_options;
+          }
         }
-      }
-      setFieldOptions((prev) => ({ ...prev, ...opts }));
-    })();
+        setDbOpts(map);
+      });
   }, []);
 
+  // Load courses and staff
   useEffect(() => {
     supabase.from("courses").select("id,name").eq("is_active", true).order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
@@ -167,7 +161,6 @@ export default function CrmEnquiryForm() {
       .then(({ data }) => setInstitute((data as never) ?? null));
   }, [id, isNew, navigate]);
 
-  // Load course details when course_id changes
   useEffect(() => {
     if (!form.course_id) { setCourseDetails(null); return; }
     supabase.from("courses")
@@ -177,6 +170,9 @@ export default function CrmEnquiryForm() {
   }, [form.course_id]);
 
   const set = (k: keyof typeof empty, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Helper: get options for a field — DB first, fallback to empty
+  const opts = (key: string) => dbOpts[key] ?? [];
 
   const save = async () => {
     if (!form.name || !form.phone) { toast.error("Name and phone are required"); return; }
@@ -264,10 +260,7 @@ export default function CrmEnquiryForm() {
     const norm = (form.phone || "").replace(/\D/g, "").slice(-10);
     if (norm.length === 10) {
       const { data: existing } = await supabase
-        .from("crm_students")
-        .select("id, full_name")
-        .eq("phone", norm)
-        .maybeSingle();
+        .from("crm_students").select("id, full_name").eq("phone", norm).maybeSingle();
       if (existing?.id) {
         toast.info(`${existing.full_name} already exists — adding this course to their profile.`);
         navigate(`/crm/students/${existing.id}/add-course?from_enquiry=${id}`);
@@ -288,8 +281,6 @@ export default function CrmEnquiryForm() {
     navigate("/crm/enquiries");
   };
 
-  // Detect student/working from current_status options dynamically
-  // We check if the saved value looks like a student or working professional
   const currentStatusLower = form.current_status.toLowerCase();
   const isStudent = currentStatusLower.includes("student");
   const isWorking = currentStatusLower.includes("working") || currentStatusLower.includes("business") || currentStatusLower.includes("professional");
@@ -388,9 +379,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.qualification.map((q) => (
-                        <SelectItem key={q} value={q}>{q}</SelectItem>
-                      ))}
+                      {opts("qualification").map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -400,9 +389,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.current_status.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
+                      {opts("current_status").map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -458,9 +445,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.preferred_mode.map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
+                      {opts("preferred_mode").map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -470,9 +455,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.preferred_timing.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
+                      {opts("preferred_timing").map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -482,9 +465,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.budget_range.map((b) => (
-                        <SelectItem key={b} value={b}>{b}</SelectItem>
-                      ))}
+                      {opts("budget_range").map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -502,9 +483,7 @@ export default function CrmEnquiryForm() {
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__unset__">—</SelectItem>
-                      {fieldOptions.source.map((s) => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
+                      {SOURCES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -602,49 +581,49 @@ export default function CrmEnquiryForm() {
             />
           )}
           <Card className="bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
-              <Lock className="w-4 h-4" /> Internal staff notes
-            </CardTitle>
-            <p className="text-xs text-amber-800/70 dark:text-amber-300/70">
-              Private — never shown to students. Visible to CRM staff only.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isNew ? (
-              <p className="text-sm text-amber-900/70 dark:text-amber-200/70">Save the enquiry first to add notes.</p>
-            ) : (
-              <>
-                <Textarea
-                  rows={2}
-                  placeholder="Add a note (call, message, decision…)"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  className="bg-white dark:bg-background"
-                />
-                <Button size="sm" onClick={addNote} disabled={!newNote.trim()}>
-                  <Plus className="w-4 h-4 mr-1" /> Add note
-                </Button>
-                <div className="space-y-3 pt-2 max-h-[480px] overflow-y-auto">
-                  {notes.length === 0 ? (
-                    <p className="text-sm text-amber-900/70 dark:text-amber-200/70 flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3" /> No notes yet.
-                    </p>
-                  ) : notes.map((n) => (
-                    <div key={n.id} className="border-l-2 border-amber-500/60 pl-3 bg-white/60 dark:bg-background/40 rounded-r p-2">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <Badge variant="outline" className="text-[10px]">{n.note_type}</Badge>
-                        <span>{new Date(n.created_at).toLocaleString()}</span>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <Lock className="w-4 h-4" /> Internal staff notes
+              </CardTitle>
+              <p className="text-xs text-amber-800/70 dark:text-amber-300/70">
+                Private — never shown to students. Visible to CRM staff only.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isNew ? (
+                <p className="text-sm text-amber-900/70 dark:text-amber-200/70">Save the enquiry first to add notes.</p>
+              ) : (
+                <>
+                  <Textarea
+                    rows={2}
+                    placeholder="Add a note (call, message, decision…)"
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    className="bg-white dark:bg-background"
+                  />
+                  <Button size="sm" onClick={addNote} disabled={!newNote.trim()}>
+                    <Plus className="w-4 h-4 mr-1" /> Add note
+                  </Button>
+                  <div className="space-y-3 pt-2 max-h-[480px] overflow-y-auto">
+                    {notes.length === 0 ? (
+                      <p className="text-sm text-amber-900/70 dark:text-amber-200/70 flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> No notes yet.
+                      </p>
+                    ) : notes.map((n) => (
+                      <div key={n.id} className="border-l-2 border-amber-500/60 pl-3 bg-white/60 dark:bg-background/40 rounded-r p-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px]">{n.note_type}</Badge>
+                          <span>{new Date(n.created_at).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm mt-1 whitespace-pre-wrap">{n.body}</p>
+                        {n.staff_name && <p className="text-[11px] text-muted-foreground mt-1">— {n.staff_name}</p>}
                       </div>
-                      <p className="text-sm mt-1 whitespace-pre-wrap">{n.body}</p>
-                      {n.staff_name && <p className="text-[11px] text-muted-foreground mt-1">— {n.staff_name}</p>}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
