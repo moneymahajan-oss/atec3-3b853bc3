@@ -73,6 +73,7 @@ export default function CrmStudentFees() {
   const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0 });
   const [payOpen, setPayOpen] = useState(false);
   const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string, enrolment_id: "" as string });
+  const [overPayConfirm, setOverPayConfirm] = useState(false); // true = user confirmed overpayment
   const [voidPlan, setVoidPlan] = useState<Plan | null>(null);
   const [voidPay, setVoidPay] = useState<Payment | null>(null);
 
@@ -246,6 +247,28 @@ export default function CrmStudentFees() {
       toast.error("Please choose which course this payment is for");
       return;
     }
+
+    // PAYMENT CAP: warn if total payments would exceed net payable fee for this enrolment
+    const newPayAmount = Number(pay.amount);
+    const capEnrol = enrolmentId ? enrolments.find((e) => e.id === enrolmentId) : null;
+    const capFee = capEnrol
+      ? (capEnrol.net_payable_fee ?? Math.max(0, (capEnrol.total_fee ?? 0) - (capEnrol.discount_amount ?? 0)))
+      : (student?.total_fee ?? 0);
+    const alreadyPaid = payments
+      .filter((p) => !p.is_void && (enrolmentId ? p.enrolment_id === enrolmentId : true))
+      .reduce((a, p) => a + p.amount, 0);
+    const wouldExceed = capFee > 0 && (alreadyPaid + newPayAmount) > capFee;
+    if (wouldExceed && !overPayConfirm) {
+      const excess = (alreadyPaid + newPayAmount) - capFee;
+      toast.error(
+        `Payment of ₹${newPayAmount.toLocaleString("en-IN")} would exceed the course fee of ₹${capFee.toLocaleString("en-IN")} by ₹${excess.toLocaleString("en-IN")}. Already collected: ₹${alreadyPaid.toLocaleString("en-IN")}. Click "Record anyway" to override.`,
+        { duration: 6000 }
+      );
+      setOverPayConfirm(true); // next click will bypass the check
+      return;
+    }
+    setOverPayConfirm(false); // reset after use
+
     const payload = {
       student_id: studentId!,
       fee_plan_id: pay.fee_plan_id || null,
@@ -263,6 +286,7 @@ export default function CrmStudentFees() {
     await logAudit("crm_payments", "create", data?.id, payload);
     toast.success(`Receipt ${data?.receipt_no} recorded`);
     setPayOpen(false);
+    setOverPayConfirm(false);
     setPay({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "", enrolment_id: "" });
     load();
   };
@@ -606,11 +630,30 @@ export default function CrmStudentFees() {
       </Dialog>
 
       {/* Record Payment dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog open={payOpen} onOpenChange={(v) => { if (!v) { setPayOpen(false); setOverPayConfirm(false); } else setPayOpen(true); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div><Label>Amount (₹) *</Label><Input type="number" value={pay.amount} onChange={(e) => setPay((p) => ({ ...p, amount: Number(e.target.value) }))} /></div>
+            <div>
+              <Label>Amount (₹) *</Label>
+              <Input type="number" value={pay.amount} onChange={(e) => { setPay((p) => ({ ...p, amount: Number(e.target.value) })); setOverPayConfirm(false); }} />
+              {(() => {
+                const eid = pay.enrolment_id || defaultEnrolmentId;
+                const enrol = enrolments.find((e) => e.id === eid);
+                const cap = enrol ? (enrol.net_payable_fee ?? Math.max(0, (enrol.total_fee ?? 0) - (enrol.discount_amount ?? 0))) : (student?.total_fee ?? 0);
+                const alreadyPaid = payments.filter((p) => !p.is_void && (eid ? p.enrolment_id === eid : true)).reduce((a, p) => a + p.amount, 0);
+                const entered = Number(pay.amount) || 0;
+                const afterPay = alreadyPaid + entered;
+                const balance = cap - afterPay;
+                if (!cap || !entered) return null;
+                return (
+                  <div className={`text-xs mt-1 flex justify-between px-1 ${balance < 0 ? "text-rose-600 font-semibold" : "text-muted-foreground"}`}>
+                    <span>After this: ₹{afterPay.toLocaleString("en-IN")} of ₹{cap.toLocaleString("en-IN")}</span>
+                    <span>{balance < 0 ? `⚠ Over by ₹${Math.abs(balance).toLocaleString("en-IN")}` : `₹${balance.toLocaleString("en-IN")} remaining`}</span>
+                  </div>
+                );
+              })()}
+            </div>
             <div><Label>Mode</Label>
               <Select value={pay.mode} onValueChange={(v) => setPay((p) => ({ ...p, mode: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -655,7 +698,9 @@ export default function CrmStudentFees() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
-            <Button onClick={savePayment}>Save & generate receipt</Button>
+            <Button onClick={savePayment} variant={overPayConfirm ? "destructive" : "default"}>
+              {overPayConfirm ? "⚠ Record anyway (overpayment)" : "Save & generate receipt"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
