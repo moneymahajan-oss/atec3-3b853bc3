@@ -15,7 +15,7 @@ import { addEnrolment, getStudentEnrolments, type Enrolment } from "../lib/enrol
 import { logAudit } from "../lib/audit";
 import { toast } from "sonner";
 
-type Course = { id: string; name: string; total_fee: number | null; registration_fee: number | null };
+type Course = { id: string; name: string };
 type Student = { id: string; full_name: string; phone: string; email: string | null };
 type Batch = { id: string; name: string; course_id: string | null };
 
@@ -49,7 +49,7 @@ export default function CrmAddEnrolment() {
       const [stu, enr, crs, bts] = await Promise.all([
         supabase.from("crm_students").select("id,full_name,phone,email").eq("id", studentId).maybeSingle(),
         getStudentEnrolments(studentId),
-        supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name"),
+        supabase.from("courses").select("id,name").eq("is_active", true).order("name"),
         supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false }),
       ]);
       setStudent((stu.data ?? null) as Student | null);
@@ -70,8 +70,8 @@ export default function CrmAddEnrolment() {
           setForm((f) => ({
             ...f,
             course_id: enq.course_id!,
-            total_fee: c?.total_fee ?? 0,
-            registration_fee_paid: c?.registration_fee ?? 0,
+            
+            
           }));
         }
       }
@@ -80,14 +80,7 @@ export default function CrmAddEnrolment() {
   }, [studentId, fromEnquiry]);
 
   const onCourse = (cid: string) => {
-    const c = courses.find((c) => c.id === cid);
-    setForm((f) => ({
-      ...f,
-      course_id: cid,
-      batch_id: "",
-      total_fee: c?.total_fee ?? 0,
-      registration_fee_paid: c?.registration_fee ?? 0,
-    }));
+    setForm((f) => ({ ...f, course_id: cid, batch_id: "" }));
   };
 
   const filteredBatches = useMemo(
