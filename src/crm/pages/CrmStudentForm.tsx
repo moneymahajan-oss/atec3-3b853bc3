@@ -80,9 +80,13 @@ export default function CrmStudentForm() {
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [newNote, setNewNote] = useState("");
   const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
-  const [enquiryPrefill, setEnquiryPrefill] = useState<Record<string, unknown> | null>(null);
-  // Explicit remount counter for Course Select — incremented when course is confirmed ready
-  const [courseSelectKey, setCourseSelectKey] = useState(0);
+
+  // Track loading states separately so we only render Course Select when BOTH are ready
+  const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [enquiryLoaded, setEnquiryLoaded] = useState(!fromEnquiry); // true if no enquiry to load
+
+  // Course Select only renders when both data sources are ready — prevents Radix caching blank
+  const courseSelectReady = coursesLoaded && enquiryLoaded;
 
   // Load dropdown options from crm_enquiry_form_fields
   useEffect(() => {
@@ -104,22 +108,23 @@ export default function CrmStudentForm() {
 
   const opts = (key: string) => dbOpts[key] ?? [];
 
-  // Load ALL courses (no is_active filter — admin needs to reference any course including inactive)
-  // and batches
+  // Load ALL courses (no is_active filter — admin needs all courses)
   useEffect(() => {
     supabase.from("courses").select("id,name,total_fee,registration_fee").order("name")
-      .then(({ data }) => setCourses((data ?? []) as Course[]));
+      .then(({ data }) => {
+        setCourses((data ?? []) as Course[]);
+        setCoursesLoaded(true);
+      });
     supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
       .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
-  // Prefill from enquiry — set all text fields immediately
+  // Prefill from enquiry — load enquiry data and set form
   useEffect(() => {
     if (!isNew || !fromEnquiry) return;
     supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle()
       .then(({ data }) => {
-        if (!data) return;
-        setEnquiryPrefill(data as Record<string, unknown>);
+        if (!data) { setEnquiryLoaded(true); return; }
         setForm((f) => ({
           ...f,
           full_name: data.name ?? "",
@@ -140,26 +145,23 @@ export default function CrmStudentForm() {
           course_id: data.course_id ?? "",
           course_name_snapshot: data.course_name_snapshot ?? "",
         }));
+        setEnquiryLoaded(true);
       });
   }, [isNew, fromEnquiry]);
 
-  // Once BOTH courses are loaded AND enquiry course_id is set, confirm course in form
-  // and force-remount the Select so Radix picks up the value correctly
+  // Once BOTH courses and enquiry are loaded, patch total_fee from matched course
   useEffect(() => {
-    if (!isNew || !enquiryPrefill || courses.length === 0) return;
-    const courseId = enquiryPrefill.course_id as string;
-    if (!courseId) return;
-    const matchedCourse = courses.find((c) => c.id === courseId);
-    if (!matchedCourse) return;
+    if (!courseSelectReady || !isNew || !form.course_id) return;
+    const matched = courses.find((c) => c.id === form.course_id);
+    if (!matched) return;
     setForm((f) => ({
       ...f,
-      course_id: matchedCourse.id,
-      course_name_snapshot: matchedCourse.name,
-      total_fee: matchedCourse.total_fee ?? 0,
+      course_id: matched.id,
+      course_name_snapshot: matched.name,
+      total_fee: matched.total_fee ?? 0,
     }));
-    // Explicitly increment key to force Radix Select to remount and re-read value
-    setCourseSelectKey((k) => k + 1);
-  }, [isNew, enquiryPrefill, courses]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseSelectReady]); // Only run once when both become ready
 
   // Load existing student for edit mode
   useEffect(() => {
@@ -579,18 +581,22 @@ export default function CrmStudentForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Course *</Label>
-                  {/* courseSelectKey forces Radix to remount once course + list are both confirmed ready */}
-                  <Select
-                    key={courseSelectKey}
-                    value={form.course_id || "none"}
-                    onValueChange={(v) => onCourse(v === "none" ? "" : v)}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {/* Only render Select when courses AND enquiry are both loaded.
+                      First render has correct value + options — Radix never sees blank state. */}
+                  {courseSelectReady ? (
+                    <Select
+                      value={form.course_id || "none"}
+                      onValueChange={(v) => onCourse(v === "none" ? "" : v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">— None —</SelectItem>
+                        {courses.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="h-10 w-full rounded-md border border-input bg-muted animate-pulse" />
+                  )}
                 </div>
                 <div>
                   <Label>Batch</Label>
