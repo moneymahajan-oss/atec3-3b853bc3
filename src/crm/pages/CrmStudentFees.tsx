@@ -23,7 +23,6 @@ import { StudentWhatsAppButton } from "../components/StudentWhatsAppButton";
 import { useCrmAuth } from "../hooks/useCrmAuth";
 import { logAudit } from "../lib/audit";
 import { getStudentEnrolments, type Enrolment } from "../lib/enrolments";
-
 import { toast } from "sonner";
 
 type Student = {
@@ -52,6 +51,15 @@ const feeStatusColors: Record<string, string> = {
   waived: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
 };
 
+// Compute plan status from actual amount_paid — never trust the stored status for display
+function computePlanStatus(plan: Plan): string {
+  if (plan.is_void) return "void";
+  if (plan.amount_paid >= plan.amount) return "paid";
+  if (plan.amount_paid > 0) return "partial";
+  if (plan.due_date && new Date(plan.due_date) < new Date()) return "overdue";
+  return "pending";
+}
+
 export default function CrmStudentFees() {
   const { studentId } = useParams();
   const { user, isAdmin } = useCrmAuth();
@@ -62,7 +70,7 @@ export default function CrmStudentFees() {
   const [enrolmentFilter, setEnrolmentFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [planOpen, setPlanOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0, status: "pending" });
+  const [editingPlan, setEditingPlan] = useState<Partial<Plan>>({ installment_no: 1, amount: 0 });
   const [payOpen, setPayOpen] = useState(false);
   const [pay, setPay] = useState({ amount: 0, mode: "cash", reference: "", paid_on: new Date().toISOString().slice(0,10), notes: "", fee_plan_id: "" as string, enrolment_id: "" as string });
   const [voidPlan, setVoidPlan] = useState<Plan | null>(null);
@@ -87,11 +95,7 @@ export default function CrmStudentFees() {
   const regPaid = (student as unknown as { registration_fee_paid?: number } | null)?.registration_fee_paid ?? 0;
   const paymentsPaid = payments.filter((p) => !p.is_void).reduce((a, p) => a + (p.amount || 0), 0);
 
-  // When multi-course, billed total = sum of enrolment net payable; otherwise fall back to student.total_fee
-  const enrolmentsBilled = enrolments.reduce(
-    (a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0),
-    0,
-  );
+  const enrolmentsBilled = enrolments.reduce((a, e) => a + (e.net_payable_fee ?? e.total_fee ?? 0), 0);
   const enrolmentsRegPaid = enrolments.reduce((a, e) => a + (e.registration_fee_paid ?? 0), 0);
 
   const totalBilled = enrolments.length > 0 ? enrolmentsBilled : (student?.total_fee ?? 0);
@@ -100,7 +104,7 @@ export default function CrmStudentFees() {
     : paymentsPaid + regPaid;
   const due = totalBilled - totalPaid;
 
-  // Per-course breakdown rows — one row PER enrolled course (never single/limit-1)
+  // Per-course breakdown — full list
   const courseBreakdown = useMemo(() => {
     return enrolments.map((e) => {
       const fee = e.total_fee ?? 0;
@@ -126,8 +130,15 @@ export default function CrmStudentFees() {
     });
   }, [enrolments, payments]);
 
+  // FIX 1: Apply course filter to the breakdown table
+  const filteredCourseBreakdown = useMemo(
+    () => enrolmentFilter === "all" ? courseBreakdown : courseBreakdown.filter((r) => r.id === enrolmentFilter),
+    [courseBreakdown, enrolmentFilter]
+  );
+
+  // Totals only over filtered rows
   const totals = useMemo(() => {
-    return courseBreakdown.reduce(
+    return filteredCourseBreakdown.reduce(
       (acc, r) => ({
         fee: acc.fee + r.fee,
         discount: acc.discount + r.discount,
@@ -137,7 +148,7 @@ export default function CrmStudentFees() {
       }),
       { fee: 0, discount: 0, netFee: 0, paid: 0, balance: 0 },
     );
-  }, [courseBreakdown]);
+  }, [filteredCourseBreakdown]);
 
   const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
   const toggleCourse = (id: string) =>
@@ -145,7 +156,6 @@ export default function CrmStudentFees() {
 
   const fmt = (n: number) => `₹${(n || 0).toLocaleString("en-IN")}`;
 
-  // Auto-select sole active enrolment for new plans/payments
   const activeEnrolments = useMemo(() => enrolments.filter((e) => e.status === "active"), [enrolments]);
   const defaultEnrolmentId = activeEnrolments.length === 1 ? activeEnrolments[0].id : "";
 
@@ -162,7 +172,8 @@ export default function CrmStudentFees() {
       label: editingPlan.label || null,
       due_date: editingPlan.due_date || null,
       amount: Number(editingPlan.amount),
-      status: (editingPlan.status || "pending") as never,
+      // FIX 2: status is always "pending" on create/edit — computed from payments for display
+      status: "pending" as never,
       enrolment_id: enrolmentId || null,
     };
     if (editingPlan.id) {
@@ -176,16 +187,14 @@ export default function CrmStudentFees() {
     }
     toast.success("Saved");
     setPlanOpen(false);
-    setEditingPlan({ installment_no: plans.length + 2, amount: 0, status: "pending" });
+    setEditingPlan({ installment_no: plans.length + 2, amount: 0 });
     load();
   };
 
   const confirmVoidPlan = async (reason: string) => {
     if (!voidPlan) return;
     const patch = {
-      is_void: true,
-      void_reason: reason,
-      voided_at: new Date().toISOString(),
+      is_void: true, void_reason: reason, voided_at: new Date().toISOString(),
       voided_by: user?.id ?? null,
       voided_by_name: user?.user_metadata?.full_name || user?.email || null,
     };
@@ -199,7 +208,6 @@ export default function CrmStudentFees() {
 
   const savePayment = async () => {
     if (!pay.amount || pay.amount <= 0) { toast.error("Amount required"); return; }
-    // Resolve enrolment_id: explicit selection, fall back to the linked plan's enrolment, then sole-active
     let enrolmentId = pay.enrolment_id || "";
     if (!enrolmentId && pay.fee_plan_id) {
       const linkedPlan = plans.find((pl) => pl.id === pay.fee_plan_id);
@@ -234,9 +242,7 @@ export default function CrmStudentFees() {
   const confirmVoidPayment = async (reason: string) => {
     if (!voidPay) return;
     const patch = {
-      is_void: true,
-      void_reason: reason,
-      voided_at: new Date().toISOString(),
+      is_void: true, void_reason: reason, voided_at: new Date().toISOString(),
       voided_by: user?.id ?? null,
       voided_by_name: user?.user_metadata?.full_name || user?.email || null,
     };
@@ -260,19 +266,8 @@ export default function CrmStudentFees() {
           <div className="flex gap-2 items-center">
             <Button asChild variant="outline"><Link to="/crm/fees"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Link></Button>
             <StudentWhatsAppButton
-              section="fees"
-              size="default"
-              variant="outline"
-              label="WhatsApp"
-              student={{
-                id: student.id,
-                full_name: student.full_name,
-                phone: student.phone,
-                enrolment_no: student.enrolment_no,
-                course_name_snapshot: student.course_name_snapshot,
-                total_fee: totalBilled,
-                total_paid: totalPaid,
-              }}
+              section="fees" size="default" variant="outline" label="WhatsApp"
+              student={{ id: student.id, full_name: student.full_name, phone: student.phone, enrolment_no: student.enrolment_no, course_name_snapshot: student.course_name_snapshot, total_fee: totalBilled, total_paid: totalPaid }}
             />
             <Button onClick={() => setPayOpen(true)}><Receipt className="w-4 h-4 mr-2" /> Record Payment</Button>
           </div>
@@ -286,6 +281,7 @@ export default function CrmStudentFees() {
         <SmallStat label="Receipts" value={String(payments.length)} />
       </div>
 
+      {/* Course filter — only shown when student has multiple enrolments */}
       {enrolments.length > 1 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2">
           <span className="text-xs font-medium text-muted-foreground">Course:</span>
@@ -295,7 +291,7 @@ export default function CrmStudentFees() {
               <SelectItem value="all">All courses ({enrolments.length})</SelectItem>
               {enrolments.map((e) => (
                 <SelectItem key={e.id} value={e.id}>
-                  {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
+                  {e.course_name_snapshot || "—"} · {e.enrolment_no}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -303,11 +299,10 @@ export default function CrmStudentFees() {
         </div>
       )}
 
-      {courseBreakdown.length > 0 && (
+      {/* FIX 1: Use filteredCourseBreakdown — respects the course filter */}
+      {filteredCourseBreakdown.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Per-course breakdown</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Per-course breakdown</CardTitle></CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
@@ -322,30 +317,21 @@ export default function CrmStudentFees() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {courseBreakdown.map((row) => {
+                {filteredCourseBreakdown.map((row) => {
                   const isOpen = !!expandedCourses[row.id];
                   const hasHistory = row.payments.length > 0 || row.regPaid > 0;
                   return (
                     <Fragment key={row.id}>
-                      <TableRow key={row.id}>
+                      <TableRow>
                         <TableCell className="p-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleCourse(row.id)}
-                            className="text-muted-foreground hover:text-foreground"
-                            aria-label={isOpen ? "Collapse payments" : "Expand payments"}
-                          >
+                          <button type="button" onClick={() => toggleCourse(row.id)} className="text-muted-foreground hover:text-foreground" aria-label={isOpen ? "Collapse" : "Expand"}>
                             {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                           </button>
                         </TableCell>
                         <TableCell className="text-sm">{row.course}</TableCell>
                         <TableCell className="text-right font-mono">{fmt(row.fee)}</TableCell>
                         <TableCell className="text-right font-mono">
-                          {row.discount > 0 ? (
-                            <span className="text-emerald-700 dark:text-emerald-400">−{fmt(row.discount)}</span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                          {row.discount > 0 ? <span className="text-emerald-700 dark:text-emerald-400">−{fmt(row.discount)}</span> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-right font-mono">{fmt(row.netFee)}</TableCell>
                         <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{fmt(row.paid)}</TableCell>
@@ -366,9 +352,7 @@ export default function CrmStudentFees() {
                                 )}
                                 {row.payments.map((p) => (
                                   <div key={p.id} className="flex justify-between text-xs">
-                                    <span className="text-muted-foreground">
-                                      {p.paid_on} · {p.mode}{p.receipt_no ? ` · ${p.receipt_no}` : ""}
-                                    </span>
+                                    <span className="text-muted-foreground">{p.paid_on} · {p.mode}{p.receipt_no ? ` · ${p.receipt_no}` : ""}</span>
                                     <span className="font-mono">{fmt(p.amount)}</span>
                                   </div>
                                 ))}
@@ -382,17 +366,16 @@ export default function CrmStudentFees() {
                     </Fragment>
                   );
                 })}
-                <TableRow className="font-semibold bg-muted/40">
-                  <TableCell />
-                  <TableCell>TOTAL</TableCell>
-                  <TableCell className="text-right font-mono">{fmt(totals.fee)}</TableCell>
-                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">
-                    {totals.discount > 0 ? `−${fmt(totals.discount)}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono">{fmt(totals.netFee)}</TableCell>
-                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{fmt(totals.paid)}</TableCell>
-                  <TableCell className={`text-right font-mono ${totals.balance > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{fmt(totals.balance)}</TableCell>
-                </TableRow>
+                {filteredCourseBreakdown.length > 1 && (
+                  <TableRow className="font-semibold bg-muted/40">
+                    <TableCell /><TableCell>TOTAL</TableCell>
+                    <TableCell className="text-right font-mono">{fmt(totals.fee)}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{totals.discount > 0 ? `−${fmt(totals.discount)}` : "—"}</TableCell>
+                    <TableCell className="text-right font-mono">{fmt(totals.netFee)}</TableCell>
+                    <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">{fmt(totals.paid)}</TableCell>
+                    <TableCell className={`text-right font-mono ${totals.balance > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{fmt(totals.balance)}</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -403,10 +386,7 @@ export default function CrmStudentFees() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Installment plan</CardTitle>
           <Button size="sm" onClick={() => {
-            setEditingPlan({
-              installment_no: plans.length + 1, amount: 0, status: "pending",
-              enrolment_id: enrolmentFilter !== "all" ? enrolmentFilter : (defaultEnrolmentId || undefined),
-            });
+            setEditingPlan({ installment_no: plans.length + 1, amount: 0, enrolment_id: enrolmentFilter !== "all" ? enrolmentFilter : (defaultEnrolmentId || undefined) });
             setPlanOpen(true);
           }}>
             <Plus className="w-4 h-4 mr-1" /> Add installment
@@ -419,70 +399,66 @@ export default function CrmStudentFees() {
                 <TableHead>#</TableHead>
                 {enrolments.length > 1 && <TableHead>Course</TableHead>}
                 <TableHead>Label</TableHead>
-                <TableHead>Due</TableHead>
+                <TableHead>Due date</TableHead>
                 <TableHead className="text-right">Amount</TableHead>
                 <TableHead className="text-right">Paid</TableHead>
+                {/* FIX 2: Status is now auto-computed — no manual setting */}
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(() => {
-                const filteredPlans = plans.filter((p) => enrolmentFilter === "all" || (p.enrolment_id ?? "") === enrolmentFilter);
-                return filteredPlans.length === 0 ? (
+                const filteredPlans = plans.filter((p) => !p.is_void && (enrolmentFilter === "all" || (p.enrolment_id ?? "") === enrolmentFilter));
+                const voidedPlans = plans.filter((p) => p.is_void && (enrolmentFilter === "all" || (p.enrolment_id ?? "") === enrolmentFilter));
+                const allFiltered = [...filteredPlans, ...voidedPlans];
+                return allFiltered.length === 0 ? (
                   <TableRow><TableCell colSpan={enrolments.length > 1 ? 8 : 7} className="text-center py-6 text-muted-foreground">No installments yet.</TableCell></TableRow>
-                ) : filteredPlans.map((p) => (
-                  <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
-                    <TableCell className="font-mono">{p.installment_no}</TableCell>
-                    {enrolments.length > 1 && (
-                      <TableCell className="text-xs text-muted-foreground">
-                        {enrolments.find((e) => e.id === p.enrolment_id)?.course_name_snapshot ?? "—"}
+                ) : allFiltered.map((p) => {
+                  const computedStatus = computePlanStatus(p);
+                  return (
+                    <TableRow key={p.id} className={p.is_void ? "opacity-50 line-through" : ""}>
+                      <TableCell className="font-mono">{p.installment_no}</TableCell>
+                      {enrolments.length > 1 && (
+                        <TableCell className="text-xs text-muted-foreground">
+                          {enrolments.find((e) => e.id === p.enrolment_id)?.course_name_snapshot ?? "—"}
+                        </TableCell>
+                      )}
+                      <TableCell className="text-sm">{p.label || "—"}</TableCell>
+                      <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
+                      <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
+                      <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
+                      <TableCell>
+                        {p.is_void ? (
+                          <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided: ${p.void_reason ?? ""}`}>VOID</Badge>
+                        ) : (
+                          <Badge variant="secondary" className={feeStatusColors[computedStatus] || ""}>{computedStatus}</Badge>
+                        )}
                       </TableCell>
-                    )}
-                    <TableCell className="text-sm">{p.label || "—"}</TableCell>
-                  <TableCell className="text-sm">{p.due_date || "—"}</TableCell>
-                  <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
-                  <TableCell className="text-right font-mono text-emerald-700 dark:text-emerald-400">₹{p.amount_paid.toLocaleString("en-IN")}</TableCell>
-                  <TableCell>
-                    {p.is_void ? (
-                      <Badge variant="secondary" className="bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided: ${p.void_reason ?? ""}`}>VOID</Badge>
-                    ) : (
-                      <Badge variant="secondary" className={feeStatusColors[p.status] || ""}>{p.status}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex gap-1">
-                      {!p.is_void && p.status !== "paid" && (
-                        <StudentWhatsAppButton
-                          section="plan"
-                          student={{
-                            id: student.id,
-                            full_name: student.full_name,
-                            phone: student.phone,
-                            enrolment_no: student.enrolment_no,
-                            course_name_snapshot: student.course_name_snapshot,
-                            total_fee: totalBilled,
-                            total_paid: totalPaid,
-                            next_due_date: p.due_date,
-                            next_due_amount: p.amount - p.amount_paid,
-                          }}
-                          extraVars={{ installment_no: p.installment_no }}
-                        />
-                      )}
-                      {!p.is_void && (
-                        <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
-                          <Plus className="w-4 h-4 rotate-45" />
-                        </Button>
-                      )}
-                      {isAdmin && !p.is_void && (
-                        <Button size="icon" variant="ghost" title="Void installment" onClick={() => setVoidPlan(p)}>
-                          <Ban className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-                ));
+                      <TableCell className="text-right">
+                        <div className="inline-flex gap-1">
+                          {!p.is_void && computedStatus !== "paid" && (
+                            <StudentWhatsAppButton
+                              section="plan"
+                              student={{ id: student.id, full_name: student.full_name, phone: student.phone, enrolment_no: student.enrolment_no, course_name_snapshot: student.course_name_snapshot, total_fee: totalBilled, total_paid: totalPaid, next_due_date: p.due_date, next_due_amount: p.amount - p.amount_paid }}
+                              extraVars={{ installment_no: p.installment_no }}
+                            />
+                          )}
+                          {!p.is_void && (
+                            <Button size="icon" variant="ghost" title="Edit" onClick={() => { setEditingPlan(p); setPlanOpen(true); }}>
+                              <Plus className="w-4 h-4 rotate-45" />
+                            </Button>
+                          )}
+                          {isAdmin && !p.is_void && (
+                            <Button size="icon" variant="ghost" title="Void installment" onClick={() => setVoidPlan(p)}>
+                              <Ban className="w-4 h-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                });
               })()}
             </TableBody>
           </Table>
@@ -515,9 +491,7 @@ export default function CrmStudentFees() {
                     <TableCell className="font-mono text-xs">
                       {p.receipt_no}
                       {p.is_void && (
-                        <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>
-                          VOID
-                        </Badge>
+                        <Badge variant="secondary" className="ml-2 bg-rose-500/15 text-rose-700 dark:text-rose-300" title={`Voided by ${p.voided_by_name ?? "—"}: ${p.void_reason ?? ""}`}>VOID</Badge>
                       )}
                     </TableCell>
                     {enrolments.length > 1 && (
@@ -525,44 +499,29 @@ export default function CrmStudentFees() {
                         {enrolments.find((e) => e.id === p.enrolment_id)?.course_name_snapshot ?? "—"}
                       </TableCell>
                     )}
-                  <TableCell>{p.paid_on}</TableCell>
-                  <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
-                  <TableCell className="text-sm">{p.reference || "—"}</TableCell>
-                  <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
-                  <TableCell className="text-sm">{p.collected_by_name || "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="inline-flex gap-1">
-                      {!p.is_void && (
-                        <>
-                          <StudentWhatsAppButton
-                            section="payment"
-                            student={{
-                              id: student.id,
-                              full_name: student.full_name,
-                              phone: student.phone,
-                              enrolment_no: student.enrolment_no,
-                              course_name_snapshot: student.course_name_snapshot,
-                              total_fee: totalBilled,
-                              total_paid: totalPaid,
-                            }}
-                            extraVars={{
-                              last_payment_amount: p.amount.toLocaleString("en-IN"),
-                              last_receipt_no: p.receipt_no ?? "",
-                            }}
-                          />
-                          <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}>
-                            <Printer className="w-4 h-4" />
-                          </Button>
-                          {isAdmin && (
-                            <Button size="icon" variant="ghost" title="Void receipt" onClick={() => setVoidPay(p)}>
-                              <Ban className="w-4 h-4 text-destructive" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    <TableCell>{p.paid_on}</TableCell>
+                    <TableCell className="uppercase text-xs">{p.mode.replace("_"," ")}</TableCell>
+                    <TableCell className="text-sm">{p.reference || "—"}</TableCell>
+                    <TableCell className="text-right font-mono">₹{p.amount.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-sm">{p.collected_by_name || "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex gap-1">
+                        {!p.is_void && (
+                          <>
+                            <StudentWhatsAppButton
+                              section="payment"
+                              student={{ id: student.id, full_name: student.full_name, phone: student.phone, enrolment_no: student.enrolment_no, course_name_snapshot: student.course_name_snapshot, total_fee: totalBilled, total_paid: totalPaid }}
+                              extraVars={{ last_payment_amount: p.amount.toLocaleString("en-IN"), last_receipt_no: p.receipt_no ?? "" }}
+                            />
+                            <Button size="icon" variant="ghost" title="Print" onClick={() => window.print()}><Printer className="w-4 h-4" /></Button>
+                            {isAdmin && (
+                              <Button size="icon" variant="ghost" title="Void receipt" onClick={() => setVoidPay(p)}><Ban className="w-4 h-4 text-destructive" /></Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ));
               })()}
             </TableBody>
@@ -570,7 +529,7 @@ export default function CrmStudentFees() {
         </CardContent>
       </Card>
 
-      {/* Installment dialog */}
+      {/* Add/Edit Installment dialog — FIX 3: No manual Status field */}
       <Dialog open={planOpen} onOpenChange={setPlanOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPlan.id ? "Edit installment" : "Add installment"}</DialogTitle></DialogHeader>
@@ -578,34 +537,22 @@ export default function CrmStudentFees() {
             {enrolments.length > 1 && (
               <div className="sm:col-span-2">
                 <Label>Course (enrolment) *</Label>
-                <Select
-                  value={editingPlan.enrolment_id || "none"}
-                  onValueChange={(v) => setEditingPlan((p) => ({ ...p, enrolment_id: v === "none" ? null : v }))}
-                >
+                <Select value={editingPlan.enrolment_id || "none"} onValueChange={(v) => setEditingPlan((p) => ({ ...p, enrolment_id: v === "none" ? null : v }))}>
                   <SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— select —</SelectItem>
                     {enrolments.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
-                      </SelectItem>
+                      <SelectItem key={e.id} value={e.id}>{e.course_name_snapshot || "—"} · {e.enrolment_no}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
             <div><Label>#</Label><Input type="number" value={editingPlan.installment_no ?? 1} onChange={(e) => setEditingPlan((p) => ({ ...p, installment_no: Number(e.target.value) }))} /></div>
-            <div><Label>Status</Label>
-              <Select value={editingPlan.status ?? "pending"} onValueChange={(v) => setEditingPlan((p) => ({ ...p, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["pending","partial","paid","overdue","waived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="sm:col-span-2"><Label>Label</Label><Input value={editingPlan.label ?? ""} onChange={(e) => setEditingPlan((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. Registration / Month 1" /></div>
             <div><Label>Due date</Label><Input type="date" value={editingPlan.due_date ?? ""} onChange={(e) => setEditingPlan((p) => ({ ...p, due_date: e.target.value }))} /></div>
-            <div><Label>Amount (₹)</Label><Input type="number" value={editingPlan.amount ?? 0} onChange={(e) => setEditingPlan((p) => ({ ...p, amount: Number(e.target.value) }))} /></div>
+            <div className="sm:col-span-2"><Label>Label</Label><Input value={editingPlan.label ?? ""} onChange={(e) => setEditingPlan((p) => ({ ...p, label: e.target.value }))} placeholder="e.g. Registration / Month 1" /></div>
+            <div className="sm:col-span-2"><Label>Amount (₹)</Label><Input type="number" value={editingPlan.amount ?? 0} onChange={(e) => setEditingPlan((p) => ({ ...p, amount: Number(e.target.value) }))} /></div>
+            <p className="sm:col-span-2 text-xs text-muted-foreground">Status is automatically calculated from recorded payments.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancel</Button>
@@ -614,7 +561,7 @@ export default function CrmStudentFees() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment dialog */}
+      {/* Record Payment dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
@@ -633,17 +580,12 @@ export default function CrmStudentFees() {
             {enrolments.length > 1 && (
               <div className="sm:col-span-2">
                 <Label>Course (enrolment) *</Label>
-                <Select
-                  value={pay.enrolment_id || defaultEnrolmentId || "none"}
-                  onValueChange={(v) => setPay((p) => ({ ...p, enrolment_id: v === "none" ? "" : v, fee_plan_id: "" }))}
-                >
+                <Select value={pay.enrolment_id || defaultEnrolmentId || "none"} onValueChange={(v) => setPay((p) => ({ ...p, enrolment_id: v === "none" ? "" : v, fee_plan_id: "" }))}>
                   <SelectTrigger><SelectValue placeholder="Choose a course" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— select —</SelectItem>
                     {enrolments.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.course_name_snapshot || "—"} · {e.enrolment_no} · {e.status}
-                      </SelectItem>
+                      <SelectItem key={e.id} value={e.id}>{e.course_name_snapshot || "—"} · {e.enrolment_no}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -656,14 +598,12 @@ export default function CrmStudentFees() {
                 <SelectContent>
                   <SelectItem value="none">— Standalone —</SelectItem>
                   {plans
-                    .filter((p) => p.status !== "paid" && !p.is_void)
+                    .filter((p) => !p.is_void && computePlanStatus(p) !== "paid")
                     .filter((p) => {
                       const eid = pay.enrolment_id || defaultEnrolmentId;
                       return enrolments.length <= 1 || !eid || (p.enrolment_id ?? "") === eid;
                     })
-                    .map((p) =>
-                      <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>
-                    )}
+                    .map((p) => <SelectItem key={p.id} value={p.id}>#{p.installment_no} · {p.label || "Installment"} · ₹{(p.amount - p.amount_paid).toLocaleString("en-IN")} due</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -677,15 +617,13 @@ export default function CrmStudentFees() {
       </Dialog>
 
       <VoidDialog
-        open={!!voidPlan}
-        onOpenChange={(v) => { if (!v) setVoidPlan(null); }}
+        open={!!voidPlan} onOpenChange={(v) => { if (!v) setVoidPlan(null); }}
         title={voidPlan ? `Void installment #${voidPlan.installment_no}` : "Void installment"}
         description="This installment will be removed from totals and reminders, but kept for audit history."
         onConfirm={confirmVoidPlan}
       />
       <VoidDialog
-        open={!!voidPay}
-        onOpenChange={(v) => { if (!v) setVoidPay(null); }}
+        open={!!voidPay} onOpenChange={(v) => { if (!v) setVoidPay(null); }}
         title={voidPay ? `Void receipt ${voidPay.receipt_no ?? ""}` : "Void receipt"}
         description="The fee balance will be recalculated automatically."
         onConfirm={confirmVoidPayment}
