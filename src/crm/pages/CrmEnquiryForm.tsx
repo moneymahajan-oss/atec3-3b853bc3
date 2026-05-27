@@ -23,6 +23,25 @@ import { toast } from "sonner";
 type Course = { id: string; name: string };
 type NoteRow = { id: string; body: string; note_type: string; staff_name: string | null; created_at: string };
 
+// Dropdown options loaded from DB (crm_enquiry_form_fields.dropdown_options)
+type FieldOptions = {
+  qualification: string[];
+  current_status: string[];
+  preferred_mode: string[];
+  preferred_timing: string[];
+  budget_range: string[];
+  source: string[];
+};
+
+const DEFAULT_FIELD_OPTIONS: FieldOptions = {
+  qualification: [],
+  current_status: [],
+  preferred_mode: ["Offline", "Online", "Hybrid"],
+  preferred_timing: [],
+  budget_range: [],
+  source: ["Walk-in", "Phone", "WhatsApp", "Website", "Instagram", "Facebook", "Referral", "Google", "YouTube", "Other"],
+};
+
 const empty = {
   name: "",
   phone: "",
@@ -31,13 +50,12 @@ const empty = {
   city: "",
   state: "",
   course_id: "",
-  source: "walk_in",
+  source: "",
   status: "new",
   priority: "medium",
   follow_up_date: "",
   notes: "",
   lost_reason: "",
-  // academic / professional
   qualification: "",
   college_name: "",
   class_year: "",
@@ -45,37 +63,13 @@ const empty = {
   current_status: "",
   company_name: "",
   designation: "",
-  // preferences
   preferred_mode: "",
   preferred_timing: "",
   budget_range: "",
-  // attribution
   hear_about_us: "",
   referred_by: "",
   assigned_to: "",
   assigned_to_name: "",
-};
-
-const SOURCES = ["walk_in","phone","whatsapp","website","instagram","facebook","referral","google","youtube","crm_walk_in","other"];
-// Values must match Postgres enums exactly (crm_qualification, crm_budget_range)
-const QUALIFICATIONS = ["class_10","class_12","graduation","post_graduation","diploma","other"];
-const QUAL_LABELS: Record<string, string> = {
-  class_10: "Class 10",
-  class_12: "Class 12",
-  graduation: "Graduation",
-  post_graduation: "Post-graduation",
-  diploma: "Diploma",
-  other: "Other",
-};
-const CURRENT_STATUSES = ["student","working_professional","job_seeker","business_owner","homemaker","other"];
-const TIMINGS = ["morning","afternoon","evening","weekend","flexible"];
-const BUDGETS = ["under_5k","5k_10k","10k_20k","20k_plus","flexible"];
-const BUDGET_LABELS: Record<string, string> = {
-  under_5k: "Below ₹5,000",
-  "5k_10k": "₹5,000 – ₹10,000",
-  "10k_20k": "₹10,000 – ₹20,000",
-  "20k_plus": "Above ₹20,000",
-  flexible: "Flexible",
 };
 
 export default function CrmEnquiryForm() {
@@ -95,6 +89,28 @@ export default function CrmEnquiryForm() {
   const [prevStatus, setPrevStatus] = useState<string>("new");
   const [courseDetails, setCourseDetails] = useState<{ id: string; name: string; total_fee: number | null; duration: string | null; mode: string | null; brochure_url: string | null; video_url: string | null; instagram_url: string | null; concise_syllabus: string | null; detailed_syllabus_html: string | null; next_batch_date: string | null } | null>(null);
   const [institute, setInstitute] = useState<{ name: string | null; phone: string | null; whatsapp_number: string | null; website: string | null } | null>(null);
+  const [fieldOptions, setFieldOptions] = useState<FieldOptions>(DEFAULT_FIELD_OPTIONS);
+
+  // Load dropdown options from crm_enquiry_form_fields
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("crm_enquiry_form_fields")
+        .select("field_key, dropdown_options")
+        .not("dropdown_options", "is", null);
+
+      if (!data) return;
+
+      const opts: Partial<FieldOptions> = {};
+      for (const row of data as { field_key: string; dropdown_options: string[] | null }[]) {
+        const key = row.field_key as keyof FieldOptions;
+        if (row.dropdown_options && row.dropdown_options.length > 0) {
+          opts[key] = row.dropdown_options;
+        }
+      }
+      setFieldOptions((prev) => ({ ...prev, ...opts }));
+    })();
+  }, []);
 
   useEffect(() => {
     supabase.from("courses").select("id,name").eq("is_active", true).order("name")
@@ -114,7 +130,7 @@ export default function CrmEnquiryForm() {
         city: data.city ?? "",
         state: data.state ?? "",
         course_id: data.course_id ?? "",
-        source: data.source ?? "walk_in",
+        source: data.source ?? "",
         status: data.status ?? "new",
         priority: data.priority ?? "medium",
         follow_up_date: data.follow_up_date ?? "",
@@ -211,7 +227,6 @@ export default function CrmEnquiryForm() {
       const { error } = await supabase.from("crm_enquiries").update(payload).eq("id", id!);
       if (error) { toast.error(error.message); setSaving(false); return; }
       await logAudit("crm_enquiries", "update", id, payload);
-      // Stage change: write a system note
       if (prevStatus !== form.status) {
         const { data: nd } = await supabase.from("crm_enquiry_notes").insert({
           enquiry_id: id!,
@@ -244,8 +259,6 @@ export default function CrmEnquiryForm() {
 
   const convertToStudent = async () => {
     if (isNew) return;
-    // If a student with this phone already exists, skip the new-student form
-    // and jump straight to "Add another course" — pre-filled from this enquiry.
     const norm = (form.phone || "").replace(/\D/g, "").slice(-10);
     if (norm.length === 10) {
       const { data: existing } = await supabase
@@ -273,8 +286,11 @@ export default function CrmEnquiryForm() {
     navigate("/crm/enquiries");
   };
 
-  const isStudent = form.current_status === "student";
-  const isWorking = form.current_status === "working_professional" || form.current_status === "business_owner";
+  // Detect student/working from current_status options dynamically
+  // We check if the saved value looks like a student or working professional
+  const currentStatusLower = form.current_status.toLowerCase();
+  const isStudent = currentStatusLower.includes("student");
+  const isWorking = currentStatusLower.includes("working") || currentStatusLower.includes("business") || currentStatusLower.includes("professional");
 
   if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
 
@@ -366,21 +382,25 @@ export default function CrmEnquiryForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Qualification</Label>
-                  <Select value={form.qualification || "unset"} onValueChange={(v) => set("qualification", v === "unset" ? "" : v)}>
+                  <Select value={form.qualification || "__unset__"} onValueChange={(v) => set("qualification", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{QUAL_LABELS[q] ?? q}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.qualification.map((q) => (
+                        <SelectItem key={q} value={q}>{q}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Current status</Label>
-                  <Select value={form.current_status || "unset"} onValueChange={(v) => set("current_status", v === "unset" ? "" : v)}>
+                  <Select value={form.current_status || "__unset__"} onValueChange={(v) => set("current_status", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {CURRENT_STATUSES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.current_status.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -432,33 +452,37 @@ export default function CrmEnquiryForm() {
                 </div>
                 <div>
                   <Label>Preferred mode</Label>
-                  <Select value={form.preferred_mode || "unset"} onValueChange={(v) => set("preferred_mode", v === "unset" ? "" : v)}>
+                  <Select value={form.preferred_mode || "__unset__"} onValueChange={(v) => set("preferred_mode", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      <SelectItem value="offline">Offline</SelectItem>
-                      <SelectItem value="online">Online</SelectItem>
-                      <SelectItem value="hybrid">Hybrid</SelectItem>
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.preferred_mode.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Preferred timing</Label>
-                  <Select value={form.preferred_timing || "unset"} onValueChange={(v) => set("preferred_timing", v === "unset" ? "" : v)}>
+                  <Select value={form.preferred_timing || "__unset__"} onValueChange={(v) => set("preferred_timing", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {TIMINGS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.preferred_timing.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Budget range</Label>
-                  <Select value={form.budget_range || "unset"} onValueChange={(v) => set("budget_range", v === "unset" ? "" : v)}>
+                  <Select value={form.budget_range || "__unset__"} onValueChange={(v) => set("budget_range", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {BUDGETS.map((b) => <SelectItem key={b} value={b}>{BUDGET_LABELS[b] ?? b}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.budget_range.map((b) => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -472,10 +496,13 @@ export default function CrmEnquiryForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Source</Label>
-                  <Select value={form.source} onValueChange={(v) => set("source", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  <Select value={form.source || "__unset__"} onValueChange={(v) => set("source", v === "__unset__" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      {SOURCES.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {fieldOptions.source.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -513,15 +540,15 @@ export default function CrmEnquiryForm() {
                 </div>
                 <div>
                   <Label>Assigned to (counsellor)</Label>
-                  <Select value={form.assigned_to || "unset"} onValueChange={(v) => {
-                    if (v === "unset") { set("assigned_to", ""); set("assigned_to_name", ""); return; }
+                  <Select value={form.assigned_to || "__unset__"} onValueChange={(v) => {
+                    if (v === "__unset__") { set("assigned_to", ""); set("assigned_to_name", ""); return; }
                     const staff = staffList.find((s) => s.user_id === v);
                     set("assigned_to", v);
                     set("assigned_to_name", staff?.display_name || v);
                   }}>
                     <SelectTrigger><SelectValue placeholder="— Unassigned —" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">— Unassigned —</SelectItem>
+                      <SelectItem value="__unset__">— Unassigned —</SelectItem>
                       {staffList.map((s) => (
                         <SelectItem key={s.user_id} value={s.user_id}>{s.display_name || s.user_id}</SelectItem>
                       ))}
