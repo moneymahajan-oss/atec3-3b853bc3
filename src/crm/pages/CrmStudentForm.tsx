@@ -31,19 +31,16 @@ const empty = {
   email: "",
   dob: "",
   gender: "",
-  // address
   address: "",
   city: "",
   state: "",
   pin: "",
-  // family
   father_name: "",
   father_occupation: "",
   father_phone: "",
   mother_name: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
-  // academic / professional
   qualification: "",
   college_name: "",
   class_year: "",
@@ -51,37 +48,21 @@ const empty = {
   current_status: "",
   company_name: "",
   designation: "",
-  // course
   course_id: "",
   batch_id: "",
   enrolment_date: new Date().toISOString().slice(0, 10),
   status: "active",
-  // fees
   total_fee: 0,
   discount_amount: 0,
   discount_reason: "",
   registration_fee_paid: 0,
-  // attribution
   hear_about_us: "",
   referred_by: "",
-  // misc
   notes: "",
   photo_url: "",
   id_proof_url: "",
   address_proof_url: "",
 };
-
-// Values must match Postgres enum crm_qualification exactly
-const QUALIFICATIONS = ["class_10","class_12","graduation","post_graduation","diploma","other"];
-const QUAL_LABELS: Record<string, string> = {
-  class_10: "Class 10",
-  class_12: "Class 12",
-  graduation: "Graduation",
-  post_graduation: "Post-graduation",
-  diploma: "Diploma",
-  other: "Other",
-};
-const CURRENT_STATUSES = ["student","working_professional","job_seeker","business_owner","homemaker","other"];
 
 export default function CrmStudentForm() {
   const { id } = useParams();
@@ -98,6 +79,30 @@ export default function CrmStudentForm() {
   const [loading, setLoading] = useState(!isNew);
   const [notes, setNotes] = useState<NoteRow[]>([]);
   const [newNote, setNewNote] = useState("");
+
+  // DB-driven dropdown options — same as enquiry form
+  const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
+
+  // Load dropdown options from crm_enquiry_form_fields
+  useEffect(() => {
+    supabase
+      .from("crm_enquiry_form_fields")
+      .select("field_key, dropdown_options")
+      .not("dropdown_options", "is", null)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string[]> = {};
+        for (const row of data as { field_key: string; dropdown_options: string[] | null }[]) {
+          if (row.dropdown_options && row.dropdown_options.length > 0) {
+            map[row.field_key] = row.dropdown_options;
+          }
+        }
+        setDbOpts(map);
+      });
+  }, []);
+
+  // Helper: get options for a field
+  const opts = (key: string) => dbOpts[key] ?? [];
 
   useEffect(() => {
     supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
@@ -263,11 +268,11 @@ export default function CrmStudentForm() {
       mother_name: form.mother_name || null,
       emergency_contact_name: form.emergency_contact_name || null,
       emergency_contact_phone: form.emergency_contact_phone || null,
-      qualification: (form.qualification || null) as never,
+      qualification: form.qualification || null,
       college_name: form.college_name || null,
       class_year: form.class_year || null,
       stream: form.stream || null,
-      current_status: (form.current_status || null) as never,
+      current_status: form.current_status || null,
       company_name: form.company_name || null,
       designation: form.designation || null,
       course_id: form.course_id || null,
@@ -287,7 +292,6 @@ export default function CrmStudentForm() {
       address_proof_url: form.address_proof_url || null,
     };
     if (isNew) {
-      // Auto-link to existing enquiry if no explicit fromEnquiry, by matching phone
       let linkedEnquiry: string | null = fromEnquiry;
       if (!linkedEnquiry) {
         const norm = normalisePhone(form.phone);
@@ -314,7 +318,6 @@ export default function CrmStudentForm() {
           .update({ status: "converted" as never, converted_student_id: data.id })
           .eq("id", linkedEnquiry);
       }
-      // Also create the matching enrolment row so this student has a course on the new enrolments table
       if (data?.id && form.course_id) {
         await supabase.from("crm_student_enrolments" as never).insert({
           student_id: data.id,
@@ -368,8 +371,10 @@ export default function CrmStudentForm() {
     navigate("/crm/students");
   };
 
-  const isStudentBg = form.current_status === "student";
-  const isWorkingBg = form.current_status === "working_professional" || form.current_status === "business_owner";
+  // Match enquiry form logic — case-insensitive includes checks
+  const currentStatusLower = form.current_status.toLowerCase();
+  const isStudentBg = currentStatusLower.includes("student");
+  const isWorkingBg = currentStatusLower.includes("working") || currentStatusLower.includes("business") || currentStatusLower.includes("professional");
 
   if (loading) return <div className="p-8 text-muted-foreground">Loading…</div>;
 
@@ -495,21 +500,21 @@ export default function CrmStudentForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Qualification</Label>
-                  <Select value={form.qualification || "unset"} onValueChange={(v) => set("qualification", v === "unset" ? "" : v)}>
+                  <Select value={form.qualification || "__unset__"} onValueChange={(v) => set("qualification", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {QUALIFICATIONS.map((q) => <SelectItem key={q} value={q}>{QUAL_LABELS[q] ?? q}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {opts("qualification").map((q) => <SelectItem key={q} value={q}>{q}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>Current status</Label>
-                  <Select value={form.current_status || "unset"} onValueChange={(v) => set("current_status", v === "unset" ? "" : v)}>
+                  <Select value={form.current_status || "__unset__"} onValueChange={(v) => set("current_status", v === "__unset__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unset">—</SelectItem>
-                      {CURRENT_STATUSES.map((c) => <SelectItem key={c} value={c}>{c.replace(/_/g, " ")}</SelectItem>)}
+                      <SelectItem value="__unset__">—</SelectItem>
+                      {opts("current_status").map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -694,7 +699,6 @@ export default function CrmStudentForm() {
           <Card>
             <CardHeader><CardTitle>Documents</CardTitle></CardHeader>
             <CardContent className="space-y-5">
-
               <div>
                 <Label>ID proof (private)</Label>
                 {form.id_proof_url && (
@@ -763,4 +767,3 @@ export default function CrmStudentForm() {
     </div>
   );
 }
-
