@@ -81,6 +81,8 @@ export default function CrmStudentForm() {
   const [newNote, setNewNote] = useState("");
   const [dbOpts, setDbOpts] = useState<Record<string, string[]>>({});
   const [enquiryPrefill, setEnquiryPrefill] = useState<Record<string, unknown> | null>(null);
+  // Explicit remount counter for Course Select — incremented when course is confirmed ready
+  const [courseSelectKey, setCourseSelectKey] = useState(0);
 
   // Load dropdown options from crm_enquiry_form_fields
   useEffect(() => {
@@ -102,22 +104,22 @@ export default function CrmStudentForm() {
 
   const opts = (key: string) => dbOpts[key] ?? [];
 
-  // Load courses and batches
+  // Load ALL courses (no is_active filter — admin needs to reference any course including inactive)
+  // and batches
   useEffect(() => {
-    supabase.from("courses").select("id,name,total_fee,registration_fee").eq("is_active", true).order("name")
+    supabase.from("courses").select("id,name,total_fee,registration_fee").order("name")
       .then(({ data }) => setCourses((data ?? []) as Course[]));
     supabase.from("crm_batches").select("id,name,course_id").order("created_at", { ascending: false })
       .then(({ data }) => setBatches((data ?? []) as never));
   }, []);
 
-  // Step A: Prefill all fields immediately from enquiry
+  // Prefill from enquiry — set all text fields immediately
   useEffect(() => {
     if (!isNew || !fromEnquiry) return;
     supabase.from("crm_enquiries").select("*").eq("id", fromEnquiry).maybeSingle()
       .then(({ data }) => {
         if (!data) return;
         setEnquiryPrefill(data as Record<string, unknown>);
-        // Immediately set all text fields — no waiting for courses
         setForm((f) => ({
           ...f,
           full_name: data.name ?? "",
@@ -138,36 +140,16 @@ export default function CrmStudentForm() {
           course_id: data.course_id ?? "",
           course_name_snapshot: data.course_name_snapshot ?? "",
         }));
-
-        // Fetch the exact course by ID directly — no is_active filter, guaranteed match
-        if (data.course_id) {
-          supabase.from("courses")
-            .select("id,name,total_fee,registration_fee")
-            .eq("id", data.course_id)
-            .maybeSingle()
-            .then(({ data: courseData }) => {
-              if (!courseData) return;
-              // Inject into courses list so the Select can find it
-              setCourses((prev) => {
-                const already = prev.find((c) => c.id === courseData.id);
-                return already ? prev : [...prev, courseData as Course];
-              });
-              // Confirm course fields in form
-              setForm((f) => ({
-                ...f,
-                course_id: courseData.id,
-                course_name_snapshot: courseData.name,
-                total_fee: (courseData as Course).total_fee ?? 0,
-              }));
-            });
-        }
       });
   }, [isNew, fromEnquiry]);
 
-  // Step B: Backup patch — once general courses list loads, re-apply course if matched
+  // Once BOTH courses are loaded AND enquiry course_id is set, confirm course in form
+  // and force-remount the Select so Radix picks up the value correctly
   useEffect(() => {
     if (!isNew || !enquiryPrefill || courses.length === 0) return;
-    const matchedCourse = courses.find((c) => c.id === (enquiryPrefill.course_id as string));
+    const courseId = enquiryPrefill.course_id as string;
+    if (!courseId) return;
+    const matchedCourse = courses.find((c) => c.id === courseId);
     if (!matchedCourse) return;
     setForm((f) => ({
       ...f,
@@ -175,6 +157,8 @@ export default function CrmStudentForm() {
       course_name_snapshot: matchedCourse.name,
       total_fee: matchedCourse.total_fee ?? 0,
     }));
+    // Explicitly increment key to force Radix Select to remount and re-read value
+    setCourseSelectKey((k) => k + 1);
   }, [isNew, enquiryPrefill, courses]);
 
   // Load existing student for edit mode
@@ -595,8 +579,9 @@ export default function CrmStudentForm() {
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Course *</Label>
+                  {/* courseSelectKey forces Radix to remount once course + list are both confirmed ready */}
                   <Select
-                    key={`course-${courses.length}-${form.course_id}`}
+                    key={courseSelectKey}
                     value={form.course_id || "none"}
                     onValueChange={(v) => onCourse(v === "none" ? "" : v)}
                   >
