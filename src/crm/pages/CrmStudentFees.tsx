@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+mport { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Receipt, Ban, Printer, ChevronDown, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -166,13 +166,41 @@ export default function CrmStudentFees() {
       toast.error("Please choose which course this installment is for");
       return;
     }
+    // FEE CAP: sum of existing non-void plans for this enrolment must not exceed net payable fee
+    const newAmount = Number(editingPlan.amount);
+    if (enrolmentId) {
+      const enrol = enrolments.find((e) => e.id === enrolmentId);
+      const netPayable = enrol ? (enrol.net_payable_fee ?? Math.max(0, (enrol.total_fee ?? 0) - (enrol.discount_amount ?? 0))) : 0;
+      const existingTotal = plans
+        .filter((pl) => !pl.is_void && pl.enrolment_id === enrolmentId && pl.id !== editingPlan.id)
+        .reduce((a, pl) => a + pl.amount, 0);
+      if (netPayable > 0 && existingTotal + newAmount > netPayable) {
+        const remaining = netPayable - existingTotal;
+        toast.error(
+          `Installment exceeds course fee cap. Already planned: ₹${existingTotal.toLocaleString("en-IN")} of ₹${netPayable.toLocaleString("en-IN")}. Max you can add: ₹${Math.max(0, remaining).toLocaleString("en-IN")}`
+        );
+        return;
+      }
+    } else if (enrolments.length === 0) {
+      // Single-course fallback using student total_fee
+      const cap = student?.total_fee ?? 0;
+      const existingTotal = plans.filter((pl) => !pl.is_void && pl.id !== editingPlan.id).reduce((a, pl) => a + pl.amount, 0);
+      if (cap > 0 && existingTotal + newAmount > cap) {
+        const remaining = cap - existingTotal;
+        toast.error(
+          `Installment exceeds fee cap of ₹${cap.toLocaleString("en-IN")}. Already planned: ₹${existingTotal.toLocaleString("en-IN")}. Max you can add: ₹${Math.max(0, remaining).toLocaleString("en-IN")}`
+        );
+        return;
+      }
+    }
+
     const payload = {
       student_id: studentId!,
       installment_no: Number(editingPlan.installment_no || 1),
       label: editingPlan.label || null,
       due_date: editingPlan.due_date || null,
-      amount: Number(editingPlan.amount),
-      // FIX 2: status is always "pending" on create/edit — computed from payments for display
+      amount: newAmount,
+      // status is always "pending" on create/edit — computed from payments for display
       status: "pending" as never,
       enrolment_id: enrolmentId || null,
     };
@@ -533,6 +561,22 @@ export default function CrmStudentFees() {
       <Dialog open={planOpen} onOpenChange={setPlanOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editingPlan.id ? "Edit installment" : "Add installment"}</DialogTitle></DialogHeader>
+          {/* Show fee cap summary at top of dialog */}
+          {(() => {
+            const eid = editingPlan.enrolment_id || defaultEnrolmentId;
+            const enrol = enrolments.find((e) => e.id === eid);
+            const cap = enrol ? (enrol.net_payable_fee ?? Math.max(0, (enrol.total_fee ?? 0) - (enrol.discount_amount ?? 0))) : (student?.total_fee ?? 0);
+            const allocated = plans.filter((pl) => !pl.is_void && (eid ? pl.enrolment_id === eid : true) && pl.id !== editingPlan.id).reduce((a, pl) => a + pl.amount, 0);
+            const remaining = Math.max(0, cap - allocated);
+            if (cap <= 0) return null;
+            return (
+              <div className="rounded-md bg-muted px-3 py-2 text-sm grid grid-cols-3 gap-2 text-center mb-2">
+                <div><div className="text-xs text-muted-foreground">Course fee</div><div className="font-semibold">₹{cap.toLocaleString("en-IN")}</div></div>
+                <div><div className="text-xs text-muted-foreground">Planned</div><div className="font-semibold text-amber-700 dark:text-amber-400">₹{allocated.toLocaleString("en-IN")}</div></div>
+                <div><div className="text-xs text-muted-foreground">Available</div><div className={`font-semibold ${remaining <= 0 ? "text-rose-600" : "text-emerald-700 dark:text-emerald-400"}`}>₹{remaining.toLocaleString("en-IN")}</div></div>
+              </div>
+            );
+          })()}
           <div className="grid sm:grid-cols-2 gap-4">
             {enrolments.length > 1 && (
               <div className="sm:col-span-2">
