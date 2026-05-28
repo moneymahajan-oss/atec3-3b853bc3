@@ -1,12 +1,11 @@
 // src/components/FloatingChatbot.tsx
-// Calls Anthropic API directly — no Supabase edge function needed
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ChevronDown, Phone,
 } from "lucide-react";
 
-const ANTHROPIC_KEY = "sk-ant-api03-ejXhgNKFDby_DgieZf_YtRQ8v0IE3XXd6";
+const ANTHROPIC_KEY = "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";
 
 const SYSTEM = `You are ATEC Assistant for ATEC (Avenue To Excellent Careers), a premier computer education institute in Gurdaspur, Punjab, India. Established since 2000. 5000+ students trained, 20+ courses, 2000+ placements. ISO 9001:2015 certified. Authorized Tally Institute. Help with courses, admissions, fees, batch timings, certificates. Be warm, brief (2-4 sentences). For specific fees/dates say contact ATEC directly. Never discuss unrelated topics.`;
 
