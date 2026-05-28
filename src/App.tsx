@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { HelmetProvider } from "react-helmet-async";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -59,8 +59,14 @@ import AdminRestore from "./pages/AdminRestore.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 import FloatingChatbot from "@/components/FloatingChatbot";
 
-// Inside your return, at the bottom before closing tag:
-<FloatingChatbot />
+// ── Only show chatbot on public-facing pages (not admin/CRM) ──
+function ChatbotMount() {
+  const { pathname } = useLocation();
+  const isAdminOrCrm =
+    pathname.startsWith("/admin") || pathname.startsWith("/crm");
+  if (isAdminOrCrm) return null;
+  return <FloatingChatbot />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -94,74 +100,83 @@ const App = () => {
   }
 
   return (
-  <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ErrorBoundary>
-          <AuthProvider>
-            <CrmAuthProvider>
-              <FaviconMount />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/enquire" element={<Enquire />} />
-                <Route path="/verification" element={<Verification />} />
-                <Route path="/c/:slug" element={<CoursePublic />} />
-                <Route path="/faculty" element={<FacultyList />} />
-                <Route path="/faculty/:slug" element={<FacultyDetail />} />
-                <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/site-content" element={<AdminSiteContent />} />
-                <Route path="/admin/certificates" element={<AdminCertificates />} />
-                <Route path="/admin/navigation" element={<AdminNav />} />
-                <Route path="/admin/mock-tests-editor" element={<AdminMockTests />} />
-                <Route path="/admin/backup" element={<AdminBackup />} />
-                <Route path="/admin/restore" element={<AdminRestore />} />
-                <Route path="/admin/:table" element={<AdminTable />} />
+    <HelmetProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ErrorBoundary>
+              <AuthProvider>
+                <CrmAuthProvider>
+                  <FaviconMount />
+                  {/* ✅ Chatbot renders here — only on public pages */}
+                  <ChatbotMount />
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/enquire" element={<Enquire />} />
+                    <Route path="/verification" element={<Verification />} />
+                    <Route path="/c/:slug" element={<CoursePublic />} />
+                    <Route path="/faculty" element={<FacultyList />} />
+                    <Route path="/faculty/:slug" element={<FacultyDetail />} />
+                    <Route path="/admin/login" element={<AdminLogin />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/admin/site-content" element={<AdminSiteContent />} />
+                    <Route path="/admin/certificates" element={<AdminCertificates />} />
+                    <Route path="/admin/navigation" element={<AdminNav />} />
+                    <Route path="/admin/mock-tests-editor" element={<AdminMockTests />} />
+                    <Route path="/admin/backup" element={<AdminBackup />} />
+                    <Route path="/admin/restore" element={<AdminRestore />} />
+                    <Route path="/admin/:table" element={<AdminTable />} />
 
-                <Route path="/crm/login" element={<CrmLogin />} />
-                <Route path="/crm" element={<CRMErrorBoundary><CrmLayout /></CRMErrorBoundary>}>
-                  <Route index element={<CrmDashboard />} />
-                  <Route path="reminders" element={<CrmReminders />} />
-                  <Route path="courses" element={<CrmCourses />} />
-                  <Route path="courses/new" element={<CrmCourseForm />} />
-                  <Route path="courses/:id" element={<CrmCourseForm />} />
-                  <Route path="whatsapp" element={<CrmWhatsAppTemplates />} />
-                  <Route path="settings" element={<CrmSettings />} />
-                  <Route path="enquiry-settings" element={<CrmEnquirySettings />} />
-                  <Route path="enquiries" element={<CrmEnquiries />} />
-                  <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
-                  <Route path="students" element={<CrmStudents />} />
-                  <Route path="students/:studentId/add-course" element={<CrmAddEnrolment />} />
-                  <Route path="students/:id" element={<CrmStudentForm />} />
-                  <Route path="fees" element={<CrmFees />} />
-                  <Route path="fees/:studentId" element={<CrmStudentFees />} />
-                  <Route path="batches" element={<CrmBatches />} />
-                  <Route path="batches/:id/report" element={<CrmBatchReport />} />
-                  <Route path="faculties" element={<CrmFaculties />} />
-                  <Route path="attendance" element={<CrmAttendance />} />
-                  <Route path="certificates" element={<CrmCertificates />} />
-                  <Route path="expenses" element={<CrmExpenses />} />
-                  <Route path="reports" element={<CrmReports />} />
-                  <Route path="voided" element={<CrmVoided />} />
-                  <Route path="import-export" element={<CrmImportExport />} />
-                  <Route path="seo" element={<CrmSeo />} />
-                  <Route path="campaigns" element={<CrmCampaigns />} />
-                  <Route path="duplicates" element={<CrmDuplicates />} />
-                  <Route path="staff" element={<CrmStaff />} />
-                </Route>
+                    <Route path="/crm/login" element={<CrmLogin />} />
+                    <Route
+                      path="/crm"
+                      element={
+                        <CRMErrorBoundary>
+                          <CrmLayout />
+                        </CRMErrorBoundary>
+                      }
+                    >
+                      <Route index element={<CrmDashboard />} />
+                      <Route path="reminders" element={<CrmReminders />} />
+                      <Route path="courses" element={<CrmCourses />} />
+                      <Route path="courses/new" element={<CrmCourseForm />} />
+                      <Route path="courses/:id" element={<CrmCourseForm />} />
+                      <Route path="whatsapp" element={<CrmWhatsAppTemplates />} />
+                      <Route path="settings" element={<CrmSettings />} />
+                      <Route path="enquiry-settings" element={<CrmEnquirySettings />} />
+                      <Route path="enquiries" element={<CrmEnquiries />} />
+                      <Route path="enquiries/:id" element={<CrmEnquiryForm />} />
+                      <Route path="students" element={<CrmStudents />} />
+                      <Route path="students/:studentId/add-course" element={<CrmAddEnrolment />} />
+                      <Route path="students/:id" element={<CrmStudentForm />} />
+                      <Route path="fees" element={<CrmFees />} />
+                      <Route path="fees/:studentId" element={<CrmStudentFees />} />
+                      <Route path="batches" element={<CrmBatches />} />
+                      <Route path="batches/:id/report" element={<CrmBatchReport />} />
+                      <Route path="faculties" element={<CrmFaculties />} />
+                      <Route path="attendance" element={<CrmAttendance />} />
+                      <Route path="certificates" element={<CrmCertificates />} />
+                      <Route path="expenses" element={<CrmExpenses />} />
+                      <Route path="reports" element={<CrmReports />} />
+                      <Route path="voided" element={<CrmVoided />} />
+                      <Route path="import-export" element={<CrmImportExport />} />
+                      <Route path="seo" element={<CrmSeo />} />
+                      <Route path="campaigns" element={<CrmCampaigns />} />
+                      <Route path="duplicates" element={<CrmDuplicates />} />
+                      <Route path="staff" element={<CrmStaff />} />
+                    </Route>
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </CrmAuthProvider>
-          </AuthProvider>
-          </ErrorBoundary>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </HelmetProvider>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </CrmAuthProvider>
+              </AuthProvider>
+            </ErrorBoundary>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </HelmetProvider>
   );
 };
 
