@@ -1,21 +1,12 @@
 // src/components/FloatingChatbot.tsx
-// Calls the secure Supabase Edge Function at supabase/functions/chat/index.ts
-// API key is stored as a Supabase secret — never exposed to the browser
-
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MessageCircle,
-  X,
-  Send,
-  Bot,
-  User,
-  Loader2,
-  Sparkles,
-  ChevronDown,
-  Phone,
+  MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ChevronDown, Phone,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+
+// Direct URL — bypasses supabase-js client to avoid connection issues
+const CHAT_URL = "https://mrshgfevvanopzrocdb.supabase.co/functions/v1/chat";
 
 interface Message {
   id: string;
@@ -27,8 +18,7 @@ interface Message {
 const WELCOME_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
-  content:
-    "👋 Sat Sri Akal! I'm the ATEC Assistant.\n\nI can help you with course details, admissions, batch timings, and more. What would you like to know?",
+  content: "👋 Sat Sri Akal! I'm the ATEC Assistant.\n\nI can help you with course details, admissions, batch timings, and more. What would you like to know?",
   timestamp: new Date(),
 };
 
@@ -86,16 +76,17 @@ export default function FloatingChatbot() {
         .filter((m) => m.id !== "welcome")
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const { data, error } = await supabase.functions.invoke("chat", {
-        body: {
+      // Direct fetch to Supabase Edge Function URL
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           messages: [...history, { role: "user", content }],
-        },
+        }),
       });
 
-      const reply =
-        error || !data?.reply
-          ? "Sorry, I couldn't respond right now. Please try again or contact ATEC directly!"
-          : data.reply;
+      const data = await response.json();
+      const reply = data?.reply || "Sorry, I couldn't respond right now. Please try again or contact ATEC directly!";
 
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -106,7 +97,7 @@ export default function FloatingChatbot() {
 
       setMessages((prev) => [...prev, assistantMsg]);
       if (!isOpen) setUnreadCount((n) => n + 1);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
@@ -133,10 +124,7 @@ export default function FloatingChatbot() {
 
   const formatContent = (text: string) =>
     text.split("\n").map((line, i, arr) => (
-      <span key={i}>
-        {line}
-        {i < arr.length - 1 && <br />}
-      </span>
+      <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
     ));
 
   return (
@@ -149,11 +137,7 @@ export default function FloatingChatbot() {
             exit={{ opacity: 0, scale: 0.85, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className="fixed bottom-24 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] sm:w-[380px] flex flex-col rounded-2xl shadow-2xl overflow-hidden"
-            style={{
-              maxHeight: "min(600px, calc(100vh - 120px))",
-              background: "white",
-              border: "1px solid rgba(0,0,0,0.08)",
-            }}
+            style={{ maxHeight: "min(600px, calc(100vh - 120px))", background: "white", border: "1px solid rgba(0,0,0,0.08)" }}
           >
             {/* Header */}
             <div
@@ -225,7 +209,10 @@ export default function FloatingChatbot() {
                   <div className="bg-white border border-slate-100 shadow-sm px-4 py-3 rounded-2xl rounded-tl-sm">
                     <div className="flex gap-1 items-center h-4">
                       {[0, 1, 2].map((i) => (
-                        <motion.span key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full" animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />
+                        <motion.span key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full"
+                          animate={{ y: [0, -4, 0] }}
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                        />
                       ))}
                     </div>
                   </div>
@@ -238,7 +225,8 @@ export default function FloatingChatbot() {
             {messages.length <= 1 && (
               <div className="px-4 pb-2 flex gap-2 overflow-x-auto flex-shrink-0 bg-white">
                 {QUICK_REPLIES.map((q) => (
-                  <button key={q} onClick={() => sendMessage(q)} className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors flex-shrink-0">
+                  <button key={q} onClick={() => sendMessage(q)}
+                    className="whitespace-nowrap text-xs px-3 py-1.5 rounded-full border border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors flex-shrink-0">
                     {q}
                   </button>
                 ))}
@@ -266,7 +254,10 @@ export default function FloatingChatbot() {
                   style={{ background: input.trim() ? "linear-gradient(135deg, #2563eb, #1e40af)" : "#e2e8f0" }}
                   aria-label="Send"
                 >
-                  {isLoading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className={`w-4 h-4 ${input.trim() ? "text-white" : "text-slate-400"}`} />}
+                  {isLoading
+                    ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    : <Send className={`w-4 h-4 ${input.trim() ? "text-white" : "text-slate-400"}`} />
+                  }
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 text-center mt-1.5">
@@ -326,7 +317,10 @@ export default function FloatingChatbot() {
           </AnimatePresence>
           <AnimatePresence>
             {unreadCount > 0 && !isOpen && (
-              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
+              <motion.span
+                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white"
+              >
                 {unreadCount}
               </motion.span>
             )}
