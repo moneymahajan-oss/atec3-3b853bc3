@@ -5,8 +5,8 @@ import {
   MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ChevronDown, Phone,
 } from "lucide-react";
 
-// Direct URL — bypasses supabase-js client to avoid connection issues
-const CHAT_URL = "https://mrshgfevvvanopzrocdb.supabase.co/functions/v1/chat";
+const CHAT_URL = "https://mrshgfevvanopzrocdb.supabase.co/functions/v1/chat";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yc2hnZmV2dnZhbm9wenJvY2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDg4OTUsImV4cCI6MjA5Mzg4NDg5NX0.BO4z0bBjekjBZABC0HXAChI6VEXG271rOHFC_00wuUM";
 
 interface Message {
   id: string;
@@ -76,47 +76,42 @@ export default function FloatingChatbot() {
         .filter((m) => m.id !== "welcome")
         .map((m) => ({ role: m.role, content: m.content }));
 
-      // Direct fetch to Supabase Edge Function URL
       const response = await fetch(CHAT_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
         body: JSON.stringify({
           messages: [...history, { role: "user", content }],
         }),
       });
 
       const data = await response.json();
-      const reply = data?.reply || "Sorry, I couldn't respond right now. Please try again or contact ATEC directly!";
+      const reply = data?.reply || "Sorry, I couldn't respond right now. Please contact ATEC directly!";
 
-      const assistantMsg: Message = {
+      setMessages((prev) => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: reply,
         timestamp: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
+      }]);
       if (!isOpen) setUnreadCount((n) => n + 1);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "Connection issue. Please try again or WhatsApp ATEC directly!",
-          timestamp: new Date(),
-        },
-      ]);
+    } catch {
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Connection issue. Please try again or WhatsApp ATEC directly!",
+        timestamp: new Date(),
+      }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
   const formatTime = (date: Date) =>
@@ -140,10 +135,8 @@ export default function FloatingChatbot() {
             style={{ maxHeight: "min(600px, calc(100vh - 120px))", background: "white", border: "1px solid rgba(0,0,0,0.08)" }}
           >
             {/* Header */}
-            <div
-              className="flex items-center gap-3 px-4 py-3 text-white relative overflow-hidden flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)" }}
-            >
+            <div className="flex items-center gap-3 px-4 py-3 text-white relative overflow-hidden flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)" }}>
               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 50%, white 0%, transparent 60%)" }} />
               <div className="relative w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
                 <Bot className="w-5 h-5 text-white" />
@@ -157,20 +150,12 @@ export default function FloatingChatbot() {
                 </div>
               </div>
               <div className="relative flex items-center gap-1.5">
-                <a
-                  href="https://wa.me/919876543210"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center"
-                  title="WhatsApp ATEC"
-                >
+                <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer"
+                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center">
                   <Phone className="w-4 h-4 text-white" />
                 </a>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center"
-                  aria-label="Close chat"
-                >
+                <button onClick={() => setIsOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center">
                   <X className="w-4 h-4 text-white" />
                 </button>
               </div>
@@ -179,21 +164,15 @@ export default function FloatingChatbot() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0 bg-gradient-to-b from-slate-50 to-white">
               {messages.map((msg) => (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
+                <motion.div key={msg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                >
+                  className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${msg.role === "assistant" ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {msg.role === "assistant" ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                   </div>
                   <div className={`max-w-[75%] flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                    <div
-                      className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === "user" ? "rounded-tr-sm text-white" : "rounded-tl-sm bg-white text-slate-800 border border-slate-100 shadow-sm"}`}
-                      style={msg.role === "user" ? { background: "linear-gradient(135deg, #2563eb, #1e40af)" } : {}}
-                    >
+                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === "user" ? "rounded-tr-sm text-white" : "rounded-tl-sm bg-white text-slate-800 border border-slate-100 shadow-sm"}`}
+                      style={msg.role === "user" ? { background: "linear-gradient(135deg, #2563eb, #1e40af)" } : {}}>
                       {formatContent(msg.content)}
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 px-1">{formatTime(msg.timestamp)}</span>
@@ -211,8 +190,7 @@ export default function FloatingChatbot() {
                       {[0, 1, 2].map((i) => (
                         <motion.span key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full"
                           animate={{ y: [0, -4, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                        />
+                          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }} />
                       ))}
                     </div>
                   </div>
@@ -236,28 +214,16 @@ export default function FloatingChatbot() {
             {/* Input */}
             <div className="px-3 py-3 bg-white border-t border-slate-100 flex-shrink-0">
               <div className="flex gap-2 items-center bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 focus-within:border-blue-400 focus-within:bg-white transition-colors">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
+                <input ref={inputRef} type="text" value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about courses, admissions…"
                   className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none min-w-0"
-                  disabled={isLoading}
-                  maxLength={500}
-                />
-                <button
-                  onClick={() => sendMessage()}
-                  disabled={!input.trim() || isLoading}
+                  disabled={isLoading} maxLength={500} />
+                <button onClick={() => sendMessage()} disabled={!input.trim() || isLoading}
                   className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: input.trim() ? "linear-gradient(135deg, #2563eb, #1e40af)" : "#e2e8f0" }}
-                  aria-label="Send"
-                >
-                  {isLoading
-                    ? <Loader2 className="w-4 h-4 text-white animate-spin" />
-                    : <Send className={`w-4 h-4 ${input.trim() ? "text-white" : "text-slate-400"}`} />
-                  }
+                  style={{ background: input.trim() ? "linear-gradient(135deg, #2563eb, #1e40af)" : "#e2e8f0" }}>
+                  {isLoading ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className={`w-4 h-4 ${input.trim() ? "text-white" : "text-slate-400"}`} />}
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 text-center mt-1.5">
@@ -277,8 +243,7 @@ export default function FloatingChatbot() {
               initial={{ opacity: 0, y: 8, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="absolute bottom-16 right-0 w-max max-w-[190px] bg-slate-900 text-white text-xs px-3 py-2 rounded-xl rounded-br-sm shadow-lg pointer-events-none"
-            >
+              className="absolute bottom-16 right-0 w-max max-w-[190px] bg-slate-900 text-white text-xs px-3 py-2 rounded-xl rounded-br-sm shadow-lg pointer-events-none">
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-yellow-400 flex-shrink-0" />
                 <span>Ask me about courses!</span>
@@ -288,21 +253,15 @@ export default function FloatingChatbot() {
           )}
         </AnimatePresence>
 
-        <motion.button
-          onClick={() => setIsOpen((v) => !v)}
-          whileTap={{ scale: 0.92 }}
-          whileHover={{ scale: 1.06 }}
+        <motion.button onClick={() => setIsOpen((v) => !v)}
+          whileTap={{ scale: 0.92 }} whileHover={{ scale: 1.06 }}
           className="relative w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white"
-          style={{ background: isOpen ? "linear-gradient(135deg, #475569, #334155)" : "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)" }}
-          aria-label={isOpen ? "Close chat" : "Open ATEC Assistant"}
-        >
+          style={{ background: isOpen ? "linear-gradient(135deg, #475569, #334155)" : "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)" }}>
           {!isOpen && (
-            <motion.span
-              className="absolute inset-0 rounded-full"
+            <motion.span className="absolute inset-0 rounded-full"
               style={{ border: "2px solid #3b82f6" }}
               animate={{ scale: [1, 1.55], opacity: [0.7, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-            />
+              transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }} />
           )}
           <AnimatePresence mode="wait">
             {isOpen ? (
@@ -317,10 +276,8 @@ export default function FloatingChatbot() {
           </AnimatePresence>
           <AnimatePresence>
             {unreadCount > 0 && !isOpen && (
-              <motion.span
-                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white"
-              >
+              <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
                 {unreadCount}
               </motion.span>
             )}
