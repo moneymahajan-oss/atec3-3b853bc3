@@ -5,7 +5,8 @@ import {
   MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ChevronDown, Phone,
 } from "lucide-react";
 
-const CHAT_URL = "https://mrshgfevvanopzrocdb.supabase.co/functions/v1/chat";
+// ✅ CORRECT URL — 3 v's: mrshgfevvvanopzrocdb
+const CHAT_URL = "https://mrshgfevvvanopzrocdb.supabase.co/functions/v1/chat";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yc2hnZmV2dnZhbm9wenJvY2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDg4OTUsImV4cCI6MjA5Mzg4NDg5NX0.BO4z0bBjekjBZABC0HXAChI6VEXG271rOHFC_00wuUM";
 
 interface Message {
