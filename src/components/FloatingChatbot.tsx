@@ -5,7 +5,7 @@ import {
   MessageCircle, X, Send, Bot, User, Loader2, Sparkles, ChevronDown, Phone,
 } from "lucide-react";
 
-const ANTHROPIC_KEY = "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";
+const ANTHROPIC_KEY = "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";
 
 const SYSTEM = `You are ATEC Assistant for ATEC (Avenue To Excellent Careers), a premier computer education institute in Gurdaspur, Punjab, India. Established since 2000. 5000+ students trained, 20+ courses, 2000+ placements. ISO 9001:2015 certified. Authorized Tally Institute. Help with courses, admissions, fees, batch timings, certificates. Be warm, brief (2-4 sentences). For specific fees/dates say contact ATEC directly. Never discuss unrelated topics.`;
 
