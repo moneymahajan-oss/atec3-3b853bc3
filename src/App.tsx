@@ -57,6 +57,10 @@ import AdminMockTests from "./pages/AdminMockTests.tsx";
 import AdminBackup from "./pages/AdminBackup.tsx";
 import AdminRestore from "./pages/AdminRestore.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
+import FloatingChatbot from "@/components/FloatingChatbot";
+
+// Inside your return, at the bottom before closing tag:
+<FloatingChatbot />
 
 const queryClient = new QueryClient({
   defaultOptions: {
