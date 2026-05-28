@@ -1,3 +1,4 @@
+// src/components/sections/HeroSection.tsx
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -47,22 +48,24 @@ export default function HeroSection() {
 
   const [current, setCurrent] = useState(0);
   const [videoOpen, setVideoOpen] = useState(false);
+  const [lockedEmbed, setLockedEmbed] = useState<string | null>(null);
+  const [lockedPlatform, setLockedPlatform] = useState<string>("youtube");
 
   useEffect(() => {
     if (slides.length === 0) return;
     setCurrent(0);
   }, [slides]);
 
-  // FIX: Pause carousel auto-advance while video modal is open
+  // Pause carousel while video is open
   useEffect(() => {
     if (slides.length === 0) return;
-    if (videoOpen) return; // <-- do nothing when video is playing
+    if (videoOpen) return;
     const timer = setInterval(
       () => setCurrent((p) => (p + 1) % slides.length),
       8000
     );
     return () => clearInterval(timer);
-  }, [slides.length, videoOpen]); // <-- videoOpen added as dependency
+  }, [slides.length, videoOpen]);
 
   const slide = slides[current];
   if (!slide) return null;
@@ -70,10 +73,11 @@ export default function HeroSection() {
   const demoUrl = (slide as any).demo_video_url?.trim() || "";
   const demoPlatform = demoUrl ? detectPlatform(demoUrl) : "youtube";
   const demoEmbed = demoUrl ? getEmbedUrl(demoUrl, demoPlatform) : null;
-  const demoSizing = getDialogSize(demoPlatform);
 
   const handleDemoClick = () => {
     if (demoEmbed) {
+      setLockedEmbed(demoEmbed);
+      setLockedPlatform(demoPlatform);
       setVideoOpen(true);
     } else if (demoUrl) {
       window.open(demoUrl, "_blank", "noopener,noreferrer");
@@ -234,14 +238,14 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* Demo video dialog */}
-      {demoEmbed && (
+      {/* Demo video dialog — uses locked embed, immune to slide changes */}
+      {lockedEmbed && (
         <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
-          <DialogContent className={demoSizing.dialogClass}>
-            {demoPlatform === "instagram" ? (
+          <DialogContent className={getDialogSize(lockedPlatform).dialogClass}>
+            {lockedPlatform === "instagram" ? (
               <div style={{ width: "100%", aspectRatio: "9/16", maxHeight: "85vh" }}>
                 <iframe
-                  src={demoEmbed}
+                  src={lockedEmbed}
                   className="w-full h-full border-0"
                   scrolling="no"
                   allowTransparency={true}
@@ -250,9 +254,9 @@ export default function HeroSection() {
                 />
               </div>
             ) : (
-              <div className={demoSizing.containerClass}>
+              <div className={getDialogSize(lockedPlatform).containerClass}>
                 <iframe
-                  src={demoEmbed}
+                  src={lockedEmbed}
                   className="w-full h-full border-0"
                   allow="autoplay; encrypted-media; picture-in-picture"
                   allowFullScreen
