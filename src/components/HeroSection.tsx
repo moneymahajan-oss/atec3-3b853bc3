@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, Play, Sparkles, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +56,7 @@ export default function HeroSection() {
     setCurrent(0);
   }, [slides]);
 
-  // Pause carousel while video is open
+  // Pause carousel while video is open — video plays fully uninterrupted
   useEffect(() => {
     if (slides.length === 0) return;
     if (videoOpen) return;
@@ -76,6 +76,7 @@ export default function HeroSection() {
 
   const handleDemoClick = () => {
     if (demoEmbed) {
+      // Lock the embed at click time — immune to slide changes
       setLockedEmbed(demoEmbed);
       setLockedPlatform(demoPlatform);
       setVideoOpen(true);
@@ -83,6 +84,14 @@ export default function HeroSection() {
       window.open(demoUrl, "_blank", "noopener,noreferrer");
     } else {
       document.getElementById("videos")?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const handleVideoClose = (open: boolean) => {
+    setVideoOpen(open);
+    // Clear locked embed only after dialog is fully closed
+    if (!open) {
+      setTimeout(() => setLockedEmbed(null), 300);
     }
   };
 
@@ -159,12 +168,13 @@ export default function HeroSection() {
               </p>
 
               <div className="flex flex-wrap gap-4">
+                {/* FIX: <a> opening tag was missing — caused all JSX cascade errors */}
                 <Button
                   size="lg"
                   className="gradient-accent text-accent-foreground border-0 font-semibold text-base px-8 hover:opacity-90 transition-opacity"
                   asChild
                 >
-                  
+                  <a
                     href={slide.cta_link}
                     aria-label={`${slide.cta_text} — ATEC Gurdaspur`}
                   >
@@ -238,9 +248,9 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* Demo video dialog — uses locked embed, immune to slide changes */}
+      {/* Demo video dialog — locked embed, fully immune to slide changes */}
       {lockedEmbed && (
-        <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
+        <Dialog open={videoOpen} onOpenChange={handleVideoClose}>
           <DialogContent className={getDialogSize(lockedPlatform).dialogClass}>
             {lockedPlatform === "instagram" ? (
               <div style={{ width: "100%", aspectRatio: "9/16", maxHeight: "85vh" }}>
