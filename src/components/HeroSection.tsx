@@ -1,3 +1,4 @@
+// src/components/sections/HeroSection.tsx
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,7 +18,7 @@ const fallbackSlides = [
     cta_link: "/courses",
     image_url:
       "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=80",
-    demo_video_url: null, // admin can put any YouTube/Instagram/video URL here
+    demo_video_url: null,
   },
 ];
 
@@ -53,19 +54,20 @@ export default function HeroSection() {
     setCurrent(0);
   }, [slides]);
 
+  // FIX: Pause carousel auto-advance while video modal is open
   useEffect(() => {
     if (slides.length === 0) return;
+    if (videoOpen) return; // <-- do nothing when video is playing
     const timer = setInterval(
       () => setCurrent((p) => (p + 1) % slides.length),
       8000
     );
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides.length, videoOpen]); // <-- videoOpen added as dependency
 
   const slide = slides[current];
   if (!slide) return null;
 
-  // FIX: Demo video — detect platform and embed correctly per format
   const demoUrl = (slide as any).demo_video_url?.trim() || "";
   const demoPlatform = demoUrl ? detectPlatform(demoUrl) : "youtube";
   const demoEmbed = demoUrl ? getEmbedUrl(demoUrl, demoPlatform) : null;
@@ -75,10 +77,8 @@ export default function HeroSection() {
     if (demoEmbed) {
       setVideoOpen(true);
     } else if (demoUrl) {
-      // If no embed possible — open in new tab (e.g. raw MP4 link)
       window.open(demoUrl, "_blank", "noopener,noreferrer");
     } else {
-      // Fallback: scroll to videos section
       document.getElementById("videos")?.scrollIntoView({ behavior: "smooth" });
     }
   };
@@ -161,7 +161,7 @@ export default function HeroSection() {
                   className="gradient-accent text-accent-foreground border-0 font-semibold text-base px-8 hover:opacity-90 transition-opacity"
                   asChild
                 >
-                  <a
+                  
                     href={slide.cta_link}
                     aria-label={`${slide.cta_text} — ATEC Gurdaspur`}
                   >
@@ -169,7 +169,6 @@ export default function HeroSection() {
                   </a>
                 </Button>
 
-                {/* FIX: Watch Demo button — opens video in correct platform format */}
                 <Button
                   size="lg"
                   variant="outline"
@@ -236,7 +235,7 @@ export default function HeroSection() {
         </div>
       </section>
 
-      {/* FIX: Demo video dialog — platform-aware sizing */}
+      {/* Demo video dialog */}
       {demoEmbed && (
         <Dialog open={videoOpen} onOpenChange={setVideoOpen}>
           <DialogContent className={demoSizing.dialogClass}>
