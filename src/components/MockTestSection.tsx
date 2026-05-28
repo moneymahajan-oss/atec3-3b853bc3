@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Sparkles, Clock, CheckCircle2, XCircle, MessageCircle, BookOpen, Trophy, Zap, Brain } from "lucide-react";
+import {
+  Sparkles,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  MessageCircle,
+  BookOpen,
+  Trophy,
+  Zap,
+  Brain,
+  Shuffle,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
+
+// How many questions each student gets per test session
+const TEST_SIZE = 30;
 
 interface Question {
   question: string;
@@ -34,13 +48,17 @@ export default function MockTestSection() {
   const [whatsappNo, setWhatsappNo] = useState("");
   const [activeTest, setActiveTest] = useState<Test | null>(null);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [secondsLeft, setSecondsLeft] = useState(30 * 60);
+  const [secondsLeft, setSecondsLeft] = useState(TEST_SIZE * 60);
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
+  const [resultTotal, setResultTotal] = useState(0);
+  // Maps display-position (0..29) → original DB index in the full question pool
+  const [answerKeyMap, setAnswerKeyMap] = useState<number[]>([]);
+  // correctIndices[originalDBIdx] = correct option index for that question
   const [correctIndices, setCorrectIndices] = useState<number[]>([]);
 
   const { data: tests = [] } = useQuery({
-    queryKey: ['mock_tests'],
+    queryKey: ["mock_tests"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_public_mock_tests");
       if (error) throw error;
@@ -80,7 +98,10 @@ export default function MockTestSection() {
     if (course) setSelectedCourse(course);
     const targetTests = tests.filter((t) => t.course === target);
     if (targetTests.length === 0) {
-      toast({ title: "No tests available", description: "Tests for this course are coming soon." });
+      toast({
+        title: "No tests available",
+        description: "Tests for this course are coming soon.",
+      });
       return;
     }
     setStage("register");
@@ -88,35 +109,82 @@ export default function MockTestSection() {
 
   const startTest = () => {
     if (!studentName || !whatsappNo) {
-      toast({ title: "Required", description: "Name and WhatsApp number are required.", variant: "destructive" });
+      toast({
+        title: "Required",
+        description: "Name and WhatsApp number are required.",
+        variant: "destructive",
+      });
       return;
     }
     const test = courseTests[0];
     if (!test) return;
-    const shuffled = { ...test, questions: [...test.questions].sort(() => Math.random() - 0.5) };
-    setActiveTest(shuffled);
+
+    const allQs = [...test.questions] as Question[];
+    const poolSize = allQs.length;
+    const pickCount = Math.min(TEST_SIZE, poolSize);
+
+    // Fisher-Yates shuffle of indices so every student gets a different set
+    const indices = Array.from({ length: poolSize }, (_, i) => i);
+    for (let i = poolSize - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+
+    // Pick the first `pickCount` shuffled indices
+    const selectedIndices = indices.slice(0, pickCount);
+    const selectedQuestions = selectedIndices.map((idx) => allQs[idx]);
+
+    // Store the mapping so we can remap answers to original DB indices for grading
+    setAnswerKeyMap(selectedIndices);
+    setActiveTest({ ...test, questions: selectedQuestions });
     setAnswers({});
-    setSecondsLeft(30 * 60);
+    setSecondsLeft(TEST_SIZE * 60);
     setStage("test");
   };
 
   const handleSubmit = async () => {
     if (!activeTest) return;
-    const { data: graded, error: gradeErr } = await supabase.rpc("grade_mock_test", {
-      _test_id: activeTest.id,
-      _answers: answers as any,
+
+    // Remap display-position keys (0..29) → original DB-index keys
+    // so grade_mock_test RPC can correctly check each question's stored answer
+    const remappedAnswers: Record<number, number> = {};
+    Object.entries(answers).forEach(([displayPos, selectedOpt]) => {
+      const originalIdx = answerKeyMap[Number(displayPos)];
+      remappedAnswers[originalIdx] = selectedOpt as number;
     });
+
+    const { data: graded, error: gradeErr } = await supabase.rpc(
+      "grade_mock_test",
+      {
+        _test_id: activeTest.id,
+        _answers: remappedAnswers as any,
+      }
+    );
+
     if (gradeErr) {
-      toast({ title: "Could not grade test", description: gradeErr.message, variant: "destructive" });
+      toast({
+        title: "Could not grade test",
+        description: gradeErr.message,
+        variant: "destructive",
+      });
       return;
     }
-    const result = (graded ?? {}) as { score?: number; total?: number; correct?: number[] };
+
+    const result = (graded ?? {}) as {
+      score?: number;
+      total?: number;
+      correct?: number[];
+    };
+
     const correct = result.score ?? 0;
-    const total = result.total ?? activeTest.questions.length;
+    // Always use our local count (30) as total — not the DB pool size
+    const total = activeTest.questions.length;
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passFail = percentage >= 60 ? "PASS ✅" : "Try Again 💪";
 
     setScore(correct);
+    setResultTotal(total);
+    // result.correct is indexed by original DB index — used in review lookup
     setCorrectIndices(result.correct ?? []);
 
     await supabase.from("mock_test_results").insert({
@@ -125,7 +193,7 @@ export default function MockTestSection() {
       course: activeTest.course,
       score: correct,
       total,
-      answers: answers as any,
+      answers: remappedAnswers as any,
     });
 
     const link = await buildWhatsAppLink(
@@ -144,7 +212,10 @@ export default function MockTestSection() {
     setStage("result");
   };
 
-  const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60)
+      .toString()
+      .padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
     <section id="mock-test" className="py-12 bg-[#f8fafc]">
@@ -155,15 +226,25 @@ export default function MockTestSection() {
           viewport={{ once: true }}
           className="text-center mb-10"
         >
-          <Badge variant="outline" className="mb-4 text-accent border-accent/30 bg-accent/10">
+          <Badge
+            variant="outline"
+            className="mb-4 text-accent border-accent/30 bg-accent/10"
+          >
             <Trophy className="w-3 h-3 mr-1" /> Free Mock Tests
           </Badge>
           <h2 className="text-3xl md:text-5xl font-heading font-bold text-foreground mb-3">
             {settings.mocktest_section_heading || "Test Your Knowledge"}
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg">
-            {settings.mocktest_section_subheading || "Pick a course, take a 30-minute test, and get your result instantly on WhatsApp."}
+            {settings.mocktest_section_subheading ||
+              "Pick a course, take a 30-minute test, and get your result instantly on WhatsApp."}
           </p>
+          {/* Shuffle notice */}
+          <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+            <Shuffle className="w-3 h-3" />
+            {TEST_SIZE} questions randomly picked every time — unique test for
+            every student
+          </div>
         </motion.div>
 
         {stage === "intro" && (
@@ -177,24 +258,44 @@ export default function MockTestSection() {
                 {(() => {
                   const cards = courses.map((c) => {
                     const test = tests.find((t) => t.course === c);
-                    const qCount = test?.questions.length || 0;
-                    const difficulty = qCount >= 20 ? "Hard" : qCount >= 10 ? "Medium" : "Easy";
-                    const diffColor = difficulty === "Hard" ? "bg-destructive/10 text-destructive border-destructive/30" : difficulty === "Medium" ? "bg-accent/10 text-accent border-accent/30" : "bg-green-100 text-green-700 border-green-300";
+                    const poolCount = test?.questions.length || 0;
+                    const testCount = Math.min(TEST_SIZE, poolCount);
+                    // Difficulty based on pool size
+                    const difficulty =
+                      poolCount >= 40
+                        ? "Hard"
+                        : poolCount >= 20
+                        ? "Medium"
+                        : "Easy";
+                    const diffColor =
+                      difficulty === "Hard"
+                        ? "bg-destructive/10 text-destructive border-destructive/30"
+                        : difficulty === "Medium"
+                        ? "bg-accent/10 text-accent border-accent/30"
+                        : "bg-green-100 text-green-700 border-green-300";
                     const icons = [BookOpen, Brain, Zap, Trophy];
-                    const Icon = icons[Math.abs(c.charCodeAt(0)) % icons.length];
-                    return { c, qCount, difficulty, diffColor, Icon };
+                    const Icon =
+                      icons[Math.abs(c.charCodeAt(0)) % icons.length];
+                    return { c, poolCount, testCount, difficulty, diffColor, Icon };
                   });
-                  const padded = cards.length % 2 === 1 ? [...cards, null] : cards;
+                  const padded =
+                    cards.length % 2 === 1 ? [...cards, null] : cards;
                   return padded.map((card, idx) => {
                     if (!card) {
                       return (
-                        <div key={`pad-${idx}`} className="rounded-2xl border-2 border-dashed border-primary/20 p-6 flex flex-col items-center justify-center text-center text-muted-foreground bg-white/50">
+                        <div
+                          key={`pad-${idx}`}
+                          className="rounded-2xl border-2 border-dashed border-primary/20 p-6 flex flex-col items-center justify-center text-center text-muted-foreground bg-white/50"
+                        >
                           <Sparkles className="w-8 h-8 mb-2 opacity-50" />
-                          <p className="text-sm font-medium">More tests coming soon</p>
+                          <p className="text-sm font-medium">
+                            More tests coming soon
+                          </p>
                         </div>
                       );
                     }
-                    const { c, qCount, difficulty, diffColor, Icon } = card;
+                    const { c, poolCount, testCount, difficulty, diffColor, Icon } =
+                      card;
                     return (
                       <motion.div
                         key={c}
@@ -208,13 +309,34 @@ export default function MockTestSection() {
                           <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
                             <Icon className="w-6 h-6 text-primary-foreground" />
                           </div>
-                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${diffColor}`}>{difficulty}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-1 rounded-full border ${diffColor}`}
+                          >
+                            {difficulty}
+                          </span>
                         </div>
-                        <h3 className="font-heading font-bold text-lg text-foreground mb-1">{c}</h3>
-                        <p className="text-sm text-muted-foreground mb-4 flex items-center gap-3">
-                          <span className="inline-flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{qCount} questions</span>
-                          <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />30 min</span>
+                        <h3 className="font-heading font-bold text-lg text-foreground mb-1">
+                          {c}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-1 flex items-center gap-3">
+                          <span className="inline-flex items-center gap-1">
+                            <BookOpen className="w-3.5 h-3.5" />
+                            {testCount} questions
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            30 min
+                          </span>
                         </p>
+                        {/* Show pool size so students know variety */}
+                        {poolCount > testCount && (
+                          <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
+                            <Shuffle className="w-3 h-3 text-green-600" />
+                            <span className="text-green-600 font-medium">
+                              Shuffled from {poolCount}-question pool
+                            </span>
+                          </p>
+                        )}
                         <Button
                           size="sm"
                           onClick={() => startRegister(c)}
@@ -232,137 +354,187 @@ export default function MockTestSection() {
         )}
 
         {stage !== "intro" && (
-        <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white">
-          {false && null}
-
-          {stage === "register" && (
-            <div className="space-y-4 max-w-md mx-auto">
-              <h3 className="font-heading font-bold text-xl text-center mb-2">Quick Register</h3>
-              <Input
-                placeholder="Your Name"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                className="bg-background"
-              />
-              <Input
-                placeholder="WhatsApp Number"
-                type="tel"
-                value={whatsappNo}
-                onChange={(e) => setWhatsappNo(e.target.value)}
-                className="bg-background"
-              />
-              <Button
-                onClick={startTest}
-                className="w-full gradient-accent text-accent-foreground border-0"
-                size="lg"
-              >
-                Begin Test
-              </Button>
-            </div>
-          )}
-
-          {stage === "test" && activeTest && (
-            <div>
-              <div className="flex items-center justify-between mb-6 sticky top-0 bg-card/80 backdrop-blur py-2 -mx-2 px-2 rounded">
-                <span className="text-sm font-medium">{activeTest.course}</span>
-                <span className="inline-flex items-center gap-1 text-accent font-bold">
-                  <Clock className="w-4 h-4" /> {formatTime(secondsLeft)}
-                </span>
-              </div>
-              <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
-                {activeTest.questions.map((q, i) => (
-                  <div key={i} className="border border-border rounded-xl p-4">
-                    <p className="font-medium mb-3">
-                      <span className="text-accent">Q{i + 1}.</span> {q.question}
-                    </p>
-                    <div className="space-y-2">
-                      {q.options.map((opt, j) => (
-                        <label
-                          key={j}
-                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
-                            answers[i] === j ? "bg-accent/10 border border-accent" : "hover:bg-muted"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`q-${i}`}
-                            checked={answers[i] === j}
-                            onChange={() => setAnswers({ ...answers, [i]: j })}
-                          />
-                          <span className="text-sm">{opt}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <Button
-                onClick={handleSubmit}
-                size="lg"
-                className="w-full mt-6 gradient-accent text-accent-foreground border-0"
-              >
-                Submit Test
-              </Button>
-            </div>
-          )}
-
-          {stage === "result" && activeTest && (
-            <div className="text-center space-y-4">
-              <div className="text-6xl">
-                {score / activeTest.questions.length >= 0.6 ? "🎉" : "💪"}
-              </div>
-              <h3 className="font-heading font-bold text-2xl">
-                {score / activeTest.questions.length >= 0.6 ? "You Passed!" : "Keep Learning"}
-              </h3>
-              <p className="text-3xl font-bold text-accent">
-                {score} / {activeTest.questions.length}
-              </p>
-              <p className="text-muted-foreground">
-                {Math.round((score / activeTest.questions.length) * 100)}% score
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+          <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white">
+            {stage === "register" && (
+              <div className="space-y-4 max-w-md mx-auto">
+                <h3 className="font-heading font-bold text-xl text-center mb-2">
+                  Quick Register
+                </h3>
+                <p className="text-center text-sm text-muted-foreground">
+                  You will receive{" "}
+                  <span className="font-semibold text-accent">
+                    {TEST_SIZE} randomly selected questions
+                  </span>{" "}
+                  — unique every time!
+                </p>
+                <Input
+                  placeholder="Your Name"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  className="bg-background"
+                />
+                <Input
+                  placeholder="WhatsApp Number"
+                  type="tel"
+                  value={whatsappNo}
+                  onChange={(e) => setWhatsappNo(e.target.value)}
+                  className="bg-background"
+                />
                 <Button
-                  asChild
-                  className="gradient-accent text-accent-foreground border-0"
+                  onClick={startTest}
+                  className="w-full gradient-accent text-accent-foreground border-0"
                   size="lg"
                 >
-                  <a href={resultLink} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle className="w-4 h-4 mr-2" /> Get Result on WhatsApp
-                  </a>
-                </Button>
-                <Button variant="outline" size="lg" onClick={() => setStage("intro")}>
-                  Take Another Test
+                  Begin Test
                 </Button>
               </div>
-              <details className="text-left mt-6">
-                <summary className="cursor-pointer font-medium">Review Answers</summary>
-                <div className="mt-4 space-y-3">
-                  {activeTest.questions.map((q, i) => {
-                    const correctIdx = correctIndices[i];
-                    const isCorrect = answers[i] === correctIdx;
-                    return (
-                      <div key={i} className="border rounded-lg p-3 text-sm">
-                        <div className="flex items-start gap-2">
-                          {isCorrect ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                          )}
-                          <div>
-                            <p className="font-medium">{q.question}</p>
-                            <p className="text-muted-foreground mt-1">
-                              Correct: {correctIdx != null ? q.options[correctIdx] : "—"}
-                            </p>
+            )}
+
+            {stage === "test" && activeTest && (
+              <div>
+                <div className="flex items-center justify-between mb-6 sticky top-0 bg-card/80 backdrop-blur py-2 -mx-2 px-2 rounded">
+                  <div>
+                    <span className="text-sm font-medium">
+                      {activeTest.course}
+                    </span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {Object.keys(answers).length}/{activeTest.questions.length}{" "}
+                      answered
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-accent font-bold">
+                    <Clock className="w-4 h-4" /> {formatTime(secondsLeft)}
+                  </span>
+                </div>
+
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+                  {activeTest.questions.map((q, i) => (
+                    <div key={i} className="border border-border rounded-xl p-4">
+                      <p className="font-medium mb-3">
+                        <span className="text-accent">Q{i + 1}.</span>{" "}
+                        {q.question}
+                      </p>
+                      <div className="space-y-2">
+                        {q.options.map((opt, j) => (
+                          <label
+                            key={j}
+                            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                              answers[i] === j
+                                ? "bg-accent/10 border border-accent"
+                                : "hover:bg-muted"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q-${i}`}
+                              checked={answers[i] === j}
+                              onChange={() =>
+                                setAnswers({ ...answers, [i]: j })
+                              }
+                            />
+                            <span className="text-sm">{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  onClick={handleSubmit}
+                  size="lg"
+                  className="w-full mt-6 gradient-accent text-accent-foreground border-0"
+                >
+                  Submit Test
+                </Button>
+              </div>
+            )}
+
+            {stage === "result" && activeTest && (
+              <div className="text-center space-y-4">
+                <div className="text-6xl">
+                  {score / resultTotal >= 0.6 ? "🎉" : "💪"}
+                </div>
+                <h3 className="font-heading font-bold text-2xl">
+                  {score / resultTotal >= 0.6
+                    ? "You Passed!"
+                    : "Keep Learning"}
+                </h3>
+                <p className="text-3xl font-bold text-accent">
+                  {score} / {resultTotal}
+                </p>
+                <p className="text-muted-foreground">
+                  {Math.round((score / resultTotal) * 100)}% score
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                  <Button
+                    asChild
+                    className="gradient-accent text-accent-foreground border-0"
+                    size="lg"
+                  >
+                    <a
+                      href={resultLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" /> Get Result on
+                      WhatsApp
+                    </a>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => setStage("intro")}
+                  >
+                    Take Another Test
+                  </Button>
+                </div>
+
+                <details className="text-left mt-6">
+                  <summary className="cursor-pointer font-medium">
+                    Review Answers
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    {activeTest.questions.map((q, i) => {
+                      // Look up correct answer using the ORIGINAL DB index for this display position
+                      const originalIdx = answerKeyMap[i];
+                      const correctIdx = correctIndices[originalIdx];
+                      const isCorrect = answers[i] === correctIdx;
+                      return (
+                        <div
+                          key={i}
+                          className="border rounded-lg p-3 text-sm"
+                        >
+                          <div className="flex items-start gap-2">
+                            {isCorrect ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+                            )}
+                            <div>
+                              <p className="font-medium">{q.question}</p>
+                              <p className="text-muted-foreground mt-1">
+                                Correct:{" "}
+                                {correctIdx != null
+                                  ? q.options[correctIdx]
+                                  : "—"}
+                              </p>
+                              {!isCorrect && answers[i] != null && (
+                                <p className="text-destructive mt-0.5">
+                                  Your answer: {q.options[answers[i]]}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </details>
-            </div>
-          )}
-        </div>
+                      );
+                    })}
+                  </div>
+                </details>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </section>
