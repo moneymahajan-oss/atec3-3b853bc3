@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 // Direct URL — bypasses supabase-js client to avoid connection issues
-const CHAT_URL = "https://mrshgfevvanopzrocdb.supabase.co/functions/v1/chat";
+const CHAT_URL = "https://mrshgfevvvanopzrocdb.supabase.co/functions/v1/chat";
 
 interface Message {
   id: string;
