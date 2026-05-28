@@ -1,4 +1,3 @@
-// src/components/sections/HeroSection.tsx
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
