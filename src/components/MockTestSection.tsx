@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -52,10 +52,13 @@ export default function MockTestSection() {
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
   const [resultTotal, setResultTotal] = useState(0);
-  // Maps display-position (0..29) → original DB index in the full question pool
+  // Maps display-position (0..N-1) → original DB index in the full question pool
   const [answerKeyMap, setAnswerKeyMap] = useState<number[]>([]);
-  // correctIndices[originalDBIdx] = correct option index for that question
-  const [correctIndices, setCorrectIndices] = useState<number[]>([]);
+  // correctMap[originalDBIdx] = correct option index for that question
+  const [correctMap, setCorrectMap] = useState<Record<number, number>>({});
+  const [submitting, setSubmitting] = useState(false);
+  // Ref to prevent double-submit (timer + manual button race)
+  const hasSubmitted = useRef(false);
 
   const { data: tests = [] } = useQuery({
     queryKey: ["mock_tests"],
@@ -79,10 +82,11 @@ export default function MockTestSection() {
     }
   }, [tests, selectedCourse]);
 
+  // Timer — stops immediately once submitted
   useEffect(() => {
     if (stage !== "test") return;
     if (secondsLeft <= 0) {
-      handleSubmit();
+      submitTest();
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
@@ -108,7 +112,7 @@ export default function MockTestSection() {
   };
 
   const startTest = () => {
-    if (!studentName || !whatsappNo) {
+    if (!studentName.trim() || !whatsappNo.trim()) {
       toast({
         title: "Required",
         description: "Name and WhatsApp number are required.",
@@ -130,63 +134,101 @@ export default function MockTestSection() {
       [indices[i], indices[j]] = [indices[j], indices[i]];
     }
 
-    // Pick the first `pickCount` shuffled indices
     const selectedIndices = indices.slice(0, pickCount);
     const selectedQuestions = selectedIndices.map((idx) => allQs[idx]);
 
-    // Store the mapping so we can remap answers to original DB indices for grading
+    // Reset all state for fresh test (fixes stale map on retake)
+    hasSubmitted.current = false;
     setAnswerKeyMap(selectedIndices);
+    setCorrectMap({});
     setActiveTest({ ...test, questions: selectedQuestions });
     setAnswers({});
     setSecondsLeft(TEST_SIZE * 60);
+    setSubmitting(false);
     setStage("test");
   };
 
-  const handleSubmit = async () => {
-    if (!activeTest) return;
+  // Renamed to submitTest and made idempotent with hasSubmitted ref
+  const submitTest = async () => {
+    // Prevent double-submit from timer + button race
+    if (hasSubmitted.current) return;
+    hasSubmitted.current = true;
 
-    // Remap display-position keys (0..29) → original DB-index keys
-    // so grade_mock_test RPC can correctly check each question's stored answer
-    const remappedAnswers: Record<number, number> = {};
+    if (!activeTest) return;
+    setSubmitting(true);
+
+    // Build remapped answers: display-position (number) → original DB index
+    // CRITICAL FIX: use Number() to ensure integer keys, not string keys
+    // The RPC expects { "0": 2, "3": 1, ... } with numeric-string keys in JSONB
+    // but we must send actual integers so PostgreSQL jsonb operators work correctly.
+    const remappedAnswers: Record<string, number> = {};
     Object.entries(answers).forEach(([displayPos, selectedOpt]) => {
       const originalIdx = answerKeyMap[Number(displayPos)];
-      remappedAnswers[originalIdx] = selectedOpt as number;
+      if (originalIdx !== undefined) {
+        // Use string representation of integer — JSONB object keys are always strings
+        // but value must be a JS number so PostgreSQL reads it as integer
+        remappedAnswers[String(originalIdx)] = Number(selectedOpt);
+      }
     });
 
-    const { data: graded, error: gradeErr } = await supabase.rpc(
-      "grade_mock_test",
-      {
-        _test_id: activeTest.id,
-        _answers: remappedAnswers as any,
-      }
-    );
+    let correct = 0;
+    let newCorrectMap: Record<number, number> = {};
 
-    if (gradeErr) {
-      toast({
-        title: "Could not grade test",
-        description: gradeErr.message,
-        variant: "destructive",
-      });
-      return;
+    try {
+      const { data: graded, error: gradeErr } = await supabase.rpc(
+        "grade_mock_test",
+        {
+          _test_id: activeTest.id,
+          _answers: remappedAnswers as any,
+        }
+      );
+
+      if (gradeErr) {
+        toast({
+          title: "Could not grade test",
+          description: gradeErr.message,
+          variant: "destructive",
+        });
+        // Don't return — still save result with score 0 and show result page
+      } else {
+        const result = (graded ?? {}) as {
+          score?: number;
+          total?: number;
+          correct?: Record<string, number> | number[];
+        };
+
+        correct = result.score ?? 0;
+
+        // Normalize correct answers: RPC may return array OR object keyed by DB index
+        // Handle both: array → { index: correctOpt }, object → use as-is
+        if (result.correct) {
+          if (Array.isArray(result.correct)) {
+            result.correct.forEach((correctOpt, dbIdx) => {
+              if (correctOpt !== null && correctOpt !== undefined) {
+                newCorrectMap[dbIdx] = correctOpt;
+              }
+            });
+          } else {
+            Object.entries(result.correct).forEach(([k, v]) => {
+              newCorrectMap[Number(k)] = Number(v);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Network error — proceed with score 0
+      console.error("grade_mock_test error:", e);
     }
 
-    const result = (graded ?? {}) as {
-      score?: number;
-      total?: number;
-      correct?: number[];
-    };
-
-    const correct = result.score ?? 0;
-    // Always use our local count (30) as total — not the DB pool size
     const total = activeTest.questions.length;
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passFail = percentage >= 60 ? "PASS ✅" : "Try Again 💪";
 
     setScore(correct);
     setResultTotal(total);
-    // result.correct is indexed by original DB index — used in review lookup
-    setCorrectIndices(result.correct ?? []);
+    setCorrectMap(newCorrectMap);
 
+    // Save result — include test_id so admin can filter per test
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
       whatsapp_no: whatsappNo,
@@ -209,6 +251,7 @@ export default function MockTestSection() {
       settings.whatsapp_number
     );
     setResultLink(link);
+    setSubmitting(false);
     setStage("result");
   };
 
@@ -239,7 +282,6 @@ export default function MockTestSection() {
             {settings.mocktest_section_subheading ||
               "Pick a course, take a 30-minute test, and get your result instantly on WhatsApp."}
           </p>
-          {/* Shuffle notice */}
           <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
             <Shuffle className="w-3 h-3" />
             {TEST_SIZE} questions randomly picked every time — unique test for
@@ -260,7 +302,6 @@ export default function MockTestSection() {
                     const test = tests.find((t) => t.course === c);
                     const poolCount = test?.questions.length || 0;
                     const testCount = Math.min(TEST_SIZE, poolCount);
-                    // Difficulty based on pool size
                     const difficulty =
                       poolCount >= 40
                         ? "Hard"
@@ -328,7 +369,6 @@ export default function MockTestSection() {
                             30 min
                           </span>
                         </p>
-                        {/* Show pool size so students know variety */}
                         {poolCount > testCount && (
                           <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">
                             <Shuffle className="w-3 h-3 text-green-600" />
@@ -353,8 +393,10 @@ export default function MockTestSection() {
           </div>
         )}
 
+        {/* All non-intro stages share a visible card container with min-height */}
         {stage !== "intro" && (
-          <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white">
+          <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white min-h-[400px]">
+
             {stage === "register" && (
               <div className="space-y-4 max-w-md mx-auto">
                 <h3 className="font-heading font-bold text-xl text-center mb-2">
@@ -387,6 +429,13 @@ export default function MockTestSection() {
                 >
                   Begin Test
                 </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setStage("intro")}
+                >
+                  ← Back
+                </Button>
               </div>
             )}
 
@@ -402,7 +451,11 @@ export default function MockTestSection() {
                       answered
                     </span>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-accent font-bold">
+                  <span
+                    className={`inline-flex items-center gap-1 font-bold ${
+                      secondsLeft < 60 ? "text-destructive animate-pulse" : "text-accent"
+                    }`}
+                  >
                     <Clock className="w-4 h-4" /> {formatTime(secondsLeft)}
                   </span>
                 </div>
@@ -429,7 +482,7 @@ export default function MockTestSection() {
                               name={`q-${i}`}
                               checked={answers[i] === j}
                               onChange={() =>
-                                setAnswers({ ...answers, [i]: j })
+                                setAnswers((prev) => ({ ...prev, [i]: j }))
                               }
                             />
                             <span className="text-sm">{opt}</span>
@@ -441,11 +494,12 @@ export default function MockTestSection() {
                 </div>
 
                 <Button
-                  onClick={handleSubmit}
+                  onClick={submitTest}
                   size="lg"
+                  disabled={submitting}
                   className="w-full mt-6 gradient-accent text-accent-foreground border-0"
                 >
-                  Submit Test
+                  {submitting ? "Submitting…" : "Submit Test"}
                 </Button>
               </div>
             )}
@@ -473,7 +527,7 @@ export default function MockTestSection() {
                     className="gradient-accent text-accent-foreground border-0"
                     size="lg"
                   >
-                    <a
+                    
                       href={resultLink}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -485,22 +539,34 @@ export default function MockTestSection() {
                   <Button
                     variant="outline"
                     size="lg"
-                    onClick={() => setStage("intro")}
+                    onClick={() => {
+                      // Full reset for clean retake
+                      setStage("intro");
+                      setAnswers({});
+                      setAnswerKeyMap([]);
+                      setCorrectMap({});
+                      setActiveTest(null);
+                      setStudentName("");
+                      setWhatsappNo("");
+                      hasSubmitted.current = false;
+                    }}
                   >
                     Take Another Test
                   </Button>
                 </div>
 
                 <details className="text-left mt-6">
-                  <summary className="cursor-pointer font-medium">
+                  <summary className="cursor-pointer font-medium select-none">
                     Review Answers
                   </summary>
                   <div className="mt-4 space-y-3">
                     {activeTest.questions.map((q, i) => {
-                      // Look up correct answer using the ORIGINAL DB index for this display position
                       const originalIdx = answerKeyMap[i];
-                      const correctIdx = correctIndices[originalIdx];
-                      const isCorrect = answers[i] === correctIdx;
+                      // FIX: use correctMap (object) instead of array lookup
+                      const correctIdx = correctMap[originalIdx];
+                      const userAnswer = answers[i];
+                      const isCorrect =
+                        userAnswer !== undefined && userAnswer === correctIdx;
                       return (
                         <div
                           key={i}
@@ -516,13 +582,13 @@ export default function MockTestSection() {
                               <p className="font-medium">{q.question}</p>
                               <p className="text-muted-foreground mt-1">
                                 Correct:{" "}
-                                {correctIdx != null
-                                  ? q.options[correctIdx]
+                                {correctIdx !== undefined
+                                  ? q.options[correctIdx] ?? "—"
                                   : "—"}
                               </p>
-                              {!isCorrect && answers[i] != null && (
+                              {!isCorrect && userAnswer !== undefined && (
                                 <p className="text-destructive mt-0.5">
-                                  Your answer: {q.options[answers[i]]}
+                                  Your answer: {q.options[userAnswer]}
                                 </p>
                               )}
                             </div>
