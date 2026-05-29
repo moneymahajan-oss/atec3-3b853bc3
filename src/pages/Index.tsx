@@ -1,4 +1,3 @@
-
 import FounderSection from "@/components/FounderSection";
 import Navbar from "@/components/Navbar";
 import OfferBelt from "@/components/OfferBelt";
@@ -6,6 +5,7 @@ import HeroSection from "@/components/HeroSection";
 import StatsStrip from "@/components/StatsStrip";
 import AnnouncementTicker from "@/components/AnnouncementTicker";
 import CoursesSection from "@/components/CoursesSection";
+import OffersSection from "@/components/OffersSection";
 import AboutSection from "@/components/AboutSection";
 import GallerySection from "@/components/GallerySection";
 import TestimonialsSection from "@/components/TestimonialsSection";
@@ -131,7 +131,6 @@ const Index = () => {
       <SectionErrorBoundary name="OfferBelt"><OfferBelt /></SectionErrorBoundary>
       <SectionErrorBoundary name="Navbar"><Navbar /></SectionErrorBoundary>
 
-      {/* SEO FIX: id="main-content" for skip-link target */}
       <main id="main-content">
         <SectionErrorBoundary name="Hero">
           <HeroSection />
@@ -155,6 +154,13 @@ const Index = () => {
           </section>
         </SectionErrorBoundary>
 
+        {/* ── Offers & Discounts — appears right after Courses ── */}
+        <SectionErrorBoundary name="Offers">
+          <section aria-label="Special offers and discounts for students" id="offers">
+            <OffersSection />
+          </section>
+        </SectionErrorBoundary>
+
         <SectionErrorBoundary name="LifeAtAtec">
           <section aria-label="Life at ATEC — student experience" id="life">
             <LifeAtAtecSection />
@@ -166,6 +172,7 @@ const Index = () => {
             <AboutSection />
           </section>
         </SectionErrorBoundary>
+
         <SectionErrorBoundary name="Founder">
           <FounderSection />
         </SectionErrorBoundary>
