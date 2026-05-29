@@ -21,13 +21,11 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 
-// How many questions each student gets per test session
 const TEST_SIZE = 30;
 
 interface Question {
   question: string;
   options: string[];
-  // 'correct' is intentionally NOT included on the public payload
 }
 
 interface Test {
@@ -52,13 +50,22 @@ export default function MockTestSection() {
   const [resultLink, setResultLink] = useState("");
   const [score, setScore] = useState(0);
   const [resultTotal, setResultTotal] = useState(0);
-  // Maps display-position (0..N-1) → original DB index in the full question pool
   const [answerKeyMap, setAnswerKeyMap] = useState<number[]>([]);
-  // correctMap[originalDBIdx] = correct option index for that question
   const [correctMap, setCorrectMap] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
-  // Ref to prevent double-submit (timer + manual button race condition)
+
+  // ── CRITICAL FIX: refs always hold the LATEST values ──
+  // React state captured in async closures (submitTest) can be stale.
+  // These refs are updated synchronously on every state change.
+  const answersRef = useRef<Record<number, number>>({});
+  const answerKeyMapRef = useRef<number[]>([]);
+  const activeTestRef = useRef<Test | null>(null);
   const hasSubmitted = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { answerKeyMapRef.current = answerKeyMap; }, [answerKeyMap]);
+  useEffect(() => { activeTestRef.current = activeTest; }, [activeTest]);
 
   const { data: tests = [] } = useQuery({
     queryKey: ["mock_tests"],
@@ -82,7 +89,6 @@ export default function MockTestSection() {
     }
   }, [tests, selectedCourse]);
 
-  // Timer — stops immediately once submitted
   useEffect(() => {
     if (stage !== "test") return;
     if (secondsLeft <= 0) {
@@ -127,7 +133,6 @@ export default function MockTestSection() {
     const poolSize = allQs.length;
     const pickCount = Math.min(TEST_SIZE, poolSize);
 
-    // Fisher-Yates shuffle of indices so every student gets a different set
     const indices = Array.from({ length: poolSize }, (_, i) => i);
     for (let i = poolSize - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -137,8 +142,12 @@ export default function MockTestSection() {
     const selectedIndices = indices.slice(0, pickCount);
     const selectedQuestions = selectedIndices.map((idx) => allQs[idx]);
 
-    // Reset all per-test state (fixes stale map on retake)
+    // Reset everything — refs first, then state
     hasSubmitted.current = false;
+    answersRef.current = {};
+    answerKeyMapRef.current = selectedIndices;
+    activeTestRef.current = { ...test, questions: selectedQuestions };
+
     setAnswerKeyMap(selectedIndices);
     setCorrectMap({});
     setActiveTest({ ...test, questions: selectedQuestions });
@@ -148,27 +157,33 @@ export default function MockTestSection() {
     setStage("test");
   };
 
-  // FIX: Renamed to submitTest and made idempotent with hasSubmitted ref
   const submitTest = async () => {
-    // Prevent double-submit from timer + button race
     if (hasSubmitted.current) return;
     hasSubmitted.current = true;
 
-    if (!activeTest) return;
+    // ── READ FROM REFS, NOT STATE ──
+    // This is the core fix. State closures in async functions capture
+    // the value at render time. Refs always return the current value.
+    const currentAnswers = answersRef.current;
+    const currentKeyMap = answerKeyMapRef.current;
+    const currentTest = activeTestRef.current;
+
+    if (!currentTest) return;
     setSubmitting(true);
 
-    // FIX: Build remapped answers with explicit string keys and number values.
-    // JSONB object keys are always strings. The RPC's grade logic does:
-    //   answers->>'42' to get the student's choice for DB question index 42.
-    // Previously passing a JS object with numeric keys caused subtle type
-    // mismatches in PostgreSQL JSONB lookups, returning score = 0.
+    // Build remapped answers: display-position → original DB index
     const remappedAnswers: Record<string, number> = {};
-    Object.entries(answers).forEach(([displayPos, selectedOpt]) => {
-      const originalIdx = answerKeyMap[Number(displayPos)];
+    Object.entries(currentAnswers).forEach(([displayPos, selectedOpt]) => {
+      const originalIdx = currentKeyMap[Number(displayPos)];
       if (originalIdx !== undefined) {
         remappedAnswers[String(originalIdx)] = Number(selectedOpt);
       }
     });
+
+    // Debug log — remove after confirming fix
+    console.log("[MockTest] answers:", currentAnswers);
+    console.log("[MockTest] keyMap:", currentKeyMap);
+    console.log("[MockTest] remapped:", remappedAnswers);
 
     let correct = 0;
     let newCorrectMap: Record<number, number> = {};
@@ -177,10 +192,12 @@ export default function MockTestSection() {
       const { data: graded, error: gradeErr } = await supabase.rpc(
         "grade_mock_test",
         {
-          _test_id: activeTest.id,
+          _test_id: currentTest.id,
           _answers: remappedAnswers as any,
         }
       );
+
+      console.log("[MockTest] graded result:", graded, "error:", gradeErr);
 
       if (gradeErr) {
         toast({
@@ -188,9 +205,6 @@ export default function MockTestSection() {
           description: gradeErr.message,
           variant: "destructive",
         });
-        // FIX: Do NOT return early — still save result and show result page
-        // Previously an early return here caused: mobile users missing from admin
-        // results AND page becoming invisible (stage never set to "result")
       } else {
         const result = (graded ?? {}) as {
           score?: number;
@@ -200,9 +214,6 @@ export default function MockTestSection() {
 
         correct = result.score ?? 0;
 
-        // FIX: Normalize correct answers — RPC may return array OR keyed object.
-        // Previously used correctIndices[] (sparse array) which broke when RPC
-        // returned an object. Now use correctMap{} which handles both formats.
         if (result.correct) {
           if (Array.isArray(result.correct)) {
             result.correct.forEach((correctOpt, dbIdx) => {
@@ -218,11 +229,10 @@ export default function MockTestSection() {
         }
       }
     } catch (e) {
-      // Network error — proceed with score 0, still show result page
-      console.error("grade_mock_test error:", e);
+      console.error("[MockTest] grade_mock_test exception:", e);
     }
 
-    const total = activeTest.questions.length;
+    const total = currentTest.questions.length;
     const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
     const passFail = percentage >= 60 ? "PASS ✅" : "Try Again 💪";
 
@@ -230,12 +240,10 @@ export default function MockTestSection() {
     setResultTotal(total);
     setCorrectMap(newCorrectMap);
 
-    // FIX: Insert always runs now (not inside the gradeErr early-return path).
-    // This was the root cause of mobile users missing from admin Test Results.
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
       whatsapp_no: whatsappNo,
-      course: activeTest.course,
+      course: currentTest.course,
       score: correct,
       total,
       answers: remappedAnswers as any,
@@ -245,7 +253,7 @@ export default function MockTestSection() {
       "mock_test_result",
       {
         student_name: studentName,
-        course_name: activeTest.course,
+        course_name: currentTest.course,
         score: correct,
         total,
         percentage,
@@ -255,14 +263,13 @@ export default function MockTestSection() {
     );
     setResultLink(link);
     setSubmitting(false);
-    // FIX: setStage("result") now always reached — fixes page becoming invisible
     setStage("result");
   };
 
   const formatTime = (s: number) =>
-    `${Math.floor(s / 60)
+    `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60)
       .toString()
-      .padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+      .padStart(2, "0")}`;
 
   return (
     <section id="mock-test" className="py-12 bg-[#f8fafc]">
@@ -339,8 +346,7 @@ export default function MockTestSection() {
                         </div>
                       );
                     }
-                    const { c, poolCount, testCount, difficulty, diffColor, Icon } =
-                      card;
+                    const { c, poolCount, testCount, difficulty, diffColor, Icon } = card;
                     return (
                       <motion.div
                         key={c}
@@ -397,8 +403,6 @@ export default function MockTestSection() {
           </div>
         )}
 
-        {/* FIX: min-h-[400px] prevents container collapsing to zero on mobile
-            when content is loading or transitioning — fixes "invisible page" bug */}
         {stage !== "intro" && (
           <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white min-h-[400px]">
 
@@ -456,7 +460,6 @@ export default function MockTestSection() {
                       answered
                     </span>
                   </div>
-                  {/* FIX: Red pulsing timer when under 60 seconds */}
                   <span
                     className={`inline-flex items-center gap-1 font-bold ${
                       secondsLeft < 60
@@ -490,8 +493,6 @@ export default function MockTestSection() {
                               name={`q-${i}`}
                               checked={answers[i] === j}
                               onChange={() =>
-                                // FIX: functional setter avoids stale closure on
-                                // rapid mobile taps
                                 setAnswers((prev) => ({ ...prev, [i]: j }))
                               }
                             />
@@ -503,7 +504,6 @@ export default function MockTestSection() {
                   ))}
                 </div>
 
-                {/* FIX: disabled + spinner while submitting prevents double-tap */}
                 <Button
                   onClick={submitTest}
                   size="lg"
@@ -521,9 +521,7 @@ export default function MockTestSection() {
                   {score / resultTotal >= 0.6 ? "🎉" : "💪"}
                 </div>
                 <h3 className="font-heading font-bold text-2xl">
-                  {score / resultTotal >= 0.6
-                    ? "You Passed!"
-                    : "Keep Learning"}
+                  {score / resultTotal >= 0.6 ? "You Passed!" : "Keep Learning"}
                 </h3>
                 <p className="text-3xl font-bold text-accent">
                   {score} / {resultTotal}
@@ -538,17 +536,11 @@ export default function MockTestSection() {
                     className="gradient-accent text-accent-foreground border-0"
                     size="lg"
                   >
-                    <a
-                      href={resultLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a href={resultLink} target="_blank" rel="noopener noreferrer">
                       <MessageCircle className="w-4 h-4 mr-2" /> Get Result on
                       WhatsApp
                     </a>
                   </Button>
-                  {/* FIX: Full state reset on retake prevents stale answerKeyMap
-                      corrupting scores on a second attempt */}
                   <Button
                     variant="outline"
                     size="lg"
@@ -560,6 +552,9 @@ export default function MockTestSection() {
                       setActiveTest(null);
                       setStudentName("");
                       setWhatsappNo("");
+                      answersRef.current = {};
+                      answerKeyMapRef.current = [];
+                      activeTestRef.current = null;
                       hasSubmitted.current = false;
                     }}
                   >
@@ -574,17 +569,12 @@ export default function MockTestSection() {
                   <div className="mt-4 space-y-3">
                     {activeTest.questions.map((q, i) => {
                       const originalIdx = answerKeyMap[i];
-                      // FIX: use correctMap (object keyed by DB index) instead of
-                      // sparse array — handles both array and object RPC responses
                       const correctIdx = correctMap[originalIdx];
                       const userAnswer = answers[i];
                       const isCorrect =
                         userAnswer !== undefined && userAnswer === correctIdx;
                       return (
-                        <div
-                          key={i}
-                          className="border rounded-lg p-3 text-sm"
-                        >
+                        <div key={i} className="border rounded-lg p-3 text-sm">
                           <div className="flex items-start gap-2">
                             {isCorrect ? (
                               <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
