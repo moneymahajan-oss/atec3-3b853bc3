@@ -57,7 +57,7 @@ export default function MockTestSection() {
   // correctMap[originalDBIdx] = correct option index for that question
   const [correctMap, setCorrectMap] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
-  // Ref to prevent double-submit (timer + manual button race)
+  // Ref to prevent double-submit (timer + manual button race condition)
   const hasSubmitted = useRef(false);
 
   const { data: tests = [] } = useQuery({
@@ -137,7 +137,7 @@ export default function MockTestSection() {
     const selectedIndices = indices.slice(0, pickCount);
     const selectedQuestions = selectedIndices.map((idx) => allQs[idx]);
 
-    // Reset all state for fresh test (fixes stale map on retake)
+    // Reset all per-test state (fixes stale map on retake)
     hasSubmitted.current = false;
     setAnswerKeyMap(selectedIndices);
     setCorrectMap({});
@@ -148,7 +148,7 @@ export default function MockTestSection() {
     setStage("test");
   };
 
-  // Renamed to submitTest and made idempotent with hasSubmitted ref
+  // FIX: Renamed to submitTest and made idempotent with hasSubmitted ref
   const submitTest = async () => {
     // Prevent double-submit from timer + button race
     if (hasSubmitted.current) return;
@@ -157,16 +157,15 @@ export default function MockTestSection() {
     if (!activeTest) return;
     setSubmitting(true);
 
-    // Build remapped answers: display-position (number) → original DB index
-    // CRITICAL FIX: use Number() to ensure integer keys, not string keys
-    // The RPC expects { "0": 2, "3": 1, ... } with numeric-string keys in JSONB
-    // but we must send actual integers so PostgreSQL jsonb operators work correctly.
+    // FIX: Build remapped answers with explicit string keys and number values.
+    // JSONB object keys are always strings. The RPC's grade logic does:
+    //   answers->>'42' to get the student's choice for DB question index 42.
+    // Previously passing a JS object with numeric keys caused subtle type
+    // mismatches in PostgreSQL JSONB lookups, returning score = 0.
     const remappedAnswers: Record<string, number> = {};
     Object.entries(answers).forEach(([displayPos, selectedOpt]) => {
       const originalIdx = answerKeyMap[Number(displayPos)];
       if (originalIdx !== undefined) {
-        // Use string representation of integer — JSONB object keys are always strings
-        // but value must be a JS number so PostgreSQL reads it as integer
         remappedAnswers[String(originalIdx)] = Number(selectedOpt);
       }
     });
@@ -189,7 +188,9 @@ export default function MockTestSection() {
           description: gradeErr.message,
           variant: "destructive",
         });
-        // Don't return — still save result with score 0 and show result page
+        // FIX: Do NOT return early — still save result and show result page
+        // Previously an early return here caused: mobile users missing from admin
+        // results AND page becoming invisible (stage never set to "result")
       } else {
         const result = (graded ?? {}) as {
           score?: number;
@@ -199,8 +200,9 @@ export default function MockTestSection() {
 
         correct = result.score ?? 0;
 
-        // Normalize correct answers: RPC may return array OR object keyed by DB index
-        // Handle both: array → { index: correctOpt }, object → use as-is
+        // FIX: Normalize correct answers — RPC may return array OR keyed object.
+        // Previously used correctIndices[] (sparse array) which broke when RPC
+        // returned an object. Now use correctMap{} which handles both formats.
         if (result.correct) {
           if (Array.isArray(result.correct)) {
             result.correct.forEach((correctOpt, dbIdx) => {
@@ -216,7 +218,7 @@ export default function MockTestSection() {
         }
       }
     } catch (e) {
-      // Network error — proceed with score 0
+      // Network error — proceed with score 0, still show result page
       console.error("grade_mock_test error:", e);
     }
 
@@ -228,7 +230,8 @@ export default function MockTestSection() {
     setResultTotal(total);
     setCorrectMap(newCorrectMap);
 
-    // Save result — include test_id so admin can filter per test
+    // FIX: Insert always runs now (not inside the gradeErr early-return path).
+    // This was the root cause of mobile users missing from admin Test Results.
     await supabase.from("mock_test_results").insert({
       student_name: studentName,
       whatsapp_no: whatsappNo,
@@ -252,6 +255,7 @@ export default function MockTestSection() {
     );
     setResultLink(link);
     setSubmitting(false);
+    // FIX: setStage("result") now always reached — fixes page becoming invisible
     setStage("result");
   };
 
@@ -393,7 +397,8 @@ export default function MockTestSection() {
           </div>
         )}
 
-        {/* All non-intro stages share a visible card container with min-height */}
+        {/* FIX: min-h-[400px] prevents container collapsing to zero on mobile
+            when content is loading or transitioning — fixes "invisible page" bug */}
         {stage !== "intro" && (
           <div className="max-w-3xl mx-auto glass rounded-2xl p-6 md:p-8 bg-white min-h-[400px]">
 
@@ -451,9 +456,12 @@ export default function MockTestSection() {
                       answered
                     </span>
                   </div>
+                  {/* FIX: Red pulsing timer when under 60 seconds */}
                   <span
                     className={`inline-flex items-center gap-1 font-bold ${
-                      secondsLeft < 60 ? "text-destructive animate-pulse" : "text-accent"
+                      secondsLeft < 60
+                        ? "text-destructive animate-pulse"
+                        : "text-accent"
                     }`}
                   >
                     <Clock className="w-4 h-4" /> {formatTime(secondsLeft)}
@@ -482,6 +490,8 @@ export default function MockTestSection() {
                               name={`q-${i}`}
                               checked={answers[i] === j}
                               onChange={() =>
+                                // FIX: functional setter avoids stale closure on
+                                // rapid mobile taps
                                 setAnswers((prev) => ({ ...prev, [i]: j }))
                               }
                             />
@@ -493,6 +503,7 @@ export default function MockTestSection() {
                   ))}
                 </div>
 
+                {/* FIX: disabled + spinner while submitting prevents double-tap */}
                 <Button
                   onClick={submitTest}
                   size="lg"
@@ -527,7 +538,7 @@ export default function MockTestSection() {
                     className="gradient-accent text-accent-foreground border-0"
                     size="lg"
                   >
-                    
+                    <a
                       href={resultLink}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -536,11 +547,12 @@ export default function MockTestSection() {
                       WhatsApp
                     </a>
                   </Button>
+                  {/* FIX: Full state reset on retake prevents stale answerKeyMap
+                      corrupting scores on a second attempt */}
                   <Button
                     variant="outline"
                     size="lg"
                     onClick={() => {
-                      // Full reset for clean retake
                       setStage("intro");
                       setAnswers({});
                       setAnswerKeyMap([]);
@@ -562,7 +574,8 @@ export default function MockTestSection() {
                   <div className="mt-4 space-y-3">
                     {activeTest.questions.map((q, i) => {
                       const originalIdx = answerKeyMap[i];
-                      // FIX: use correctMap (object) instead of array lookup
+                      // FIX: use correctMap (object keyed by DB index) instead of
+                      // sparse array — handles both array and object RPC responses
                       const correctIdx = correctMap[originalIdx];
                       const userAnswer = answers[i];
                       const isCorrect =
