@@ -7,7 +7,41 @@ import {
 
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_KEY || "";
 
-const SYSTEM = `You are ATEC Assistant for ATEC (Avenue To Excellent Careers), a premier computer education institute in Gurdaspur, Punjab, India. Established since 2000. 5000+ students trained, 20+ courses, 2000+ placements. ISO 9001:2015 certified. Authorized Tally Institute. Help with courses, admissions, fees, batch timings, certificates. Be warm, brief (2-4 sentences). For specific fees/dates say contact ATEC directly. Never discuss unrelated topics.`;
+// ── UPDATE THIS SYSTEM PROMPT to change what the bot knows ──
+const SYSTEM = `You are ATEC Assistant for ATEC - Avenue To Excellent Careers, a premier computer and career education institute in Gurdaspur, Punjab, India.
+
+KEY FACTS:
+- Established since 2000. ISO 9001:2015 certified. Authorized Tally Education Partner.
+- 5000+ students trained, 2000+ successful placements
+- Location: Gurdaspur, Punjab, India
+- Contact: Call/WhatsApp 7009933289
+- COURSES OFFERED:
+- Tally Prime with GST (3-6 months)
+- Advanced Excel & MIS
+- Digital Marketing (SEO, Social Media, Google Ads, Meta Ads)
+- AI Tools for Business
+- Web Design & Development
+- Python Programming
+- Data Analytics
+- Spoken English & Personality Development
+- MS Office / Office Automation
+- DTP (Desktop Publishing)
+- Hardware & Networking
+- Graphic Design (Canva, Photoshop)
+- Busy Accounting Software
+
+ADMISSIONS:
+- Walk in any working day Mon-Sat 9AM-6PM
+- Call 8659056041 or WhatsApp to book a free demo class
+- Documents needed: Aadhaar card, passport photo, qualification certificate
+
+RESPONSE RULES:
+- Be warm, helpful, and brief (2-4 sentences max)
+- Use plain text only — NO markdown, NO asterisks, NO bullet symbols, NO bold formatting
+- Write naturally like a friendly human, not a formatted document
+- For specific fee amounts or exact batch schedules, say "please call or WhatsApp 8659056041 for current details"
+- Never discuss topics unrelated to ATEC, courses, careers, or education
+- Respond in the same language the user writes in (Hindi/Punjabi/English)`;
 
 interface Message {
   id: string;
@@ -19,7 +53,7 @@ interface Message {
 const WELCOME: Message = {
   id: "welcome",
   role: "assistant",
-  content: "👋 Sat Sri Akal! I'm the ATEC Assistant.\n\nI can help you with course details, admissions, batch timings, and more. What would you like to know?",
+  content: "NAMASKAR! I'm the ATEC Assistant.\n\nI can help you with course details, admissions, batch timings, and more. What would you like to know?",
   timestamp: new Date(),
 };
 
@@ -29,6 +63,19 @@ const QUICK_REPLIES = [
   "What are the batch timings?",
   "Certificate verification",
 ];
+
+// ── FIX: Strip markdown formatting so bot replies render as clean plain text ──
+// Removes **bold**, *italic*, ## headings, bullet points, and extra blank lines
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")      // **bold** → bold
+    .replace(/\*(.+?)\*/g, "$1")           // *italic* → italic
+    .replace(/#{1,6}\s+/g, "")             // ## Heading → Heading
+    .replace(/^[\s]*[-•*]\s+/gm, "")       // bullet points
+    .replace(/^\d+\.\s+/gm, "")            // numbered lists
+    .replace(/\n{3,}/g, "\n\n")            // max 2 consecutive newlines
+    .trim();
+}
 
 export default function FloatingChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -78,12 +125,14 @@ export default function FloatingChatbot() {
       });
 
       const data = await res.json();
-      const reply = data?.content?.[0]?.text || "Sorry, please try again or contact ATEC!";
+      const rawReply = data?.content?.[0]?.text || "Sorry, please try again or contact ATEC!";
+      // FIX: Strip markdown before storing so it never renders as asterisks
+      const reply = stripMarkdown(rawReply);
 
       setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: reply, timestamp: new Date() }]);
       if (!isOpen) setUnreadCount((n) => n + 1);
     } catch {
-      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: "Connection issue. Please WhatsApp ATEC directly!", timestamp: new Date() }]);
+      setMessages((prev) => [...prev, { id: (Date.now() + 1).toString(), role: "assistant", content: "Connection issue. Please WhatsApp ATEC at 8659056041 directly!", timestamp: new Date() }]);
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +166,8 @@ export default function FloatingChatbot() {
                 </div>
               </div>
               <div className="relative flex items-center gap-1.5">
-                <a href="https://wa.me/919876543210" target="_blank" rel="noopener noreferrer"
+                {/* FIX: Updated WhatsApp number from placeholder to real number */}
+                <a href="https://wa.me/918659056041" target="_blank" rel="noopener noreferrer"
                   className="w-8 h-8 rounded-lg bg-white/15 hover:bg-white/25 transition-colors flex items-center justify-center">
                   <Phone className="w-4 h-4 text-white" />
                 </a>
