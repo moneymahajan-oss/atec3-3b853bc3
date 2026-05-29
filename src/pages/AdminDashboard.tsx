@@ -4,9 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabaseAdmin as supabase } from "@/integrations/supabase/adminClient";
 import { Button } from "@/components/ui/button";
 import {
-  GraduationCap, LogOut, LayoutDashboard, Image, MessageSquare, Users,
+  GraduationCap, LogOut, Image, MessageSquare, Users,
   BookOpen, BarChart3, Video, Megaphone, Download, Settings, Mail, Sliders,
-  Eye, Pencil, TrendingUp, ShieldCheck, UserCog, Database, RotateCcw, Search
+  Eye, Pencil, TrendingUp, ShieldCheck, UserCog, Database, RotateCcw, Search, Gift,
 } from "lucide-react";
 
 const sections = [
@@ -17,6 +17,7 @@ const sections = [
   { key: "site_content", label: "Site Content", icon: Settings, color: "bg-slate-700", custom: true, href: "/admin/site-content" },
   { key: "navigation", label: "Navigation Menu", icon: Sliders, color: "bg-indigo-600", custom: true, href: "/admin/navigation" },
   { key: "mock_tests_editor", label: "Mock Test Editor", icon: BookOpen, color: "bg-teal-600", custom: true, href: "/admin/mock-tests-editor" },
+  { key: "offers", label: "Offers & Discounts", icon: Gift, color: "bg-pink-500", custom: true, href: "/admin/offers" },
   { key: "hero_slides", label: "Hero Slides", icon: Sliders, color: "bg-blue-500" },
   { key: "offer_belt", label: "Offer Belt", icon: Megaphone, color: "bg-amber-500" },
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
@@ -59,7 +60,6 @@ export default function AdminDashboard() {
         results[s.key] = count || 0;
       }
       setCounts(results);
-
       const { count: unread } = await supabase.from("contact_submissions").select("*", { count: "exact", head: true }).eq("is_read", false);
       setUnreadCount(unread || 0);
     };
@@ -70,7 +70,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -80,15 +79,20 @@ export default function AdminDashboard() {
             <span className="font-heading font-bold text-lg text-foreground">E-Tech Admin</span>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="default" size="sm" asChild className="bg-rose-500 hover:bg-rose-600 text-white"><Link to="/admin/crm_faculties"><UserCog className="w-4 h-4 mr-1" /> Faculty</Link></Button>
-            <Button variant="outline" size="sm" asChild><Link to="/"><Eye className="w-4 h-4 mr-1" /> View Site</Link></Button>
-            <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="w-4 h-4 mr-1" /> Sign Out</Button>
+            <Button variant="default" size="sm" asChild className="bg-rose-500 hover:bg-rose-600 text-white">
+              <Link to="/admin/crm_faculties"><UserCog className="w-4 h-4 mr-1" /> Faculty</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/"><Eye className="w-4 h-4 mr-1" /> View Site</Link>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className="w-4 h-4 mr-1" /> Sign Out
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Quick stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="glass rounded-xl p-5 flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
@@ -133,7 +137,9 @@ export default function AdminDashboard() {
                   <s.icon className="w-5 h-5 text-white" />
                 </div>
                 <div className="font-heading font-semibold text-foreground">{s.label}</div>
-                <div className="text-sm text-muted-foreground">{isCustom ? "Edit text content" : `${counts[s.key] ?? "..."} items`}</div>
+                <div className="text-sm text-muted-foreground">
+                  {isCustom ? "Edit content" : `${counts[s.key] ?? "..."} items`}
+                </div>
                 <Pencil className="w-4 h-4 text-muted-foreground mt-2 opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             );
