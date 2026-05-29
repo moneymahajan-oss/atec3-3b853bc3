@@ -56,6 +56,7 @@ import AdminNav from "./pages/AdminNav.tsx";
 import AdminMockTests from "./pages/AdminMockTests.tsx";
 import AdminBackup from "./pages/AdminBackup.tsx";
 import AdminRestore from "./pages/AdminRestore.tsx";
+import AdminOffers from "./pages/AdminOffers.tsx";
 import { useFaviconFromSettings } from "@/hooks/useFaviconFromSettings";
 import FloatingChatbot from "@/components/FloatingChatbot";
 
@@ -127,6 +128,7 @@ const App = () => {
                     <Route path="/admin/mock-tests-editor" element={<AdminMockTests />} />
                     <Route path="/admin/backup" element={<AdminBackup />} />
                     <Route path="/admin/restore" element={<AdminRestore />} />
+                    <Route path="/admin/offers" element={<AdminOffers />} />
                     <Route path="/admin/:table" element={<AdminTable />} />
 
                     <Route path="/crm/login" element={<CrmLogin />} />
