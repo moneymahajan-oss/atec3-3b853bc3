@@ -1,8 +1,4 @@
 // src/pages/AdminPromoSlider.tsx
-// Admin panel for the Promo/Discount Slider (OffersSliderSection)
-// Uses table: promo_slides + site_settings key: promo_slider_visible
-// Pattern matches existing AdminOffers.tsx / AdminNav.tsx
-
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
-  ArrowLeft, Save, Plus, Trash2, Eye, EyeOff, GraduationCap,
-  LogOut, ToggleLeft, ToggleRight, Pencil, X, Check,
-  ChevronUp, ChevronDown, Tag, MessageCircle
+  ArrowLeft, Eye, EyeOff, LogOut, ToggleLeft, ToggleRight,
+  Pencil, X, Check, ChevronUp, ChevronDown, Tag,
+  MessageCircle, Plus, Trash2, Upload, ImageOff, Loader2
 } from "lucide-react";
 
 interface PromoSlide {
@@ -27,6 +23,8 @@ interface PromoSlide {
   whatsapp_message: string;
   bg_color_from: string;
   bg_color_to: string;
+  bg_image_url: string;
+  bg_overlay_opacity: number;
   text_color: string;
   slide_order: number;
   duration_seconds: number;
@@ -43,6 +41,8 @@ const EMPTY_SLIDE: Omit<PromoSlide, "id"> = {
   whatsapp_message: "Hello ATEC! I am interested in your offer.",
   bg_color_from: "#1a1a2e",
   bg_color_to: "#16213e",
+  bg_image_url: "",
+  bg_overlay_opacity: 0.55,
   text_color: "#ffffff",
   slide_order: 1,
   duration_seconds: 5,
@@ -61,6 +61,7 @@ export default function AdminPromoSlider() {
   const [isNew, setIsNew] = useState(false);
   const [savingSection, setSavingSection] = useState(false);
   const [savingSlide, setSavingSlide] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     if (!loading && (!user || !isAdmin)) navigate("/admin/login");
@@ -72,7 +73,6 @@ export default function AdminPromoSlider() {
   }, [isAdmin]);
 
   const fetchAll = async () => {
-    // Fetch section visibility from site_settings
     const { data: setting } = await supabase
       .from("site_settings")
       .select("value")
@@ -80,7 +80,6 @@ export default function AdminPromoSlider() {
       .maybeSingle();
     setSectionVisible(setting?.value === "true");
 
-    // Fetch all slides (admin sees all, not just visible)
     const { data: slideData } = await supabase
       .from("promo_slides" as any)
       .select("*")
@@ -90,16 +89,48 @@ export default function AdminPromoSlider() {
 
   const saveSectionVisibility = async (val: boolean) => {
     setSavingSection(true);
-    const { error } = await supabase
+    await supabase
       .from("site_settings")
       .upsert({ key: "promo_slider_visible", value: val ? "true" : "false" }, { onConflict: "key" });
     setSavingSection(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      return;
-    }
     setSectionVisible(val);
     toast({ title: val ? "Promo Slider is now VISIBLE ✓" : "Promo Slider is now HIDDEN ✓" });
+  };
+
+  // ── Image upload to Supabase Storage (gallery bucket) ──────────────────
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+    const maxSizeMB = 3;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      toast({ title: "Image too large", description: `Max size is ${maxSizeMB}MB`, variant: "destructive" });
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const fileName = `promo-slides/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("gallery")
+        .upload(fileName, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("gallery")
+        .getPublicUrl(fileName);
+
+      const publicUrl = urlData.publicUrl;
+      setEditingSlide(prev => prev ? { ...prev, bg_image_url: publicUrl } : prev);
+      toast({ title: "Image uploaded ✓" });
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const removeImage = () => {
+    setEditingSlide(prev => prev ? { ...prev, bg_image_url: "" } : prev);
   };
 
   const saveSlide = async () => {
@@ -137,8 +168,7 @@ export default function AdminPromoSlider() {
 
   const toggleVisibility = async (slide: PromoSlide) => {
     await supabase.from("promo_slides" as any)
-      .update({ is_visible: !slide.is_visible })
-      .eq("id", slide.id);
+      .update({ is_visible: !slide.is_visible }).eq("id", slide.id);
     fetchAll();
   };
 
@@ -155,11 +185,7 @@ export default function AdminPromoSlider() {
   };
 
   const openAdd = () => {
-    setEditingSlide({
-      ...EMPTY_SLIDE,
-      id: "__new__",
-      slide_order: slides.length + 1,
-    });
+    setEditingSlide({ ...EMPTY_SLIDE, id: "__new__", slide_order: slides.length + 1 });
     setIsNew(true);
   };
 
@@ -174,14 +200,12 @@ export default function AdminPromoSlider() {
     </div>
   );
 
-  // Live preview gradient
-  const previewBg = editingSlide
-    ? `linear-gradient(135deg, ${editingSlide.bg_color_from} 0%, ${editingSlide.bg_color_to} 100%)`
-    : "";
+  const previewBg = editingSlide?.bg_image_url
+    ? `url(${editingSlide.bg_image_url})`
+    : `linear-gradient(135deg, ${editingSlide?.bg_color_from || "#1a1a2e"} 0%, ${editingSlide?.bg_color_to || "#16213e"} 100%)`;
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -204,21 +228,17 @@ export default function AdminPromoSlider() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
 
-        {/* Section visibility */}
+        {/* Section toggle */}
         <div className="glass rounded-xl p-6 flex items-center justify-between">
           <div>
             <h2 className="font-heading font-bold text-lg">Show Promo Slider on Homepage</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Toggle to show or hide the entire promo/discount slider section. Appears between Hero and Courses.
-            </p>
+            <p className="text-sm text-muted-foreground mt-0.5">Appears between Hero section and Courses section.</p>
           </div>
           <button
             disabled={savingSection}
             onClick={() => saveSectionVisibility(!sectionVisible)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all border ${
-              sectionVisible
-                ? "bg-green-100 text-green-700 border-green-300"
-                : "bg-muted text-muted-foreground border-border"
+              sectionVisible ? "bg-green-100 text-green-700 border-green-300" : "bg-muted text-muted-foreground border-border"
             }`}
           >
             {sectionVisible
@@ -227,7 +247,7 @@ export default function AdminPromoSlider() {
           </button>
         </div>
 
-        {/* Slides list */}
+        {/* Slides */}
         <div className="glass rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-heading font-bold text-lg">Promo Slides ({slides.length})</h2>
@@ -236,7 +256,7 @@ export default function AdminPromoSlider() {
             </Button>
           </div>
 
-          {slides.length === 0 && (
+          {slides.length === 0 && !editingSlide && (
             <div className="text-center py-10 text-muted-foreground">
               <Tag className="w-10 h-10 mx-auto mb-3 opacity-25" />
               <p className="font-medium">No promo slides yet.</p>
@@ -252,24 +272,34 @@ export default function AdminPromoSlider() {
                     slide={editingSlide}
                     previewBg={previewBg}
                     saving={savingSlide}
+                    uploadingImage={uploadingImage}
                     isNew={isNew}
                     onChange={setEditingSlide}
                     onSave={saveSlide}
                     onCancel={() => setEditingSlide(null)}
+                    onImageUpload={handleImageUpload}
+                    onRemoveImage={removeImage}
                   />
                 ) : (
                   <div className={`flex items-center gap-3 p-4 rounded-xl border bg-background hover:border-accent/40 transition-colors
                     ${!slide.is_visible ? "opacity-55 border-orange-200" : "border-border"}`}>
-
-                    {/* Color preview */}
-                    <div className="w-10 h-10 rounded-lg flex-shrink-0 shadow"
-                      style={{ background: `linear-gradient(135deg, ${slide.bg_color_from}, ${slide.bg_color_to})` }} />
-
+                    {/* Preview */}
+                    <div className="w-12 h-12 rounded-lg flex-shrink-0 shadow overflow-hidden">
+                      {slide.bg_image_url ? (
+                        <img src={slide.bg_image_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full"
+                          style={{ background: `linear-gradient(135deg, ${slide.bg_color_from}, ${slide.bg_color_to})` }} />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm truncate">{slide.title}</span>
                         {slide.badge_text && (
                           <span className="text-[10px] bg-accent/10 text-accent border border-accent/20 px-1.5 py-0.5 rounded-full">{slide.badge_text}</span>
+                        )}
+                        {slide.bg_image_url && (
+                          <span className="text-[10px] bg-blue-100 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">📷 Image</span>
                         )}
                         {!slide.is_visible && (
                           <span className="text-[10px] bg-orange-100 text-orange-600 border border-orange-200 px-1.5 py-0.5 rounded-full">Hidden</span>
@@ -278,9 +308,7 @@ export default function AdminPromoSlider() {
                       {slide.subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{slide.subtitle}</p>}
                       <p className="text-xs text-muted-foreground/60 mt-0.5">Duration: {slide.duration_seconds}s · Order: {slide.slide_order}</p>
                     </div>
-
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {/* Reorder */}
                       <div className="flex flex-col">
                         <button onClick={() => moveSlide(idx, -1)} disabled={idx === 0}
                           className="p-1 hover:bg-muted rounded disabled:opacity-30">
@@ -292,14 +320,15 @@ export default function AdminPromoSlider() {
                         </button>
                       </div>
                       <button onClick={() => toggleVisibility(slide)}
-                        title={slide.is_visible ? "Hide" : "Show"}
                         className="p-2 hover:bg-muted rounded-lg transition-colors">
                         {slide.is_visible ? <Eye className="w-4 h-4 text-green-600" /> : <EyeOff className="w-4 h-4 text-orange-500" />}
                       </button>
-                      <button onClick={() => openEdit(slide)} className="p-2 hover:bg-accent/10 rounded-lg transition-colors">
+                      <button onClick={() => openEdit(slide)}
+                        className="p-2 hover:bg-accent/10 rounded-lg transition-colors">
                         <Pencil className="w-4 h-4 text-accent" />
                       </button>
-                      <button onClick={() => deleteSlide(slide.id)} className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
+                      <button onClick={() => deleteSlide(slide.id)}
+                        className="p-2 hover:bg-destructive/10 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </button>
                     </div>
@@ -308,30 +337,32 @@ export default function AdminPromoSlider() {
               </div>
             ))}
 
-            {/* Inline add form at bottom */}
-            {editingSlide && isNew && editingSlide.id === "__new__" && !slides.find(s => s.id === "__new__") && (
+            {/* New slide form at bottom */}
+            {editingSlide && isNew && editingSlide.id === "__new__" && (
               <SlideEditForm
                 slide={editingSlide}
                 previewBg={previewBg}
                 saving={savingSlide}
+                uploadingImage={uploadingImage}
                 isNew={true}
                 onChange={setEditingSlide}
                 onSave={saveSlide}
                 onCancel={() => setEditingSlide(null)}
+                onImageUpload={handleImageUpload}
+                onRemoveImage={removeImage}
               />
             )}
           </div>
         </div>
 
-        {/* Instructions */}
-        <div className="glass rounded-xl p-5 bg-blue-50/50 border-blue-100">
-          <h3 className="font-semibold text-sm text-blue-800 mb-2">How this slider works</h3>
+        {/* Tips */}
+        <div className="glass rounded-xl p-5 border-blue-100 bg-blue-50/50">
+          <h3 className="font-semibold text-sm text-blue-800 mb-2">Image Tips</h3>
           <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-            <li>Slides auto-advance in a <strong>bounce (to-and-fro)</strong> pattern — forward to end, then reverses back.</li>
-            <li>Each slide stays for its individual <strong>Duration</strong> (seconds) before moving.</li>
-            <li>The WhatsApp button opens a pre-filled WhatsApp chat with ATEC.</li>
-            <li>Use <strong>Visible</strong> toggle per slide to hide specific slides without deleting them.</li>
-            <li>Use <strong>Slider ON/OFF</strong> above to hide the entire section from the homepage.</li>
+            <li>Upload a <strong>JPEG or PNG</strong> — recommended size: <strong>1200×300px</strong> (wide banner)</li>
+            <li>Max file size: <strong>3MB</strong></li>
+            <li>Use the <strong>Overlay Opacity</strong> slider to darken the image so text stays readable</li>
+            <li>If no image is set, the gradient colors are used instead</li>
           </ul>
         </div>
 
@@ -340,102 +371,189 @@ export default function AdminPromoSlider() {
   );
 }
 
-// ── Inline edit form component ────────────────────────────────────────────
+// ── Edit form ──────────────────────────────────────────────────────────────
 function SlideEditForm({
-  slide, previewBg, saving, isNew, onChange, onSave, onCancel
+  slide, previewBg, saving, uploadingImage, isNew,
+  onChange, onSave, onCancel, onImageUpload, onRemoveImage
 }: {
   slide: PromoSlide;
   previewBg: string;
   saving: boolean;
+  uploadingImage: boolean;
   isNew: boolean;
   onChange: (s: PromoSlide) => void;
   onSave: () => void;
   onCancel: () => void;
+  onImageUpload: (f: File) => void;
+  onRemoveImage: () => void;
 }) {
   const set = (patch: Partial<PromoSlide>) => onChange({ ...slide, ...patch });
 
   return (
     <div className="border-2 border-accent rounded-xl p-5 space-y-4 bg-accent/5">
+
       {/* Live preview */}
-      <div className="rounded-xl p-4 flex items-center justify-between relative overflow-hidden"
-        style={{ background: previewBg, minHeight: "70px" }}>
-        <div>
-          {slide.badge_text && (
-            <span className="text-xs px-2 py-0.5 rounded-full inline-block mb-1"
-              style={{ background: "rgba(255,255,255,0.2)", color: slide.text_color || "#fff" }}>
-              {slide.badge_text}
-            </span>
-          )}
-          <p className="font-bold text-sm" style={{ color: slide.text_color || "#fff" }}>
-            {slide.title || "Slide Title Preview"}
-          </p>
-          {slide.subtitle && (
-            <p className="text-xs opacity-80" style={{ color: slide.text_color || "#fff" }}>{slide.subtitle}</p>
-          )}
+      <div
+        className="rounded-xl overflow-hidden relative"
+        style={{ height: "90px" }}
+      >
+        {/* Background */}
+        {slide.bg_image_url ? (
+          <>
+            <div className="absolute inset-0 bg-cover bg-center"
+              style={{ backgroundImage: `url(${slide.bg_image_url})` }} />
+            <div className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, ${slide.bg_color_from || "#000"} 0%, ${slide.bg_color_to || "#1a1a2e"} 100%)`,
+                opacity: slide.bg_overlay_opacity ?? 0.55,
+              }} />
+          </>
+        ) : (
+          <div className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${slide.bg_color_from || "#1a1a2e"} 0%, ${slide.bg_color_to || "#16213e"} 100%)` }} />
+        )}
+        {/* Text preview */}
+        <div className="relative z-10 h-full flex items-center justify-between px-4">
+          <div>
+            {slide.badge_text && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full inline-block mb-1"
+                style={{ background: "rgba(255,255,255,0.2)", color: slide.text_color || "#fff" }}>
+                {slide.badge_text}
+              </span>
+            )}
+            <p className="font-bold text-sm" style={{ color: slide.text_color || "#fff" }}>
+              {slide.title || "Slide Title Preview"}
+            </p>
+            {slide.subtitle && (
+              <p className="text-xs opacity-80" style={{ color: slide.text_color || "#fff" }}>{slide.subtitle}</p>
+            )}
+          </div>
+          <button className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 flex-shrink-0"
+            style={{ background: "#25D366", color: "#fff" }}>
+            <MessageCircle size={11} />
+            {slide.cta_text || "WhatsApp"}
+          </button>
         </div>
-        <button className="text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1"
-          style={{ background: "#25D366", color: "#fff" }}>
-          <MessageCircle size={12} />
-          {slide.cta_text || "WhatsApp"}
-        </button>
+      </div>
+
+      {/* ── Background Image Upload ── */}
+      <div className="space-y-2">
+        <label className="text-xs font-semibold block">Background Image (optional)</label>
+        {slide.bg_image_url ? (
+          <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
+            <img src={slide.bg_image_url} alt="bg" className="w-16 h-10 object-cover rounded" />
+            <p className="text-xs text-muted-foreground flex-1 truncate">Image uploaded ✓</p>
+            <button onClick={onRemoveImage}
+              className="text-xs text-destructive hover:underline flex items-center gap-1">
+              <ImageOff className="w-3.5 h-3.5" /> Remove
+            </button>
+          </div>
+        ) : (
+          <label className={`flex items-center gap-3 p-3 rounded-lg border-2 border-dashed cursor-pointer transition-colors
+            ${uploadingImage ? "border-accent/50 bg-accent/5" : "border-border hover:border-accent/50 hover:bg-accent/5"}`}>
+            {uploadingImage ? (
+              <><Loader2 className="w-5 h-5 animate-spin text-accent" /><span className="text-sm text-muted-foreground">Uploading…</span></>
+            ) : (
+              <><Upload className="w-5 h-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">Click to upload JPEG / PNG (max 3MB)</span></>
+            )}
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              className="hidden"
+              disabled={uploadingImage}
+              onChange={e => { const f = e.target.files?.[0]; if (f) onImageUpload(f); }}
+            />
+          </label>
+        )}
+        {slide.bg_image_url && (
+          <div className="space-y-1">
+            <label className="text-xs font-semibold block">
+              Overlay Opacity: {Math.round((slide.bg_overlay_opacity ?? 0.55) * 100)}%
+              <span className="text-muted-foreground font-normal ml-1">(higher = darker image, better text visibility)</span>
+            </label>
+            <input
+              type="range" min={0} max={1} step={0.05}
+              value={slide.bg_overlay_opacity ?? 0.55}
+              onChange={e => set({ bg_overlay_opacity: parseFloat(e.target.value) })}
+              className="w-full accent-accent"
+            />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="md:col-span-2">
           <label className="text-xs font-semibold mb-1 block">Title *</label>
-          <Input value={slide.title} onChange={e => set({ title: e.target.value })} placeholder="e.g. 50% Off on All Computer Courses!" className="bg-background" />
+          <Input value={slide.title} onChange={e => set({ title: e.target.value })}
+            placeholder="e.g. 50% Off on All Computer Courses!" className="bg-background" />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">Subtitle</label>
-          <Input value={slide.subtitle} onChange={e => set({ subtitle: e.target.value })} placeholder="e.g. Limited Time Offer – Enroll Now" className="bg-background" />
+          <Input value={slide.subtitle} onChange={e => set({ subtitle: e.target.value })}
+            placeholder="e.g. Limited Time Offer – Enroll Now" className="bg-background" />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">Badge Text</label>
-          <Input value={slide.badge_text} onChange={e => set({ badge_text: e.target.value })} placeholder="e.g. Flash Sale" className="bg-background" />
+          <Input value={slide.badge_text} onChange={e => set({ badge_text: e.target.value })}
+            placeholder="e.g. Flash Sale" className="bg-background" />
         </div>
         <div className="md:col-span-2">
           <label className="text-xs font-semibold mb-1 block">Caption (small text)</label>
-          <Textarea value={slide.caption} onChange={e => set({ caption: e.target.value })} placeholder="e.g. Valid till 30th June 2025. Seats limited." rows={2} className="bg-background" />
+          <Textarea value={slide.caption} onChange={e => set({ caption: e.target.value })}
+            placeholder="e.g. Valid till 30th June 2025. Seats limited." rows={2} className="bg-background" />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">CTA Button Text</label>
-          <Input value={slide.cta_text} onChange={e => set({ cta_text: e.target.value })} placeholder="Enquire on WhatsApp" className="bg-background" />
+          <Input value={slide.cta_text} onChange={e => set({ cta_text: e.target.value })}
+            placeholder="Enquire on WhatsApp" className="bg-background" />
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">WhatsApp Pre-filled Message</label>
-          <Input value={slide.whatsapp_message} onChange={e => set({ whatsapp_message: e.target.value })} placeholder="Hello ATEC! I saw the offer..." className="bg-background" />
+          <Input value={slide.whatsapp_message} onChange={e => set({ whatsapp_message: e.target.value })}
+            placeholder="Hello ATEC! I saw the offer..." className="bg-background" />
         </div>
 
         {/* Colors */}
         <div>
-          <label className="text-xs font-semibold mb-1 block">Background Color (From)</label>
+          <label className="text-xs font-semibold mb-1 block">
+            {slide.bg_image_url ? "Overlay Color (From)" : "Background Color (From)"}
+          </label>
           <div className="flex gap-2 items-center">
-            <input type="color" value={slide.bg_color_from} onChange={e => set({ bg_color_from: e.target.value })}
+            <input type="color" value={slide.bg_color_from}
+              onChange={e => set({ bg_color_from: e.target.value })}
               className="w-10 h-10 rounded cursor-pointer border border-border" />
-            <Input value={slide.bg_color_from} onChange={e => set({ bg_color_from: e.target.value })} className="font-mono text-xs bg-background" />
+            <Input value={slide.bg_color_from} onChange={e => set({ bg_color_from: e.target.value })}
+              className="font-mono text-xs bg-background" />
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold mb-1 block">Background Color (To)</label>
+          <label className="text-xs font-semibold mb-1 block">
+            {slide.bg_image_url ? "Overlay Color (To)" : "Background Color (To)"}
+          </label>
           <div className="flex gap-2 items-center">
-            <input type="color" value={slide.bg_color_to} onChange={e => set({ bg_color_to: e.target.value })}
+            <input type="color" value={slide.bg_color_to}
+              onChange={e => set({ bg_color_to: e.target.value })}
               className="w-10 h-10 rounded cursor-pointer border border-border" />
-            <Input value={slide.bg_color_to} onChange={e => set({ bg_color_to: e.target.value })} className="font-mono text-xs bg-background" />
+            <Input value={slide.bg_color_to} onChange={e => set({ bg_color_to: e.target.value })}
+              className="font-mono text-xs bg-background" />
           </div>
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">Text Color</label>
           <div className="flex gap-2 items-center">
-            <input type="color" value={slide.text_color} onChange={e => set({ text_color: e.target.value })}
+            <input type="color" value={slide.text_color}
+              onChange={e => set({ text_color: e.target.value })}
               className="w-10 h-10 rounded cursor-pointer border border-border" />
-            <Input value={slide.text_color} onChange={e => set({ text_color: e.target.value })} className="font-mono text-xs bg-background" />
+            <Input value={slide.text_color} onChange={e => set({ text_color: e.target.value })}
+              className="font-mono text-xs bg-background" />
           </div>
         </div>
         <div>
           <label className="text-xs font-semibold mb-1 block">Duration (seconds)</label>
           <Input type="number" min={2} max={30} value={slide.duration_seconds}
-            onChange={e => set({ duration_seconds: parseInt(e.target.value) || 5 })} className="bg-background" />
-          <p className="text-[10px] text-muted-foreground mt-0.5">How long this slide stays before advancing</p>
+            onChange={e => set({ duration_seconds: parseInt(e.target.value) || 5 })}
+            className="bg-background" />
+          <p className="text-[10px] text-muted-foreground mt-0.5">How long this slide shows before advancing</p>
         </div>
 
         <div className="flex items-center gap-3 pt-1">
@@ -451,10 +569,14 @@ function SlideEditForm({
       </div>
 
       <div className="flex gap-2 pt-2">
-        <Button onClick={onSave} disabled={saving || !slide.title} className="gradient-accent text-accent-foreground border-0" size="sm">
-          <Check className="w-4 h-4 mr-1" />{saving ? "Saving…" : isNew ? "Add Slide" : "Save Slide"}
+        <Button onClick={onSave} disabled={saving || !slide.title}
+          className="gradient-accent text-accent-foreground border-0" size="sm">
+          <Check className="w-4 h-4 mr-1" />
+          {saving ? "Saving…" : isNew ? "Add Slide" : "Save Slide"}
         </Button>
-        <Button variant="ghost" size="sm" onClick={onCancel}><X className="w-4 h-4 mr-1" /> Cancel</Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
+          <X className="w-4 h-4 mr-1" /> Cancel
+        </Button>
       </div>
     </div>
   );
