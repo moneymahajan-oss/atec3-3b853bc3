@@ -5,6 +5,7 @@ import HeroSection from "@/components/HeroSection";
 import StatsStrip from "@/components/StatsStrip";
 import AnnouncementTicker from "@/components/AnnouncementTicker";
 import CoursesSection from "@/components/CoursesSection";
+import OffersSliderSection from "@/components/OffersSliderSection";
 import OffersSection from "@/components/OffersSection";
 import AboutSection from "@/components/AboutSection";
 import GallerySection from "@/components/GallerySection";
@@ -146,6 +147,11 @@ const Index = () => {
           <section aria-label="Latest announcements from ATEC">
             <AnnouncementTicker />
           </section>
+        </SectionErrorBoundary>
+
+        {/* ── Promo Slider — between Hero and Courses, admin-toggleable ── */}
+        <SectionErrorBoundary name="PromoSlider">
+          <OffersSliderSection />
         </SectionErrorBoundary>
 
         <SectionErrorBoundary name="Courses">
