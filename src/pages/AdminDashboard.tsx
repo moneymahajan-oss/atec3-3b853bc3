@@ -18,6 +18,7 @@ const sections = [
   { key: "navigation", label: "Navigation Menu", icon: Sliders, color: "bg-indigo-600", custom: true, href: "/admin/navigation" },
   { key: "mock_tests_editor", label: "Mock Test Editor", icon: BookOpen, color: "bg-teal-600", custom: true, href: "/admin/mock-tests-editor" },
   { key: "offers", label: "Offers & Discounts", icon: Gift, color: "bg-pink-500", custom: true, href: "/admin/offers" },
+  { key: "promo-slider", label: "Promo Slider", icon: Sliders, color: "bg-violet-500", custom: true, href: "/admin/promo-slider" },
   { key: "hero_slides", label: "Hero Slides", icon: Sliders, color: "bg-blue-500" },
   { key: "offer_belt", label: "Offer Belt", icon: Megaphone, color: "bg-amber-500" },
   { key: "courses", label: "Courses", icon: BookOpen, color: "bg-orange-500" },
