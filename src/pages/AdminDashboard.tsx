@@ -34,6 +34,7 @@ const sections = [
   { key: "team_members", label: "Team", icon: Users, color: "bg-pink-500" },
   { key: "stats", label: "Stats", icon: BarChart3, color: "bg-cyan-600" },
   { key: "announcements", label: "Announcements", icon: Megaphone, color: "bg-yellow-500" },
+  { key: "marquee_highlights", label: "Marquee Highlights", icon: Megaphone, color: "bg-teal-500" },
   { key: "downloads", label: "Downloads", icon: Download, color: "bg-indigo-500" },
   { key: "contact_submissions", label: "Old Inquiries", icon: Mail, color: "bg-emerald-700" },
   { key: "site_settings", label: "Settings (raw)", icon: Settings, color: "bg-slate-500" },

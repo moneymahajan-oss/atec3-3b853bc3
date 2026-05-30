@@ -16,7 +16,7 @@ import {
   LogOut, Eye, ChevronDown, ChevronUp, Search, UserCog, MessageSquare, Phone
 } from "lucide-react";
 
-type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "downloads" | "contact_submissions" | "site_settings" | "offer_belt" | "ai_use_cases" | "whatsapp_templates" | "mock_tests" | "mock_test_results" | "leads" | "crm_faculties";
+type TableName = "hero_slides" | "courses" | "gallery_items" | "testimonials" | "team_members" | "stats" | "youtube_videos" | "announcements" | "marquee_highlights" | "downloads" | "contact_submissions" | "site_settings" | "offer_belt" | "ai_use_cases" | "whatsapp_templates" | "mock_tests" | "mock_test_results" | "leads" | "crm_faculties";
 
 const tableConfig: Record<string, {
   label: string;
@@ -153,6 +153,17 @@ const tableConfig: Record<string, {
       { key: "title", label: "Title", type: "text", required: true },
       { key: "content", label: "Content", type: "textarea" },
       { key: "type", label: "Type", type: "select", options: ["badge", "news", "urgent"] },
+      { key: "is_active", label: "Active", type: "boolean" },
+    ],
+  },
+  marquee_highlights: {
+    label: "Marquee Highlights (Row 2)",
+    canCreate: true, canDelete: true,
+    fields: [
+      { key: "text", label: "Text", type: "text", required: true },
+      { key: "icon_name", label: "Icon", type: "select", options: ["GraduationCap", "Award", "Users", "Star", "Zap", "Trophy", "CheckCircle", "Shield", "TrendingUp", "Sparkles", "Clock", "Tag", "BookOpen", "MessageCircle", "Heart", "Globe"] },
+      { key: "color", label: "Icon Color (hex, e.g. #FF6B6B)", type: "text" },
+      { key: "sort_order", label: "Order", type: "number" },
       { key: "is_active", label: "Active", type: "boolean" },
     ],
   },

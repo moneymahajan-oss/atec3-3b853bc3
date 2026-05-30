@@ -1,24 +1,39 @@
 // src/components/AnnouncementTicker.tsx
-// Enhanced: dual rows, vibrant colored icons, rainbow borders, shimmer
+// Row 1: DB announcements (existing table)
+// Row 2: DB marquee_highlights (new table, admin-editable)
+// Falls back to hardcoded highlights if DB is empty
+
 import { useQuery } from "@tanstack/react-query";
-import { Megaphone, AlertTriangle, Award, RefreshCw, GraduationCap, Users, BookOpen, Star, Zap, Trophy, CheckCircle, Shield, TrendingUp, Sparkles, Clock, Tag } from "lucide-react";
+import {
+  Megaphone, AlertTriangle, Award, RefreshCw,
+  GraduationCap, Users, BookOpen, Star, Zap, Trophy,
+  CheckCircle, Shield, TrendingUp, Sparkles, Clock, Tag,
+  MessageCircle, Heart, Globe
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-// ── Static row 2: institute highlights (always shown) ──────────────────────
-const HIGHLIGHTS = [
-  { icon: GraduationCap, text: "Expert Faculty", color: "#FF6B6B" },
-  { icon: Award, text: "Government Certified", color: "#FFD93D" },
-  { icon: Users, text: "5,000+ Students Trained", color: "#6BCB77" },
-  { icon: Star, text: "5-Star Rated Institute", color: "#FF922B" },
-  { icon: Trophy, text: "Best Computer Institute — Gurdaspur", color: "#CC5DE8" },
-  { icon: Zap, text: "Job-Ready Courses", color: "#4DABF7" },
-  { icon: BookOpen, text: "20+ Courses Available", color: "#FF6B6B" },
-  { icon: CheckCircle, text: "100% Practical Training", color: "#FFD93D" },
-  { icon: Shield, text: "Trusted Since 2000", color: "#6BCB77" },
-  { icon: TrendingUp, text: "Placement Assistance", color: "#FF922B" },
-  { icon: Sparkles, text: "Tally ERP 9 + GST", color: "#CC5DE8" },
-  { icon: Clock, text: "Flexible Batch Timings", color: "#4DABF7" },
-  { icon: Tag, text: "Special Discounts Available", color: "#FF6B6B" },
+// ── Icon map for DB-driven highlights ─────────────────────────────────────
+const ICON_MAP: Record<string, React.ElementType> = {
+  GraduationCap, Users, BookOpen, Star, Zap, Trophy,
+  CheckCircle, Shield, TrendingUp, Sparkles, Clock, Tag,
+  Award, Megaphone, MessageCircle, Heart, Globe,
+};
+
+// ── Fallback highlights (shown when DB table is empty) ────────────────────
+const FALLBACK_HIGHLIGHTS = [
+  { id: "f1", text: "Expert Faculty", icon_name: "GraduationCap", color: "#FF6B6B", sort_order: 1 },
+  { id: "f2", text: "Government Certified", icon_name: "Award", color: "#FFD93D", sort_order: 2 },
+  { id: "f3", text: "5,000+ Students Trained", icon_name: "Users", color: "#6BCB77", sort_order: 3 },
+  { id: "f4", text: "5-Star Rated Institute", icon_name: "Star", color: "#FF922B", sort_order: 4 },
+  { id: "f5", text: "Best Computer Institute — Gurdaspur", icon_name: "Trophy", color: "#CC5DE8", sort_order: 5 },
+  { id: "f6", text: "Job-Ready Courses", icon_name: "Zap", color: "#4DABF7", sort_order: 6 },
+  { id: "f7", text: "20+ Courses Available", icon_name: "BookOpen", color: "#FF6B6B", sort_order: 7 },
+  { id: "f8", text: "100% Practical Training", icon_name: "CheckCircle", color: "#FFD93D", sort_order: 8 },
+  { id: "f9", text: "Trusted Since 2000", icon_name: "Shield", color: "#6BCB77", sort_order: 9 },
+  { id: "f10", text: "Placement Assistance", icon_name: "TrendingUp", color: "#FF922B", sort_order: 10 },
+  { id: "f11", text: "Tally ERP 9 + GST", icon_name: "Sparkles", color: "#CC5DE8", sort_order: 11 },
+  { id: "f12", text: "Flexible Batch Timings", icon_name: "Clock", color: "#4DABF7", sort_order: 12 },
+  { id: "f13", text: "Special Discounts Available", icon_name: "Tag", color: "#FF6B6B", sort_order: 13 },
 ];
 
 const typeConfig: Record<string, { icon: React.ElementType; dotColor: string }> = {
@@ -27,8 +42,17 @@ const typeConfig: Record<string, { icon: React.ElementType; dotColor: string }> 
   urgent: { icon: AlertTriangle, dotColor: "#ef4444" },
 };
 
+interface HighlightItem {
+  id: string;
+  text: string;
+  icon_name: string;
+  color: string;
+  sort_order: number;
+}
+
 export default function AnnouncementTicker() {
-  const { data: announcements = [], isLoading, isError, refetch } = useQuery({
+  // Row 1: announcements from DB
+  const { data: announcements = [], isLoading: loadingAnn, isError, refetch } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -43,6 +67,22 @@ export default function AnnouncementTicker() {
     retryDelay: 1000,
   });
 
+  // Row 2: marquee highlights from DB
+  const { data: dbHighlights = [], isLoading: loadingHL } = useQuery<HighlightItem[]>({
+    queryKey: ["marquee_highlights"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marquee_highlights" as any)
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      if (error) return [];
+      return (data ?? []) as HighlightItem[];
+    },
+    placeholderData: [],
+    retry: 1,
+  });
+
   if (isError) return (
     <section className="py-3 bg-muted/50 border-y border-border text-center">
       <button onClick={() => refetch()} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
@@ -51,10 +91,17 @@ export default function AnnouncementTicker() {
     </section>
   );
 
-  const hasAnnouncements = !isLoading && announcements.length > 0;
+  const hasAnnouncements = !loadingAnn && announcements.length > 0;
+
+  // Use DB highlights if available, otherwise fallback
+  const highlights = (!loadingHL && dbHighlights.length > 0) ? dbHighlights : FALLBACK_HIGHLIGHTS;
+
   // Triplicate for seamless loop
-  const announcementItems = hasAnnouncements ? [...announcements, ...announcements, ...announcements] : [];
-  const highlightItems = [...HIGHLIGHTS, ...HIGHLIGHTS, ...HIGHLIGHTS];
+  const announcementItems = hasAnnouncements
+    ? [...announcements, ...announcements, ...announcements]
+    : [...highlights, ...highlights, ...highlights];
+
+  const highlightItems = [...highlights, ...highlights, ...highlights];
 
   return (
     <section className="relative w-full overflow-hidden" aria-label="Announcements and institute highlights">
@@ -63,7 +110,7 @@ export default function AnnouncementTicker() {
         background: "linear-gradient(90deg, #fff9f0 0%, #f0f7ff 35%, #f5f0ff 65%, #fff0f6 100%)"
       }} />
 
-      {/* Animated shimmer sweep */}
+      {/* Shimmer */}
       <div className="absolute inset-0 pointer-events-none" style={{
         background: "repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(255,255,255,0.55) 80px, rgba(255,255,255,0.55) 160px)",
         animation: "atec-shimmer 4s linear infinite",
@@ -84,9 +131,8 @@ export default function AnnouncementTicker() {
         animation: "atec-gradient-slide 3s linear infinite reverse",
       }} />
 
-      {/* ── ROW 1: Announcements from DB (or highlights if none) ── */}
+      {/* ── ROW 1 ── */}
       <div className="relative overflow-hidden py-2.5">
-        {/* Fade edges */}
         <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
           style={{ background: "linear-gradient(90deg, #fff9f0, transparent)" }} />
         <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
@@ -110,17 +156,18 @@ export default function AnnouncementTicker() {
                   </span>
                 );
               })
-            : highlightItems.map((item, i) => {
-                const Icon = item.icon;
+            : announcementItems.map((item: any, i: number) => {
+                const Icon = ICON_MAP[item.icon_name] || Tag;
+                const color = item.color || "#FF6B6B";
                 return (
                   <span key={i} className="inline-flex items-center gap-2 mx-6 whitespace-nowrap select-none">
                     <span className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 shadow-md"
-                      style={{ background: item.color, boxShadow: `0 0 8px ${item.color}55` }}>
+                      style={{ background: color, boxShadow: `0 0 8px ${color}55` }}>
                       <Icon size={13} color="#fff" strokeWidth={2.5} />
                     </span>
                     <span className="text-sm font-semibold" style={{ color: "#1e293b" }}>{item.text}</span>
                     <span className="w-2 h-2 rotate-45 ml-3 flex-shrink-0"
-                      style={{ background: item.color, opacity: 0.65, boxShadow: `0 0 5px ${item.color}` }} />
+                      style={{ background: color, opacity: 0.65, boxShadow: `0 0 5px ${color}` }} />
                   </span>
                 );
               })}
@@ -133,7 +180,7 @@ export default function AnnouncementTicker() {
         opacity: 0.35,
       }} />
 
-      {/* ── ROW 2: Institute highlights scrolling RIGHT → LEFT (reverse) ── */}
+      {/* ── ROW 2: highlights scrolling reverse ── */}
       <div className="relative overflow-hidden py-2.5">
         <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none"
           style={{ background: "linear-gradient(90deg, #f0f7ff, transparent)" }} />
@@ -142,23 +189,23 @@ export default function AnnouncementTicker() {
 
         <div className="flex" style={{ animation: "atec-marquee-reverse 28s linear infinite" }}>
           {highlightItems.map((item, i) => {
-            const Icon = item.icon;
+            const Icon = ICON_MAP[item.icon_name] || Tag;
+            const color = item.color || "#FF6B6B";
             return (
               <span key={i} className="inline-flex items-center gap-2 mx-6 whitespace-nowrap select-none">
                 <span className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 shadow-md"
-                  style={{ background: item.color, boxShadow: `0 0 8px ${item.color}55` }}>
+                  style={{ background: color, boxShadow: `0 0 8px ${color}55` }}>
                   <Icon size={13} color="#fff" strokeWidth={2.5} />
                 </span>
                 <span className="text-sm font-semibold" style={{ color: "#1e293b" }}>{item.text}</span>
                 <span className="w-2 h-2 rotate-45 ml-3 flex-shrink-0"
-                  style={{ background: item.color, opacity: 0.65, boxShadow: `0 0 5px ${item.color}` }} />
+                  style={{ background: color, opacity: 0.65, boxShadow: `0 0 5px ${color}` }} />
               </span>
             );
           })}
         </div>
       </div>
 
-      {/* Keyframes */}
       <style>{`
         @keyframes atec-marquee-reverse {
           0%   { transform: translateX(-33.333%); }
