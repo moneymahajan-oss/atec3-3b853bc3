@@ -29,7 +29,7 @@ export default function FacultySection() {
 
   // faculty_scroll_speed: "slow" | "normal" | "fast" | "60" (custom px/s)
   const speedRaw = settings["faculty_scroll_speed"] || "normal";
-  const pxPerSec = SPEED_MAP[speedRaw] ?? parseInt(speedRaw) || 70;
+  const pxPerSec = (SPEED_MAP[speedRaw] ?? parseInt(speedRaw)) || 70;
 
   const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["public_faculties"],
