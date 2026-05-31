@@ -56,9 +56,7 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
   {
     label: "Faculty Slider",
     keys: [
-      { key: "faculty_auto_scroll", label: "Auto-Scroll Enabled (true / false)", placeholder: "true" },
-      { key: "faculty_scroll_interval", label: "Scroll Interval (seconds per card)", placeholder: "3" },
-      { key: "faculty_scroll_speed", label: "Scroll Animation Speed (ms, e.g. 600)", placeholder: "600" },
+      { key: "faculty_scroll_speed", label: "Scroll Speed — type: slow / normal / fast / or a number like 50", placeholder: "normal" },
     ],
   },
   {
