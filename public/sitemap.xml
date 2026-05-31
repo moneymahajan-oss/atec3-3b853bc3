@@ -1,38 +1,151 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- ── Homepage ── -->
   <url>
     <loc>https://ateceducation.in/</loc>
-    <lastmod>2026-05-10</lastmod>
+    <lastmod>2026-05-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
       <image:loc>https://ateceducation.in/og-course-default.png</image:loc>
-      <image:title>ATEC Education — Computer Institute Gurdaspur</image:title>
+      <image:title>ATEC Education — Best Computer Institute Gurdaspur</image:title>
     </image:image>
   </url>
+
+  <!-- ── Courses listing ── -->
   <url>
-    <loc>https://ateceducation.in/enquire</loc>
-    <lastmod>2026-05-10</lastmod>
+    <loc>https://ateceducation.in/courses</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+
+  <!-- ── Individual Course Pages ── -->
+  <url>
+    <loc>https://ateceducation.in/c/generative-ai-prompt-engineering</loc>
+    <lastmod>2026-05-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://ateceducation.in/courses</loc>
-    <lastmod>2026-05-10</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://ateceducation.in/c/digital-marketing</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://ateceducation.in/c/tally-prime-gst</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/full-stack-web-development</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/python-programming</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/office-automation</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/busy-accounting</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/graphic-design-corel-draw</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/hardware-networking</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/spoken-english</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/ai-kids-program</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/c/autocad-3d-modelling</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- ── Faculty ── -->
+  <url>
     <loc>https://ateceducation.in/faculty</loc>
-    <lastmod>2026-05-10</lastmod>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/faculty/manav-mahajan</loc>
+    <lastmod>2026-05-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://ateceducation.in/faculty/megha-mahajan</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/faculty/rajesh</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/faculty/anju-thakur</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ateceducation.in/faculty/priya</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- ── Other public pages ── -->
+  <url>
+    <loc>https://ateceducation.in/enquire</loc>
+    <lastmod>2026-05-31</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
     <loc>https://ateceducation.in/verification</loc>
-    <lastmod>2026-05-10</lastmod>
+    <lastmod>2026-05-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+
 </urlset>
