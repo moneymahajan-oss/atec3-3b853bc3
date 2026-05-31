@@ -54,9 +54,13 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
     ],
   },
   {
-    label: "WhatsApp",
+    label: "Faculty Slider",
     keys: [
-      { key: "whatsapp_number", label: "WhatsApp Number (no + or spaces, e.g. 917009933289)" },
+      { key: "faculty_auto_scroll", label: "Auto-Scroll Enabled (true / false)", placeholder: "true" },
+      { key: "faculty_scroll_interval", label: "Scroll Interval (seconds per card)", placeholder: "3" },
+      { key: "faculty_scroll_speed", label: "Scroll Animation Speed (ms, e.g. 600)", placeholder: "600" },
+    ],
+  },
     ],
   },
   {
