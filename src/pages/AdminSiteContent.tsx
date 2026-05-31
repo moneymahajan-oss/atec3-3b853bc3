@@ -61,8 +61,6 @@ const GROUPS: { label: string; keys: { key: string; label: string; multiline?: b
       { key: "faculty_scroll_speed", label: "Scroll Animation Speed (ms, e.g. 600)", placeholder: "600" },
     ],
   },
-    ],
-  },
   {
     label: "Social Media Links",
     keys: [
