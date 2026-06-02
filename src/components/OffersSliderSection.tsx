@@ -23,6 +23,9 @@ interface PromoSlide {
   duration_seconds: number;
   is_active: boolean;
   is_visible: boolean;
+  title_font_size: string;
+  title_font_family: string;
+  title_line_colors: { line: number; color: string }[];
 }
 
 export default function OffersSliderSection() {
@@ -93,6 +96,51 @@ export default function OffersSliderSection() {
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
+  // ── Render title with optional per-line colors ──────────────────────────
+  const renderTitle = (slide: PromoSlide) => {
+    const fontSize = slide.title_font_size || "clamp(1rem, 3.2vw, 1.9rem)";
+    const fontFamily = slide.title_font_family || "inherit";
+    const lineColors: { line: number; color: string }[] = Array.isArray(slide.title_line_colors)
+      ? slide.title_line_colors
+      : [];
+
+    const lines = slide.title.split("\n");
+
+    if (lines.length > 1 && lineColors.length > 0) {
+      return (
+        <h2
+          className="font-extrabold leading-tight mb-1"
+          style={{ fontSize, fontFamily }}
+        >
+          {lines.map((line, i) => {
+            const colorEntry = lineColors.find(c => c.line === i + 1);
+            return (
+              <span
+                key={i}
+                style={{ color: colorEntry?.color || slide.text_color || "#fff", display: "block" }}
+              >
+                {line}
+              </span>
+            );
+          })}
+        </h2>
+      );
+    }
+
+    return (
+      <h2
+        className="font-extrabold leading-tight mb-1"
+        style={{
+          fontSize,
+          fontFamily,
+          color: lineColors[0]?.color || slide.text_color || "#fff",
+        }}
+      >
+        {slide.title}
+      </h2>
+    );
+  };
+
   if (!isVisible || slides.length === 0) return null;
 
   return (
@@ -123,12 +171,10 @@ export default function OffersSliderSection() {
               {/* ── Background layer ── */}
               {s.bg_image_url ? (
                 <>
-                  {/* JPEG/PNG image as background */}
                   <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                     style={{ backgroundImage: `url(${s.bg_image_url})` }}
                   />
-                  {/* Color overlay on top of image for text readability */}
                   <div
                     className="absolute inset-0"
                     style={{
@@ -138,7 +184,6 @@ export default function OffersSliderSection() {
                   />
                 </>
               ) : (
-                /* No image — pure gradient */
                 <div
                   className="absolute inset-0"
                   style={{
@@ -171,12 +216,9 @@ export default function OffersSliderSection() {
                       {s.badge_text}
                     </span>
                   )}
-                  <h2
-                    className="font-extrabold leading-tight mb-1"
-                    style={{ fontSize: "clamp(1rem, 3.2vw, 1.9rem)", color: s.text_color || "#fff" }}
-                  >
-                    {s.title}
-                  </h2>
+
+                  {renderTitle(s)}
+
                   {s.subtitle && (
                     <p className="font-semibold mb-0.5 opacity-90"
                       style={{ fontSize: "clamp(0.7rem, 1.8vw, 1rem)", color: s.text_color || "#fff" }}>
