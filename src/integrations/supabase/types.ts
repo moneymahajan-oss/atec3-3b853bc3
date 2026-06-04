@@ -154,66 +154,118 @@ export type Database = {
       }
       courses: {
         Row: {
-          badge_label: string | null
-          brochure_pdf_url: string | null
-          category: string
-          created_at: string
-          display_order: number | null
-          duration: string | null
-          fee: string | null
-          full_description: string | null
+          // ── core identity ──────────────────────────────────────────
           id: string
+          name: string
+          category: string
+          slug: string | null
+          mode: string | null
+          duration: string | null
+          display_order: number | null
           is_active: boolean | null
           is_featured: boolean | null
-          name: string
+          badge_label: string | null
+          created_at: string
+          updated_at: string
+          // ── fees (numbers, not text strings) ──────────────────────
+          total_fee: number | null
+          registration_fee: number | null
+          emi_options: string[] | null
+          // ── syllabus ──────────────────────────────────────────────
+          concise_syllabus: string | null
+          detailed_syllabus_html: string | null
+          // ── media ─────────────────────────────────────────────────
+          og_image_url: string | null
+          brochure_url: string | null
+          youtube_url: string | null
+          video_url: string | null
+          instagram_url: string | null
+          // ── batch & certificate ───────────────────────────────────
+          next_batch_date: string | null
+          certificate_title: string | null
+          // ── SEO ───────────────────────────────────────────────────
+          meta_title: string | null
+          meta_description: string | null
+          // ── legacy columns (kept for backward compatibility) ──────
+          fee: string | null
           short_description: string | null
+          full_description: string | null
+          thumbnail_url: string | null
           syllabus: Json | null
           syllabus_pdf_url: string | null
-          thumbnail_url: string | null
-          updated_at: string
-          video_url: string | null
+          brochure_pdf_url: string | null
           whatsapp_template_key: string | null
         }
         Insert: {
-          badge_label?: string | null
-          brochure_pdf_url?: string | null
-          category: string
-          created_at?: string
-          display_order?: number | null
-          duration?: string | null
-          fee?: string | null
-          full_description?: string | null
           id?: string
+          name: string
+          category: string
+          slug?: string | null
+          mode?: string | null
+          duration?: string | null
+          display_order?: number | null
           is_active?: boolean | null
           is_featured?: boolean | null
-          name: string
+          badge_label?: string | null
+          created_at?: string
+          updated_at?: string
+          total_fee?: number | null
+          registration_fee?: number | null
+          emi_options?: string[] | null
+          concise_syllabus?: string | null
+          detailed_syllabus_html?: string | null
+          og_image_url?: string | null
+          brochure_url?: string | null
+          youtube_url?: string | null
+          video_url?: string | null
+          instagram_url?: string | null
+          next_batch_date?: string | null
+          certificate_title?: string | null
+          meta_title?: string | null
+          meta_description?: string | null
+          fee?: string | null
           short_description?: string | null
+          full_description?: string | null
+          thumbnail_url?: string | null
           syllabus?: Json | null
           syllabus_pdf_url?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string
-          video_url?: string | null
+          brochure_pdf_url?: string | null
           whatsapp_template_key?: string | null
         }
         Update: {
-          badge_label?: string | null
-          brochure_pdf_url?: string | null
-          category?: string
-          created_at?: string
-          display_order?: number | null
-          duration?: string | null
-          fee?: string | null
-          full_description?: string | null
           id?: string
+          name?: string
+          category?: string
+          slug?: string | null
+          mode?: string | null
+          duration?: string | null
+          display_order?: number | null
           is_active?: boolean | null
           is_featured?: boolean | null
-          name?: string
+          badge_label?: string | null
+          created_at?: string
+          updated_at?: string
+          total_fee?: number | null
+          registration_fee?: number | null
+          emi_options?: string[] | null
+          concise_syllabus?: string | null
+          detailed_syllabus_html?: string | null
+          og_image_url?: string | null
+          brochure_url?: string | null
+          youtube_url?: string | null
+          video_url?: string | null
+          instagram_url?: string | null
+          next_batch_date?: string | null
+          certificate_title?: string | null
+          meta_title?: string | null
+          meta_description?: string | null
+          fee?: string | null
           short_description?: string | null
+          full_description?: string | null
+          thumbnail_url?: string | null
           syllabus?: Json | null
           syllabus_pdf_url?: string | null
-          thumbnail_url?: string | null
-          updated_at?: string
-          video_url?: string | null
+          brochure_pdf_url?: string | null
           whatsapp_template_key?: string | null
         }
         Relationships: []
