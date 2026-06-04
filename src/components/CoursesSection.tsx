@@ -17,6 +17,38 @@ import { coursePublicUrl } from "@/lib/courseLinks";
 import { useToast } from "@/hooks/use-toast";
 import { detectPlatform, getEmbedUrl, getDialogSize } from "@/lib/videoUtils";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+// Mirrors the actual `courses` DB columns exactly — no old ghost fields
+interface Course {
+  id: string;
+  name: string;
+  slug: string | null;
+  category: string;
+  duration: string | null;
+  mode: string | null;
+  // FIX: correct column name is total_fee, NOT fee
+  total_fee: number | null;
+  registration_fee: number | null;
+  emi_options: string[] | null;
+  // FIX: correct column is concise_syllabus, NOT short_description
+  concise_syllabus: string | null;
+  // FIX: correct column is detailed_syllabus_html, NOT syllabus / full_description
+  detailed_syllabus_html: string | null;
+  // FIX: correct column is brochure_url (was missing from WhatsApp vars)
+  brochure_url: string | null;
+  youtube_url: string | null;
+  video_url: string | null;
+  instagram_url: string | null;
+  // FIX: correct column is og_image_url, NOT thumbnail_url
+  og_image_url: string | null;
+  next_batch_date: string | null;
+  certificate_title: string | null;
+  badge_label: string | null;
+  display_order: number | null;
+  is_active: boolean;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 const categoryIcons: Record<string, React.ElementType> = {
   "AI Programs": Brain,
   "Digital Marketing Stack": Megaphone,
@@ -40,17 +72,83 @@ const categories = [
 
 type WaAction = "enquiry" | "enroll" | "syllabus" | "share" | "video";
 
+// ─── Helper: resolve best image for a course ─────────────────────────────────
+function resolveCourseImage(course: Course): string {
+  if (course.og_image_url) return course.og_image_url;
+  // YouTube thumbnail fallback
+  const ytUrl = course.youtube_url || course.video_url || "";
+  const ytMatch = ytUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+  return "/og-course-default.png";
+}
+
+// ─── Helper: build all WhatsApp template variables from a course ──────────────
+// Single source of truth — used by BOTH CoursesSection and SendCourseDrawer
+function buildCourseWaVars(course: Course, studentName: string, studentPhone: string) {
+  // FIX: pass course.slug to coursePublicUrl — don't use null
+  const coursePageUrl = coursePublicUrl(course.slug, course.name);
+
+  // FIX: direct PDF link, not #brochure anchor
+  const brochureLink = course.brochure_url || `${coursePageUrl}#brochure`;
+
+  // FIX: actual YouTube/video URL, not #video anchor
+  const videoLink = course.youtube_url || course.video_url || `${coursePageUrl}#video`;
+
+  // FIX: total_fee is the correct column name
+  const feeFormatted = course.total_fee
+    ? `₹${Number(course.total_fee).toLocaleString("en-IN")}`
+    : "Contact us";
+
+  const emiText = Array.isArray(course.emi_options) && course.emi_options.length > 0
+    ? course.emi_options.join(", ")
+    : "";
+
+  const batchDate = course.next_batch_date
+    ? new Date(course.next_batch_date).toLocaleDateString("en-IN", {
+        day: "numeric", month: "long", year: "numeric",
+      })
+    : "Coming soon";
+
+  return {
+    // Identity
+    name: studentName || "there",
+    student_name: studentName || "there",
+    phone: studentPhone,
+    // Course basics
+    course_name: course.name,
+    duration: course.duration || "",
+    // FIX: mode was never passed — template var {mode} stayed blank
+    mode: course.mode || "",
+    fee: feeFormatted,
+    // FIX: concise_syllabus is the correct column name
+    concise_syllabus: course.concise_syllabus || "",
+    // FIX: next_batch_date was never passed
+    next_batch_date: batchDate,
+    // FIX: emi_options was never passed
+    emi_options: emiText,
+    // Links — all direct, none are page anchors
+    course_link: coursePageUrl,
+    course_share_link: coursePageUrl,
+    brochure_link: brochureLink,
+    brochure_pdf_url: brochureLink,
+    syllabus_pdf_url: brochureLink,   // syllabus IS the brochure PDF
+    video_link: videoLink,
+    video_share_link: videoLink,
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function CoursesSection() {
   const settings = useSiteSettings();
   const { toast } = useToast();
   const [active, setActive] = useState("All");
-  const [dialogCourse, setDialogCourse] = useState<any | null>(null);
+  const [dialogCourse, setDialogCourse] = useState<Course | null>(null);
   const [dialogAction, setDialogAction] = useState<WaAction>("enquiry");
   const [studentName, setStudentName] = useState("");
   const [studentPhone, setStudentPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [videoCourse, setVideoCourse] = useState<any | null>(null);
-  const [syllabusCourse, setSyllabusCourse] = useState<any | null>(null);
+  const [videoCourse, setVideoCourse] = useState<Course | null>(null);
+  const [syllabusCourse, setSyllabusCourse] = useState<Course | null>(null);
 
   const { data: courses = [], isError, refetch } = useQuery({
     queryKey: ["courses"],
@@ -61,42 +159,38 @@ export default function CoursesSection() {
         .eq("is_active", true)
         .order("display_order");
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as Course[];
     },
-    placeholderData: [] as never[],
+    placeholderData: [] as Course[],
     retry: 2,
     retryDelay: 1000,
   });
 
   const filtered =
-    active === "All" ? courses : courses.filter((c: any) => c.category === active);
+    active === "All" ? courses : courses.filter((c) => c.category === active);
 
-  const openDialog = (course: any, action: WaAction) => {
+  const openDialog = (course: Course, action: WaAction) => {
     setDialogCourse(course);
     setDialogAction(action);
     setStudentName("");
     setStudentPhone("");
   };
 
-  const handleWatchVideo = (course: any) => {
-    openDialog(course, "video");
-  };
-
+  // ─── Submit: save lead + open WhatsApp ──────────────────────────────────────
   const handleSubmit = async () => {
     if (!dialogCourse) return;
 
-    if (!studentName) {
+    if (!studentName.trim()) {
       toast({ title: "Required", description: "Please enter your name.", variant: "destructive" });
       return;
     }
-    if (!studentPhone) {
+    if (!studentPhone.trim()) {
       toast({ title: "Required", description: "Please enter your WhatsApp number.", variant: "destructive" });
       return;
     }
-
     const normPhone = studentPhone.replace(/\D/g, "").slice(-10);
     if (normPhone.length < 10) {
-      toast({ title: "Invalid phone", description: "Please enter a valid 10-digit WhatsApp number.", variant: "destructive" });
+      toast({ title: "Invalid phone", description: "Please enter a valid 10-digit number.", variant: "destructive" });
       return;
     }
 
@@ -104,10 +198,10 @@ export default function CoursesSection() {
 
     const sourceMap: Record<WaAction, string> = {
       enquiry: "enquiry_button",
-      enroll: "enroll_button",
+      enroll:  "enroll_button",
       syllabus: "syllabus_request",
-      share: "share_course",
-      video: "watch_video",
+      share:   "share_course",
+      video:   "watch_video",
     };
 
     // Save lead
@@ -118,7 +212,7 @@ export default function CoursesSection() {
       course_name: dialogCourse.name,
     });
 
-    // Save to CRM enquiries (deduplicated by phone + course within 30 days)
+    // Upsert CRM enquiry (deduplicated within 30 days)
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: dupe } = await supabase
       .from("crm_enquiries")
@@ -151,97 +245,68 @@ export default function CoursesSection() {
       } as never);
     }
 
-    // For video action: show video after lead capture
+    // For video: show player after lead capture, don't open WhatsApp
     if (dialogAction === "video") {
       setSubmitting(false);
       const course = dialogCourse;
       setDialogCourse(null);
-      setStudentName("");
-      setStudentPhone("");
       setVideoCourse(course);
       return;
     }
 
-    // FIX: Use actual DB fields (brochure_url, youtube_url, video_url, slug)
-    // instead of anchor hash links
-    const coursePageUrl = coursePublicUrl(dialogCourse.slug, dialogCourse.name);
-    const actualBrochureUrl = dialogCourse.brochure_url || `${coursePageUrl}#brochure`;
-    const actualVideoUrl = dialogCourse.youtube_url || dialogCourse.video_url || `${coursePageUrl}#video`;
-
-    const commonVars = {
-      student_name: studentName,
-      name: studentName,
-      phone: normPhone,
-      course_name: dialogCourse.name,
-      // FIX: use total_fee (DB column name), not fee
-      fee: dialogCourse.total_fee
-        ? `₹${Number(dialogCourse.total_fee).toLocaleString("en-IN")}`
-        : "",
-      duration: dialogCourse.duration || "",
-      mode: dialogCourse.mode || "",
-      course_link: coursePageUrl,
-      // FIX: direct PDF link, not anchor
-      syllabus_pdf_url: actualBrochureUrl,
-      brochure_pdf_url: actualBrochureUrl,
-      brochure_link: actualBrochureUrl,
-      // FIX: direct video link, not anchor
-      video_link: actualVideoUrl,
-      video_share_link: actualVideoUrl,
-      next_batch_date: dialogCourse.next_batch_date || "Coming soon",
-      // FIX: use concise_syllabus (DB column name), not short_description
-      concise_syllabus: dialogCourse.concise_syllabus || "",
-    };
+    // Build WhatsApp message using the unified helper
+    const waVars = buildCourseWaVars(dialogCourse, studentName, normPhone);
 
     const templateMap: Record<string, string> = {
-      enquiry: "enquiry_button",
-      enroll: "enroll_button",
-      share: "syllabus_share",
+      enquiry:  "enquiry_button",
+      enroll:   "enroll_button",
+      share:    "syllabus_share",
       syllabus: "syllabus_download",
     };
     const tplKey = templateMap[dialogAction];
 
+    // share / syllabus → send to the student's own number
+    // enquiry / enroll → send to the institute number
     let link: string;
     if (dialogAction === "share" || dialogAction === "syllabus") {
-      link = await buildWhatsAppLink(tplKey, commonVars, `91${normPhone}`);
+      link = await buildWhatsAppLink(tplKey, waVars, `91${normPhone}`);
     } else {
-      link = await buildWhatsAppLink(tplKey, commonVars);
+      link = await buildWhatsAppLink(tplKey, waVars);
     }
 
     setSubmitting(false);
     setDialogCourse(null);
-    setStudentName("");
-    setStudentPhone("");
 
-    const toastMsg =
-      dialogAction === "enquiry" || dialogAction === "enroll"
-        ? "Send the message to ATEC!"
-        : "Sending details to the student.";
+    const toastMsg = dialogAction === "enquiry" || dialogAction === "enroll"
+      ? "Send the message to ATEC!"
+      : "Sending details to the student.";
     toast({ title: "Opening WhatsApp", description: toastMsg });
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
+  // ─── Dialog copy ────────────────────────────────────────────────────────────
   const dialogTitles: Record<WaAction, string> = {
-    enquiry: "Enquire via WhatsApp",
-    enroll: "Enroll via WhatsApp",
-    share: "Share Syllabus",
+    enquiry:  "Enquire via WhatsApp",
+    enroll:   "Enroll via WhatsApp",
+    share:    "Share Syllabus",
     syllabus: "Get Syllabus on WhatsApp",
-    video: "Watch Course Video",
+    video:    "Watch Course Video",
   };
 
   const dialogDescriptions: Record<WaAction, string> = {
-    enquiry: "Enter your name & WhatsApp number. An enquiry message will open to send to ATEC.",
-    enroll: "Enter your name & WhatsApp number. An enrollment message will open to send to ATEC.",
-    share: "Enter student's name & WhatsApp number to send syllabus from ATEC.",
-    syllabus: "Enter your name & WhatsApp number to receive the syllabus from ATEC.",
-    video: "Enter your name & WhatsApp number to watch the course video.",
+    enquiry:  "Enter your name & number. An enquiry message will open to send to ATEC.",
+    enroll:   "Enter your name & number. An enrollment message will open to send to ATEC.",
+    share:    "Enter the student's name & WhatsApp number to send them the syllabus.",
+    syllabus: "Enter your name & number to receive the syllabus on WhatsApp.",
+    video:    "Enter your name & number to watch the course video.",
   };
 
-  // Video dialog sizing based on platform
-  // FIX: use youtube_url first, then video_url (DB column names)
+  // ─── Video player setup ─────────────────────────────────────────────────────
+  // FIX: check youtube_url first, then video_url (both columns)
   const videoUrl = (videoCourse?.youtube_url || videoCourse?.video_url || "").trim();
   const videoPlatform = videoCourse ? detectPlatform(videoUrl) : "youtube";
-  const videoEmbed = videoCourse ? getEmbedUrl(videoUrl, videoPlatform) : null;
-  const videoSizing = getDialogSize(videoPlatform);
+  const videoEmbed    = videoCourse ? getEmbedUrl(videoUrl, videoPlatform) : null;
+  const videoSizing   = getDialogSize(videoPlatform);
 
   if (isError)
     return (
@@ -258,6 +323,8 @@ export default function CoursesSection() {
   return (
     <section id="courses" className="py-12 bg-white">
       <div className="container mx-auto px-4">
+
+        {/* Section heading */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -276,7 +343,7 @@ export default function CoursesSection() {
           </p>
         </motion.div>
 
-        {/* Category Filter */}
+        {/* Category filter */}
         <div className="flex flex-wrap justify-center gap-2 mb-10">
           {categories.map((cat) => {
             const Icon = categoryIcons[cat];
@@ -297,10 +364,10 @@ export default function CoursesSection() {
           })}
         </div>
 
-        {/* Course Cards */}
+        {/* Course cards */}
         <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filtered.map((course: any) => (
+            {filtered.map((course) => (
               <motion.div
                 key={course.id}
                 layout
@@ -310,12 +377,14 @@ export default function CoursesSection() {
                 transition={{ duration: 0.3 }}
                 className="glass rounded-2xl overflow-hidden group hover:shadow-xl transition-shadow flex flex-col"
               >
+                {/* Thumbnail */}
                 <div className="relative h-48 overflow-hidden">
-                  {/* FIX: use og_image_url (DB column), fallback to thumbnail_url for old data */}
+                  {/* FIX: og_image_url is the correct column; fallback chain added */}
                   <img
-                    src={course.og_image_url || course.thumbnail_url || "/og-course-default.png"}
+                    src={resolveCourseImage(course)}
                     alt={course.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/og-course-default.png"; }}
                   />
                   <div className="absolute top-3 left-3 flex gap-2">
                     <Badge className="bg-primary/90 text-primary-foreground text-xs">
@@ -328,31 +397,31 @@ export default function CoursesSection() {
                     )}
                   </div>
                 </div>
+
+                {/* Card body */}
                 <div className="p-5 flex flex-col flex-1">
                   <h3 className="font-heading font-bold text-lg text-foreground mb-2">
                     {course.name}
                   </h3>
-                  {/* FIX: use concise_syllabus (DB column), fallback to short_description */}
+                  {/* FIX: concise_syllabus is the correct column */}
                   <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {course.concise_syllabus || course.short_description || ""}
+                    {course.concise_syllabus || ""}
                   </p>
                   <div className="flex items-center gap-3 mb-4 text-sm text-muted-foreground">
                     {course.duration && (
                       <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {course.duration}
+                        <Clock className="w-4 h-4" /> {course.duration}
                       </span>
                     )}
-                    {/* FIX: use total_fee (DB column), fallback to fee for old data */}
-                    {(course.total_fee || course.fee) && (
+                    {/* FIX: total_fee is the correct column */}
+                    {(course.total_fee ?? 0) > 0 && (
                       <span className="flex items-center gap-1">
                         <IndianRupee className="w-4 h-4" />
-                        {course.total_fee
-                          ? Number(course.total_fee).toLocaleString("en-IN")
-                          : course.fee}
+                        {Number(course.total_fee).toLocaleString("en-IN")}
                       </span>
                     )}
                   </div>
+
                   <div className="grid grid-cols-2 gap-2 mt-auto">
                     <Button
                       size="sm"
@@ -368,10 +437,11 @@ export default function CoursesSection() {
                     >
                       <BookOpen className="w-4 h-4 mr-1" /> View Syllabus
                     </Button>
+                    {/* FIX: check youtube_url OR video_url, not just video_url */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleWatchVideo(course)}
+                      onClick={() => openDialog(course, "video")}
                       disabled={!course.youtube_url && !course.video_url}
                     >
                       <Play className="w-4 h-4 mr-1" /> Watch Video
@@ -391,7 +461,7 @@ export default function CoursesSection() {
         </motion.div>
       </div>
 
-      {/* Video Player Dialog */}
+      {/* ── Video player dialog ─────────────────────────────────────────────── */}
       <Dialog open={!!videoCourse} onOpenChange={(o) => !o && setVideoCourse(null)}>
         <DialogContent className={videoSizing.dialogClass}>
           {videoCourse && videoEmbed && (
@@ -423,7 +493,7 @@ export default function CoursesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Student Info Dialog */}
+      {/* ── Lead capture + WhatsApp action dialog ──────────────────────────── */}
       <Dialog open={!!dialogCourse} onOpenChange={(o) => !o && setDialogCourse(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -434,6 +504,24 @@ export default function CoursesSection() {
           <p className="text-sm text-muted-foreground mb-4">
             {dialogDescriptions[dialogAction]}
           </p>
+
+          {/* Show what will be sent so the user knows what to expect */}
+          {dialogCourse && (dialogAction === "share" || dialogAction === "syllabus") && (
+            <div className="rounded-lg border bg-muted/40 p-3 mb-3 space-y-1 text-xs text-muted-foreground">
+              <p className="font-semibold text-foreground text-[11px] uppercase tracking-wide mb-1">
+                What will be shared
+              </p>
+              <p>📄 Brochure/Syllabus: {dialogCourse.brochure_url
+                ? <span className="text-green-600 font-medium">Direct PDF link ✓</span>
+                : <span className="text-yellow-600">Course page link (no PDF uploaded yet)</span>
+              }</p>
+              <p>🎬 Video: {(dialogCourse.youtube_url || dialogCourse.video_url)
+                ? <span className="text-green-600 font-medium">Direct video link ✓</span>
+                : <span className="text-yellow-600">Course page link (no video added yet)</span>
+              }</p>
+            </div>
+          )}
+
           <div className="space-y-3">
             <Input
               placeholder="Your Name"
@@ -441,7 +529,7 @@ export default function CoursesSection() {
               onChange={(e) => setStudentName(e.target.value)}
             />
             <Input
-              placeholder="Your WhatsApp Number (10 digits)"
+              placeholder="WhatsApp Number (10 digits)"
               type="tel"
               value={studentPhone}
               onChange={(e) => setStudentPhone(e.target.value)}
@@ -461,118 +549,125 @@ export default function CoursesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Syllabus Viewer Dialog */}
+      {/* ── Syllabus viewer dialog ──────────────────────────────────────────── */}
       <Dialog open={!!syllabusCourse} onOpenChange={(o) => !o && setSyllabusCourse(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-heading text-xl flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-primary" /> {syllabusCourse?.name} — Syllabus
+              <BookOpen className="w-5 h-5 text-primary" />
+              {syllabusCourse?.name} — Syllabus
             </DialogTitle>
           </DialogHeader>
-          {syllabusCourse &&
-            (() => {
-              // FIX: read from correct DB columns
-              // detailed_syllabus_html → strip tags and show as text
-              // concise_syllabus → fallback description
-              // syllabus (old jsonb field) → legacy support
-              const rawHtml = syllabusCourse.detailed_syllabus_html || "";
-              const strippedHtml = rawHtml.replace(/<[^>]+>/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-              const concise = syllabusCourse.concise_syllabus || syllabusCourse.short_description || "";
 
-              // Legacy: old syllabus jsonb field
-              const syl = syllabusCourse.syllabus;
-              const items: any[] = Array.isArray(syl) ? syl : syl ? [syl] : [];
+          {syllabusCourse && (() => {
+            // FIX: read from correct DB columns in priority order:
+            // 1. detailed_syllabus_html (admin-entered rich HTML → strip tags for display)
+            // 2. concise_syllabus (short text description)
+            // 3. legacy syllabus jsonb (old data)
+            const rawHtml = syllabusCourse.detailed_syllabus_html || "";
+            const stripped = rawHtml
+              .replace(/<br\s*\/?>/gi, "\n")
+              .replace(/<\/p>/gi, "\n")
+              .replace(/<\/li>/gi, "\n")
+              .replace(/<[^>]+>/g, "")
+              .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+              .replace(/\n{3,}/g, "\n\n")
+              .trim();
+            const concise  = syllabusCourse.concise_syllabus || "";
+            const legacySyl = (syllabusCourse as any).syllabus;
+            const legacyItems: any[] = Array.isArray(legacySyl) ? legacySyl : legacySyl ? [legacySyl] : [];
+            const hasContent = stripped || concise || legacyItems.length > 0;
 
-              if (!strippedHtml && !concise && items.length === 0) {
-                return (
-                  <p className="text-sm text-muted-foreground">
-                    Syllabus details coming soon. Please contact us for more information.
-                  </p>
-                );
-              }
+            if (!hasContent) {
               return (
-                <div className="space-y-4">
-                  {/* Show concise syllabus at top */}
-                  {concise && (
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">{concise}</p>
-                  )}
-                  {/* Show detailed syllabus if available */}
-                  {strippedHtml && (
-                    <div className="text-sm text-foreground/90 whitespace-pre-line border rounded-xl p-4 bg-muted/30">
-                      {strippedHtml}
-                    </div>
-                  )}
-                  {/* Legacy jsonb syllabus modules */}
-                  {items.length > 0 && (
-                    <ol className="space-y-3">
-                      {items.map((item: any, i: number) => {
-                        const title =
-                          typeof item === "string"
-                            ? item
-                            : item?.title || item?.name || item?.module || `Module ${i + 1}`;
-                        const desc =
-                          typeof item === "object"
-                            ? item?.description || item?.desc || item?.content
-                            : null;
-                        const topics =
-                          typeof item === "object" && Array.isArray(item?.topics)
-                            ? item.topics
-                            : null;
-                        return (
-                          <li key={i} className="glass rounded-lg p-4">
-                            <div className="flex items-start gap-3">
-                              <span className="flex-shrink-0 w-7 h-7 rounded-full gradient-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                                {i + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-foreground">{title}</h4>
-                                {desc && (
-                                  <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">
-                                    {desc}
-                                  </p>
-                                )}
-                                {topics && (
-                                  <ul className="mt-2 space-y-1 list-disc list-inside text-sm text-muted-foreground">
-                                    {topics.map((t: any, j: number) => (
-                                      <li key={j}>
-                                        {typeof t === "string" ? t : t?.title || JSON.stringify(t)}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  )}
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                    <Button
-                      className="flex-1 gradient-accent text-accent-foreground border-0"
-                      onClick={() => {
-                        const c = syllabusCourse;
-                        setSyllabusCourse(null);
-                        openDialog(c, "enroll");
-                      }}
-                    >
-                      <GraduationCap className="w-4 h-4 mr-2" /> Enroll Now
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        const c = syllabusCourse;
-                        setSyllabusCourse(null);
-                        openDialog(c, "share");
-                      }}
-                    >
-                      <Share2 className="w-4 h-4 mr-2" /> Get on WhatsApp
-                    </Button>
-                  </div>
-                </div>
+                <p className="text-sm text-muted-foreground py-4">
+                  Syllabus details coming soon. Please contact us for more information.
+                </p>
               );
-            })()}
+            }
+
+            return (
+              <div className="space-y-4">
+                {/* Concise summary at top */}
+                {concise && (
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{concise}</p>
+                )}
+
+                {/* Detailed syllabus (HTML stripped to clean text) */}
+                {stripped && (
+                  <div className="rounded-xl border bg-muted/30 p-4 text-sm text-foreground/90 whitespace-pre-line">
+                    {stripped}
+                  </div>
+                )}
+
+                {/* Legacy jsonb modules (backward compatible) */}
+                {legacyItems.length > 0 && (
+                  <ol className="space-y-3">
+                    {legacyItems.map((item: any, i: number) => {
+                      const title =
+                        typeof item === "string"
+                          ? item
+                          : item?.title || item?.name || item?.module || `Module ${i + 1}`;
+                      const desc =
+                        typeof item === "object"
+                          ? item?.description || item?.desc || item?.content
+                          : null;
+                      const topics =
+                        typeof item === "object" && Array.isArray(item?.topics)
+                          ? item.topics
+                          : null;
+                      return (
+                        <li key={i} className="glass rounded-lg p-4">
+                          <div className="flex items-start gap-3">
+                            <span className="flex-shrink-0 w-7 h-7 rounded-full gradient-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                              {i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-foreground">{title}</h4>
+                              {desc && (
+                                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{desc}</p>
+                              )}
+                              {topics && (
+                                <ul className="mt-2 space-y-1 list-disc list-inside text-sm text-muted-foreground">
+                                  {topics.map((t: any, j: number) => (
+                                    <li key={j}>{typeof t === "string" ? t : t?.title || JSON.stringify(t)}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                  <Button
+                    className="flex-1 gradient-accent text-accent-foreground border-0"
+                    onClick={() => {
+                      const c = syllabusCourse;
+                      setSyllabusCourse(null);
+                      openDialog(c, "enroll");
+                    }}
+                  >
+                    <GraduationCap className="w-4 h-4 mr-2" /> Enroll Now
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      const c = syllabusCourse;
+                      setSyllabusCourse(null);
+                      openDialog(c, "share");
+                    }}
+                  >
+                    <Share2 className="w-4 h-4 mr-2" /> Get on WhatsApp
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </section>
