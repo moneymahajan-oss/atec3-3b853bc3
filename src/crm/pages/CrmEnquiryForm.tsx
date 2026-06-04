@@ -164,7 +164,7 @@ export default function CrmEnquiryForm() {
   useEffect(() => {
     if (!form.course_id) { setCourseDetails(null); return; }
     supabase.from("courses")
-      .select("id, name, slug, total_fee, duration, mode, brochure_url, video_url, youtube_url, instagram_url, concise_syllabus, detailed_syllabus_html, next_batch_date")
+      .select("id, name, slug, total_fee, registration_fee, emi_options, duration, mode, brochure_url, brochure_pdf_url, syllabus_pdf_url, video_url, youtube_url, instagram_url, concise_syllabus, short_description, detailed_syllabus_html, full_description, syllabus, syllabus_image_url, next_batch_date, certificate_title")
       .eq("id", form.course_id).maybeSingle()
       .then(({ data }) => setCourseDetails((data as never) ?? null));
   }, [form.course_id]);
