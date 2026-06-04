@@ -30,6 +30,9 @@ interface PromoSlide {
   duration_seconds: number;
   is_active: boolean;
   is_visible: boolean;
+  title_font_size: string;
+  title_font_family: string;
+  title_line_colors: { line: number; color: string }[];
 }
 
 const EMPTY_SLIDE: Omit<PromoSlide, "id"> = {
@@ -48,6 +51,9 @@ const EMPTY_SLIDE: Omit<PromoSlide, "id"> = {
   duration_seconds: 5,
   is_active: true,
   is_visible: true,
+  title_font_size: "clamp(1rem, 3.2vw, 1.9rem)",
+  title_font_family: "inherit",
+  title_line_colors: [],
 };
 
 export default function AdminPromoSlider() {
@@ -97,7 +103,6 @@ export default function AdminPromoSlider() {
     toast({ title: val ? "Promo Slider is now VISIBLE ✓" : "Promo Slider is now HIDDEN ✓" });
   };
 
-  // ── Image upload to Supabase Storage (gallery bucket) ──────────────────
   const handleImageUpload = async (file: File) => {
     if (!file) return;
     const maxSizeMB = 3;
@@ -112,15 +117,9 @@ export default function AdminPromoSlider() {
       const { error: uploadError } = await supabase.storage
         .from("gallery")
         .upload(fileName, file, { upsert: true, contentType: file.type });
-
       if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("gallery")
-        .getPublicUrl(fileName);
-
-      const publicUrl = urlData.publicUrl;
-      setEditingSlide(prev => prev ? { ...prev, bg_image_url: publicUrl } : prev);
+      const { data: urlData } = supabase.storage.from("gallery").getPublicUrl(fileName);
+      setEditingSlide(prev => prev ? { ...prev, bg_image_url: urlData.publicUrl } : prev);
       toast({ title: "Image uploaded ✓" });
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -283,7 +282,6 @@ export default function AdminPromoSlider() {
                 ) : (
                   <div className={`flex items-center gap-3 p-4 rounded-xl border bg-background hover:border-accent/40 transition-colors
                     ${!slide.is_visible ? "opacity-55 border-orange-200" : "border-border"}`}>
-                    {/* Preview */}
                     <div className="w-12 h-12 rounded-lg flex-shrink-0 shadow overflow-hidden">
                       {slide.bg_image_url ? (
                         <img src={slide.bg_image_url} alt="" className="w-full h-full object-cover" />
@@ -306,7 +304,10 @@ export default function AdminPromoSlider() {
                         )}
                       </div>
                       {slide.subtitle && <p className="text-xs text-muted-foreground truncate mt-0.5">{slide.subtitle}</p>}
-                      <p className="text-xs text-muted-foreground/60 mt-0.5">Duration: {slide.duration_seconds}s · Order: {slide.slide_order}</p>
+                      <p className="text-xs text-muted-foreground/60 mt-0.5">
+                        Duration: {slide.duration_seconds}s · Order: {slide.slide_order}
+                        {slide.title_font_family && slide.title_font_family !== "inherit" && ` · Font: ${slide.title_font_family}`}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <div className="flex flex-col">
@@ -337,7 +338,6 @@ export default function AdminPromoSlider() {
               </div>
             ))}
 
-            {/* New slide form at bottom */}
             {editingSlide && isNew && editingSlide.id === "__new__" && (
               <SlideEditForm
                 slide={editingSlide}
@@ -363,6 +363,7 @@ export default function AdminPromoSlider() {
             <li>Max file size: <strong>3MB</strong></li>
             <li>Use the <strong>Overlay Opacity</strong> slider to darken the image so text stays readable</li>
             <li>If no image is set, the gradient colors are used instead</li>
+            <li>Use <strong>Enter/newline</strong> in the Title field to split text into multiple lines with different colors</li>
           </ul>
         </div>
 
@@ -389,15 +390,38 @@ function SlideEditForm({
 }) {
   const set = (patch: Partial<PromoSlide>) => onChange({ ...slide, ...patch });
 
+  // Derive line count from title newlines
+  const titleLines = slide.title.split("\n");
+  const lineColors: { line: number; color: string }[] = Array.isArray(slide.title_line_colors)
+    ? slide.title_line_colors
+    : [];
+
+  const getLineColor = (lineNum: number) =>
+    lineColors.find(c => c.line === lineNum)?.color || slide.text_color || "#ffffff";
+
+  const setLineColor = (lineNum: number, color: string) => {
+    const updated = lineColors.filter(c => c.line !== lineNum);
+    updated.push({ line: lineNum, color });
+    set({ title_line_colors: updated });
+  };
+
+  const FONT_PRESETS = [
+    { label: "Default (inherit)", value: "inherit" },
+    { label: "Inter", value: "Inter, sans-serif" },
+    { label: "Poppins", value: "Poppins, sans-serif" },
+    { label: "Roboto", value: "Roboto, sans-serif" },
+    { label: "Montserrat", value: "Montserrat, sans-serif" },
+    { label: "Oswald", value: "Oswald, sans-serif" },
+    { label: "Playfair Display", value: "Playfair Display, serif" },
+    { label: "Raleway", value: "Raleway, sans-serif" },
+    { label: "Nunito", value: "Nunito, sans-serif" },
+  ];
+
   return (
     <div className="border-2 border-accent rounded-xl p-5 space-y-4 bg-accent/5">
 
       {/* Live preview */}
-      <div
-        className="rounded-xl overflow-hidden relative"
-        style={{ height: "90px" }}
-      >
-        {/* Background */}
+      <div className="rounded-xl overflow-hidden relative" style={{ height: "90px" }}>
         {slide.bg_image_url ? (
           <>
             <div className="absolute inset-0 bg-cover bg-center"
@@ -412,7 +436,6 @@ function SlideEditForm({
           <div className="absolute inset-0"
             style={{ background: `linear-gradient(135deg, ${slide.bg_color_from || "#1a1a2e"} 0%, ${slide.bg_color_to || "#16213e"} 100%)` }} />
         )}
-        {/* Text preview */}
         <div className="relative z-10 h-full flex items-center justify-between px-4">
           <div>
             {slide.badge_text && (
@@ -421,8 +444,19 @@ function SlideEditForm({
                 {slide.badge_text}
               </span>
             )}
-            <p className="font-bold text-sm" style={{ color: slide.text_color || "#fff" }}>
-              {slide.title || "Slide Title Preview"}
+            {/* Live preview of title with per-line colors */}
+            <p
+              className="font-bold"
+              style={{
+                fontFamily: slide.title_font_family || "inherit",
+                fontSize: "clamp(0.7rem, 2vw, 1rem)",
+              }}
+            >
+              {titleLines.map((line, i) => (
+                <span key={i} style={{ color: getLineColor(i + 1), display: "block" }}>
+                  {line || <span className="opacity-40">Line {i + 1}</span>}
+                </span>
+              ))}
             </p>
             {slide.subtitle && (
               <p className="text-xs opacity-80" style={{ color: slide.text_color || "#fff" }}>{slide.subtitle}</p>
@@ -482,11 +516,102 @@ function SlideEditForm({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+        {/* Title — full width with newline hint */}
         <div className="md:col-span-2">
-          <label className="text-xs font-semibold mb-1 block">Title *</label>
-          <Input value={slide.title} onChange={e => set({ title: e.target.value })}
-            placeholder="e.g. 50% Off on All Computer Courses!" className="bg-background" />
+          <label className="text-xs font-semibold mb-1 block">
+            Title *
+            <span className="font-normal text-muted-foreground ml-2">
+              — press <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd> to add a new line with its own color
+            </span>
+          </label>
+          <Textarea
+            value={slide.title}
+            onChange={e => set({ title: e.target.value })}
+            placeholder={"e.g. 50% Off on All Courses!\nEnroll Before June 10th"}
+            rows={3}
+            className="bg-background font-mono text-sm"
+          />
         </div>
+
+        {/* ── NEW: Font Size ── */}
+        <div>
+          <label className="text-xs font-semibold mb-1 block">
+            Title Font Size
+            <span className="font-normal text-muted-foreground ml-1">(e.g. 48px, 3rem, 2.5vw)</span>
+          </label>
+          <Input
+            value={slide.title_font_size || "clamp(1rem, 3.2vw, 1.9rem)"}
+            onChange={e => set({ title_font_size: e.target.value })}
+            placeholder="clamp(1rem, 3.2vw, 1.9rem)"
+            className="bg-background font-mono text-sm"
+          />
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Tip: use <code>clamp(min, preferred, max)</code> for responsive sizing
+          </p>
+        </div>
+
+        {/* ── NEW: Font Family ── */}
+        <div>
+          <label className="text-xs font-semibold mb-1 block">Title Font Family</label>
+          <select
+            value={slide.title_font_family || "inherit"}
+            onChange={e => set({ title_font_family: e.target.value })}
+            className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            {[
+              { label: "Default (inherit)", value: "inherit" },
+              { label: "Inter", value: "Inter, sans-serif" },
+              { label: "Poppins", value: "Poppins, sans-serif" },
+              { label: "Roboto", value: "Roboto, sans-serif" },
+              { label: "Montserrat", value: "Montserrat, sans-serif" },
+              { label: "Oswald", value: "Oswald, sans-serif" },
+              { label: "Playfair Display", value: "Playfair Display, serif" },
+              { label: "Raleway", value: "Raleway, sans-serif" },
+              { label: "Nunito", value: "Nunito, sans-serif" },
+            ].map(f => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Or type a custom font name in the size field above</p>
+        </div>
+
+        {/* ── NEW: Per-line color pickers ── */}
+        <div className="md:col-span-2">
+          <label className="text-xs font-semibold mb-2 block">
+            Title Line Colors
+            <span className="font-normal text-muted-foreground ml-2">— pick a color for each line of your title</span>
+          </label>
+          {titleLines.length === 0 || (titleLines.length === 1 && !titleLines[0]) ? (
+            <p className="text-xs text-muted-foreground italic">Type your title above to set per-line colors.</p>
+          ) : (
+            <div className="space-y-2">
+              {titleLines.map((line, i) => (
+                <div key={i} className="flex items-center gap-3 p-2 rounded-lg border border-border bg-background">
+                  <span className="text-[10px] font-bold text-muted-foreground w-12 flex-shrink-0">Line {i + 1}</span>
+                  <input
+                    type="color"
+                    value={getLineColor(i + 1)}
+                    onChange={e => setLineColor(i + 1, e.target.value)}
+                    className="w-8 h-8 rounded cursor-pointer border border-border flex-shrink-0"
+                  />
+                  <Input
+                    value={getLineColor(i + 1)}
+                    onChange={e => setLineColor(i + 1, e.target.value)}
+                    className="font-mono text-xs bg-background w-28 flex-shrink-0"
+                  />
+                  <span
+                    className="text-sm font-bold truncate flex-1"
+                    style={{ color: getLineColor(i + 1), fontFamily: slide.title_font_family || "inherit" }}
+                  >
+                    {line || <span className="opacity-40 text-xs">(empty line)</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div>
           <label className="text-xs font-semibold mb-1 block">Subtitle</label>
           <Input value={slide.subtitle} onChange={e => set({ subtitle: e.target.value })}
@@ -539,7 +664,7 @@ function SlideEditForm({
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold mb-1 block">Text Color</label>
+          <label className="text-xs font-semibold mb-1 block">Text Color (default for all elements)</label>
           <div className="flex gap-2 items-center">
             <input type="color" value={slide.text_color}
               onChange={e => set({ text_color: e.target.value })}
