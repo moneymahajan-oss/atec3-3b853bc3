@@ -19,10 +19,10 @@ interface Props {
 }
 
 const SEQUENCE: { key: EnquiryTemplateKey; label: string }[] = [
-  { key: "SEND_BROCHURE_IMAGE", label: "Open Catalogue Picture WhatsApp" },
-  { key: "COURSE_INFO",         label: "Open Short Syllabus WhatsApp" },
-  { key: "COURSE_LONG_DETAIL",  label: "Open Detailed Syllabus WhatsApp" },
-  { key: "COURSE_MEDIA",        label: "Open Video / Instagram WhatsApp" },
+  { key: "ENQUIRY_FIRST",       label: "Send Full Course Info (Enquiry First)" },
+  { key: "SEND_BROCHURE_IMAGE", label: "Send Course Catalogue Picture" },
+  { key: "COURSE_LONG_DETAIL",  label: "Send Detailed Syllabus + Bullets" },
+  { key: "COURSE_MEDIA",        label: "Send Video / Instagram Link" },
 ];
 
 export function SendAllModal({ open, onOpenChange, enquiry, course, institute, onSent }: Props) {

@@ -4,6 +4,7 @@ import { coursePublicUrl } from "@/lib/courseLinks";
 
 export const ENQUIRY_TEMPLATE_KEYS = [
   "ENQUIRY_WELCOME",
+  "ENQUIRY_FIRST",
   "SEND_BROCHURE_IMAGE",
   "COURSE_INFO",
   "COURSE_LONG_DETAIL",
@@ -22,6 +23,7 @@ export interface EnquiryButtonDef {
 
 export const ENQUIRY_BUTTONS: EnquiryButtonDef[] = [
   { key: "ENQUIRY_WELCOME",     emoji: "📩", label: "Welcome Message" },
+  { key: "ENQUIRY_FIRST",       emoji: "🎯", label: "Enquiry First (Full)" },
   { key: "SEND_BROCHURE_IMAGE", emoji: "🖼️", label: "Course Catalogue (Picture)" },
   { key: "COURSE_INFO",         emoji: "📋", label: "Short Syllabus" },
   { key: "COURSE_LONG_DETAIL",  emoji: "📚", label: "Detailed Syllabus" },
