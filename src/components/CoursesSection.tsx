@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
-import { coursePublicUrl, brochureShareUrl, videoShareUrl } from "@/lib/courseLinks";
+import { coursePublicUrl } from "@/lib/courseLinks";
 import { useToast } from "@/hooks/use-toast";
 import { detectPlatform, getEmbedUrl, getDialogSize } from "@/lib/videoUtils";
 
@@ -85,11 +85,6 @@ export default function CoursesSection() {
   const handleSubmit = async () => {
     if (!dialogCourse) return;
 
-    // FIX: WhatsApp number required for ALL actions (not just share/syllabus)
-    // This ensures phone is always captured for leads table
-    const needsPhone = true; // capture for every action
-    const needsPhoneValidation = dialogAction === "share" || dialogAction === "syllabus" || dialogAction === "enroll";
-
     if (!studentName) {
       toast({ title: "Required", description: "Please enter your name.", variant: "destructive" });
       return;
@@ -115,15 +110,15 @@ export default function CoursesSection() {
       video: "watch_video",
     };
 
-    // FIX: Always save phone in leads table
+    // Save lead
     await supabase.from("leads").insert({
       source: sourceMap[dialogAction],
       student_name: studentName,
-      phone: normPhone,           // ← always captured now
+      phone: normPhone,
       course_name: dialogCourse.name,
     });
 
-    // Save to CRM enquiries for all actions that have a phone
+    // Save to CRM enquiries (deduplicated by phone + course within 30 days)
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: dupe } = await supabase
       .from("crm_enquiries")
@@ -167,16 +162,34 @@ export default function CoursesSection() {
       return;
     }
 
+    // FIX: Use actual DB fields (brochure_url, youtube_url, video_url, slug)
+    // instead of anchor hash links
+    const coursePageUrl = coursePublicUrl(dialogCourse.slug, dialogCourse.name);
+    const actualBrochureUrl = dialogCourse.brochure_url || `${coursePageUrl}#brochure`;
+    const actualVideoUrl = dialogCourse.youtube_url || dialogCourse.video_url || `${coursePageUrl}#video`;
+
     const commonVars = {
       student_name: studentName,
+      name: studentName,
       phone: normPhone,
       course_name: dialogCourse.name,
-      fee: dialogCourse.fee || "",
+      // FIX: use total_fee (DB column name), not fee
+      fee: dialogCourse.total_fee
+        ? `₹${Number(dialogCourse.total_fee).toLocaleString("en-IN")}`
+        : "",
       duration: dialogCourse.duration || "",
-      course_link: coursePublicUrl(null, dialogCourse.name),
-      syllabus_pdf_url: brochureShareUrl(null, dialogCourse.name),
-      brochure_pdf_url: brochureShareUrl(null, dialogCourse.name),
-      video_link: videoShareUrl(null, dialogCourse.name),
+      mode: dialogCourse.mode || "",
+      course_link: coursePageUrl,
+      // FIX: direct PDF link, not anchor
+      syllabus_pdf_url: actualBrochureUrl,
+      brochure_pdf_url: actualBrochureUrl,
+      brochure_link: actualBrochureUrl,
+      // FIX: direct video link, not anchor
+      video_link: actualVideoUrl,
+      video_share_link: actualVideoUrl,
+      next_batch_date: dialogCourse.next_batch_date || "Coming soon",
+      // FIX: use concise_syllabus (DB column name), not short_description
+      concise_syllabus: dialogCourse.concise_syllabus || "",
     };
 
     const templateMap: Record<string, string> = {
@@ -207,8 +220,6 @@ export default function CoursesSection() {
     window.open(link, "_blank", "noopener,noreferrer");
   };
 
-  // FIX: "Enquire Now" renamed to "Enroll" in syllabus dialog
-  // All dialog titles updated
   const dialogTitles: Record<WaAction, string> = {
     enquiry: "Enquire via WhatsApp",
     enroll: "Enroll via WhatsApp",
@@ -226,7 +237,8 @@ export default function CoursesSection() {
   };
 
   // Video dialog sizing based on platform
-  const videoUrl = (videoCourse?.video_url || "").trim();
+  // FIX: use youtube_url first, then video_url (DB column names)
+  const videoUrl = (videoCourse?.youtube_url || videoCourse?.video_url || "").trim();
   const videoPlatform = videoCourse ? detectPlatform(videoUrl) : "youtube";
   const videoEmbed = videoCourse ? getEmbedUrl(videoUrl, videoPlatform) : null;
   const videoSizing = getDialogSize(videoPlatform);
@@ -299,8 +311,9 @@ export default function CoursesSection() {
                 className="glass rounded-2xl overflow-hidden group hover:shadow-xl transition-shadow flex flex-col"
               >
                 <div className="relative h-48 overflow-hidden">
+                  {/* FIX: use og_image_url (DB column), fallback to thumbnail_url for old data */}
                   <img
-                    src={course.thumbnail_url}
+                    src={course.og_image_url || course.thumbnail_url || "/og-course-default.png"}
                     alt={course.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -319,8 +332,9 @@ export default function CoursesSection() {
                   <h3 className="font-heading font-bold text-lg text-foreground mb-2">
                     {course.name}
                   </h3>
+                  {/* FIX: use concise_syllabus (DB column), fallback to short_description */}
                   <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {course.short_description}
+                    {course.concise_syllabus || course.short_description || ""}
                   </p>
                   <div className="flex items-center gap-3 mb-4 text-sm text-muted-foreground">
                     {course.duration && (
@@ -329,15 +343,17 @@ export default function CoursesSection() {
                         {course.duration}
                       </span>
                     )}
-                    {course.fee && (
+                    {/* FIX: use total_fee (DB column), fallback to fee for old data */}
+                    {(course.total_fee || course.fee) && (
                       <span className="flex items-center gap-1">
                         <IndianRupee className="w-4 h-4" />
-                        {course.fee}
+                        {course.total_fee
+                          ? Number(course.total_fee).toLocaleString("en-IN")
+                          : course.fee}
                       </span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-2 mt-auto">
-                    {/* FIX: "Enquire" button kept as enquiry action */}
                     <Button
                       size="sm"
                       className="gradient-accent text-accent-foreground border-0 hover:opacity-90"
@@ -356,7 +372,7 @@ export default function CoursesSection() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleWatchVideo(course)}
-                      disabled={!course.video_url}
+                      disabled={!course.youtube_url && !course.video_url}
                     >
                       <Play className="w-4 h-4 mr-1" /> Watch Video
                     </Button>
@@ -375,7 +391,7 @@ export default function CoursesSection() {
         </motion.div>
       </div>
 
-      {/* FIX: Video Player Dialog — platform-aware sizing */}
+      {/* Video Player Dialog */}
       <Dialog open={!!videoCourse} onOpenChange={(o) => !o && setVideoCourse(null)}>
         <DialogContent className={videoSizing.dialogClass}>
           {videoCourse && videoEmbed && (
@@ -407,7 +423,7 @@ export default function CoursesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Student Info Dialog — now always captures WhatsApp number */}
+      {/* Student Info Dialog */}
       <Dialog open={!!dialogCourse} onOpenChange={(o) => !o && setDialogCourse(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -424,7 +440,6 @@ export default function CoursesSection() {
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
             />
-            {/* FIX: WhatsApp number field shown for ALL actions */}
             <Input
               placeholder="Your WhatsApp Number (10 digits)"
               type="tel"
@@ -446,7 +461,7 @@ export default function CoursesSection() {
         </DialogContent>
       </Dialog>
 
-      {/* Syllabus Viewer Dialog — FIX: "Enquire Now" renamed to "Enroll" */}
+      {/* Syllabus Viewer Dialog */}
       <Dialog open={!!syllabusCourse} onOpenChange={(o) => !o && setSyllabusCourse(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -456,9 +471,19 @@ export default function CoursesSection() {
           </DialogHeader>
           {syllabusCourse &&
             (() => {
+              // FIX: read from correct DB columns
+              // detailed_syllabus_html → strip tags and show as text
+              // concise_syllabus → fallback description
+              // syllabus (old jsonb field) → legacy support
+              const rawHtml = syllabusCourse.detailed_syllabus_html || "";
+              const strippedHtml = rawHtml.replace(/<[^>]+>/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+              const concise = syllabusCourse.concise_syllabus || syllabusCourse.short_description || "";
+
+              // Legacy: old syllabus jsonb field
               const syl = syllabusCourse.syllabus;
               const items: any[] = Array.isArray(syl) ? syl : syl ? [syl] : [];
-              if (items.length === 0 && !syllabusCourse.full_description) {
+
+              if (!strippedHtml && !concise && items.length === 0) {
                 return (
                   <p className="text-sm text-muted-foreground">
                     Syllabus details coming soon. Please contact us for more information.
@@ -467,11 +492,17 @@ export default function CoursesSection() {
               }
               return (
                 <div className="space-y-4">
-                  {syllabusCourse.full_description && (
-                    <p className="text-sm text-muted-foreground whitespace-pre-line">
-                      {syllabusCourse.full_description}
-                    </p>
+                  {/* Show concise syllabus at top */}
+                  {concise && (
+                    <p className="text-sm text-muted-foreground whitespace-pre-line">{concise}</p>
                   )}
+                  {/* Show detailed syllabus if available */}
+                  {strippedHtml && (
+                    <div className="text-sm text-foreground/90 whitespace-pre-line border rounded-xl p-4 bg-muted/30">
+                      {strippedHtml}
+                    </div>
+                  )}
+                  {/* Legacy jsonb syllabus modules */}
                   {items.length > 0 && (
                     <ol className="space-y-3">
                       {items.map((item: any, i: number) => {
@@ -516,14 +547,13 @@ export default function CoursesSection() {
                       })}
                     </ol>
                   )}
-                  {/* FIX: "Enquire Now" → "Enroll" */}
                   <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
                     <Button
                       className="flex-1 gradient-accent text-accent-foreground border-0"
                       onClick={() => {
                         const c = syllabusCourse;
                         setSyllabusCourse(null);
-                        openDialog(c, "enroll"); // ← changed from "enquiry" to "enroll"
+                        openDialog(c, "enroll");
                       }}
                     >
                       <GraduationCap className="w-4 h-4 mr-2" /> Enroll Now
