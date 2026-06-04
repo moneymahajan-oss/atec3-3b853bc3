@@ -154,47 +154,48 @@ export type Database = {
       }
       courses: {
         Row: {
-          // ── core identity ──────────────────────────────────────────
+          // ── core ──────────────────────────────────────────────────
           id: string
           name: string
           category: string
           slug: string | null
           mode: string | null
           duration: string | null
+          badge_label: string | null
           display_order: number | null
           is_active: boolean | null
           is_featured: boolean | null
-          badge_label: string | null
           created_at: string
           updated_at: string
-          // ── fees (numbers, not text strings) ──────────────────────
+          // ── fees ──────────────────────────────────────────────────
           total_fee: number | null
           registration_fee: number | null
           emi_options: string[] | null
+          fee: string | null                      // legacy — kept in sync
           // ── syllabus ──────────────────────────────────────────────
-          concise_syllabus: string | null
-          detailed_syllabus_html: string | null
+          syllabus: Json | null                   // JSON array of module strings/objects
+          concise_syllabus: string | null         // short text for WhatsApp & cards
+          detailed_syllabus_html: string | null   // HTML for course page
+          short_description: string | null        // legacy — kept in sync with concise_syllabus
+          full_description: string | null         // legacy — kept in sync with detailed_syllabus_html
           // ── media ─────────────────────────────────────────────────
-          og_image_url: string | null
-          brochure_url: string | null
+          thumbnail_url: string | null            // card image (Admin)
+          og_image_url: string | null             // OG/SEO image (CRM)
+          syllabus_image_url: string | null       // photo of syllabus — WA thumbnail
           youtube_url: string | null
           video_url: string | null
           instagram_url: string | null
+          brochure_url: string | null             // unified PDF link
+          brochure_pdf_url: string | null         // legacy — kept in sync
+          syllabus_pdf_url: string | null         // legacy — kept in sync
           // ── batch & certificate ───────────────────────────────────
           next_batch_date: string | null
           certificate_title: string | null
-          // ── SEO ───────────────────────────────────────────────────
+          // ── whatsapp ──────────────────────────────────────────────
+          whatsapp_template_key: string | null
+          // ── seo ───────────────────────────────────────────────────
           meta_title: string | null
           meta_description: string | null
-          // ── legacy columns (kept for backward compatibility) ──────
-          fee: string | null
-          short_description: string | null
-          full_description: string | null
-          thumbnail_url: string | null
-          syllabus: Json | null
-          syllabus_pdf_url: string | null
-          brochure_pdf_url: string | null
-          whatsapp_template_key: string | null
         }
         Insert: {
           id?: string
@@ -203,34 +204,35 @@ export type Database = {
           slug?: string | null
           mode?: string | null
           duration?: string | null
+          badge_label?: string | null
           display_order?: number | null
           is_active?: boolean | null
           is_featured?: boolean | null
-          badge_label?: string | null
           created_at?: string
           updated_at?: string
           total_fee?: number | null
           registration_fee?: number | null
           emi_options?: string[] | null
+          fee?: string | null
+          syllabus?: Json | null
           concise_syllabus?: string | null
           detailed_syllabus_html?: string | null
-          og_image_url?: string | null
-          brochure_url?: string | null
-          youtube_url?: string | null
-          video_url?: string | null
-          instagram_url?: string | null
-          next_batch_date?: string | null
-          certificate_title?: string | null
-          meta_title?: string | null
-          meta_description?: string | null
-          fee?: string | null
           short_description?: string | null
           full_description?: string | null
           thumbnail_url?: string | null
-          syllabus?: Json | null
-          syllabus_pdf_url?: string | null
+          og_image_url?: string | null
+          syllabus_image_url?: string | null
+          youtube_url?: string | null
+          video_url?: string | null
+          instagram_url?: string | null
+          brochure_url?: string | null
           brochure_pdf_url?: string | null
+          syllabus_pdf_url?: string | null
+          next_batch_date?: string | null
+          certificate_title?: string | null
           whatsapp_template_key?: string | null
+          meta_title?: string | null
+          meta_description?: string | null
         }
         Update: {
           id?: string
@@ -239,34 +241,35 @@ export type Database = {
           slug?: string | null
           mode?: string | null
           duration?: string | null
+          badge_label?: string | null
           display_order?: number | null
           is_active?: boolean | null
           is_featured?: boolean | null
-          badge_label?: string | null
           created_at?: string
           updated_at?: string
           total_fee?: number | null
           registration_fee?: number | null
           emi_options?: string[] | null
+          fee?: string | null
+          syllabus?: Json | null
           concise_syllabus?: string | null
           detailed_syllabus_html?: string | null
-          og_image_url?: string | null
-          brochure_url?: string | null
-          youtube_url?: string | null
-          video_url?: string | null
-          instagram_url?: string | null
-          next_batch_date?: string | null
-          certificate_title?: string | null
-          meta_title?: string | null
-          meta_description?: string | null
-          fee?: string | null
           short_description?: string | null
           full_description?: string | null
           thumbnail_url?: string | null
-          syllabus?: Json | null
-          syllabus_pdf_url?: string | null
+          og_image_url?: string | null
+          syllabus_image_url?: string | null
+          youtube_url?: string | null
+          video_url?: string | null
+          instagram_url?: string | null
+          brochure_url?: string | null
           brochure_pdf_url?: string | null
+          syllabus_pdf_url?: string | null
+          next_batch_date?: string | null
+          certificate_title?: string | null
           whatsapp_template_key?: string | null
+          meta_title?: string | null
+          meta_description?: string | null
         }
         Relationships: []
       }

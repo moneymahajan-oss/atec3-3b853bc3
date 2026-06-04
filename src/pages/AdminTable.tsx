@@ -39,53 +39,43 @@ const tableConfig: Record<string, {
       { key: "display_order", label: "Order", type: "number" },
     ],
   },
-
-  // ─────────────────────────────────────────────────────────────
-  // COURSES — unified field names matching CRM + public website
-  // Single source of truth: all entry points write same columns
-  // ─────────────────────────────────────────────────────────────
   courses: {
     label: "Courses",
     canCreate: true, canDelete: true,
     fields: [
-      // Core identity
-      { key: "name",          label: "Course Name *",                                   type: "text",     required: true },
-      { key: "category",      label: "Category *",                                      type: "select",   options: ["AI Programs", "Digital Marketing Stack", "Tally Certifications", "Commerce Courses", "Office & Productivity", "AI Kids Programs", "Programming"], required: true },
-      { key: "mode",          label: "Mode",                                            type: "select",   options: ["offline", "online", "hybrid"] },
-      { key: "duration",      label: "Duration (e.g. 3 Months)",                        type: "text" },
-
-      // Fees — NOW numbers, not text strings
-      { key: "total_fee",        label: "Total Fee ₹ (number, e.g. 12000)",            type: "number" },
-      { key: "registration_fee", label: "Registration Fee ₹ (number)",                 type: "number" },
-      { key: "emi_options",      label: "EMI Options (comma-separated, e.g. 3 EMIs of ₹4000)", type: "text" },
-
-      // Syllabus — NOW two separate fields
-      { key: "concise_syllabus",      label: "Short Description / Concise Syllabus (shown on cards & WhatsApp)", type: "textarea" },
-      { key: "detailed_syllabus_html", label: "Detailed Syllabus (HTML allowed, shown on course page)",          type: "textarea" },
-
-      // Media — NOW unified names
-      { key: "og_image_url",  label: "Course Image / OG Image URL (shown on cards)",   type: "text" },
-      { key: "youtube_url",   label: "YouTube / Video URL (embed + WhatsApp share)",   type: "text" },
-      { key: "instagram_url", label: "Instagram URL (optional promo link)",            type: "text" },
-      { key: "brochure_url",  label: "Brochure / Syllabus PDF URL (Google Drive / Supabase Storage)", type: "text" },
-
-      // Batch & certificate
-      { key: "next_batch_date",   label: "Next Batch Date (YYYY-MM-DD)",               type: "text" },
-      { key: "certificate_title", label: "Certificate Title (printed on certificate)", type: "text" },
-
-      // SEO
-      { key: "slug",             label: "URL Slug (auto-filled from name if blank)",   type: "text" },
-      { key: "meta_title",       label: "Meta Title (≤60 chars)",                      type: "text" },
-      { key: "meta_description", label: "Meta Description (≤160 chars)",               type: "textarea" },
-
-      // Display
-      { key: "badge_label",    label: "Badge Label (e.g. Popular, New, Hot)",          type: "text" },
-      { key: "is_featured",    label: "Featured on Homepage",                          type: "boolean" },
-      { key: "is_active",      label: "Active (visible on website)",                   type: "boolean" },
-      { key: "display_order",  label: "Display Order (lower = first)",                 type: "number" },
+      // ── Same fields as Admin panel (original names kept) ──────────────────
+      { key: "name",              label: "Name *",                                          type: "text",     required: true },
+      { key: "category",         label: "Category *",                                      type: "select",   options: ["AI Programs", "Digital Marketing Stack", "Tally Certifications", "Commerce Courses", "Office & Productivity", "AI Kids Programs", "Programming", "computer", "finance"], required: true },
+      { key: "short_description", label: "Short Description (shown on cards & WhatsApp)",   type: "textarea" },
+      { key: "full_description",  label: "Full Description (shown on course page)",          type: "textarea" },
+      { key: "syllabus",         label: "Syllabus (JSON array of module strings) — auto-converts to bullet points in WhatsApp", type: "json" },
+      { key: "duration",         label: "Duration (e.g. 2 Months)",                        type: "text" },
+      { key: "fee",              label: "Fee (text, e.g. ₹4,000) — also set Total Fee ₹ below for CRM", type: "text" },
+      { key: "total_fee",        label: "Total Fee ₹ (number for CRM — e.g. 4000)",        type: "number" },
+      { key: "badge_label",      label: "Badge (e.g. Popular, Beginner, New)",              type: "text" },
+      // ── Images ────────────────────────────────────────────────────────────
+      { key: "thumbnail_url",    label: "Thumbnail URL (card image — paste URL or upload via CRM)", type: "text" },
+      { key: "syllabus_image_url", label: "Syllabus Image URL (photo of syllabus — used as WA thumbnail)", type: "text" },
+      // ── PDFs ──────────────────────────────────────────────────────────────
+      { key: "syllabus_pdf_url", label: "Syllabus PDF URL (Google Drive or Supabase — {brochure_link} in WA)", type: "text" },
+      { key: "brochure_pdf_url", label: "Brochure PDF URL (same as above if identical)",   type: "text" },
+      // ── Video ─────────────────────────────────────────────────────────────
+      { key: "video_url",        label: "Course Video URL (YouTube/Instagram) — {video_link} in WA", type: "text" },
+      // ── WhatsApp ──────────────────────────────────────────────────────────
+      { key: "whatsapp_template_key", label: "WhatsApp Template Key (e.g. COURSE_INFO)",   type: "text" },
+      // ── CRM-only extra fields ──────────────────────────────────────────────
+      { key: "mode",             label: "Mode (offline / online / hybrid)",                type: "select",   options: ["offline", "online", "hybrid"] },
+      { key: "registration_fee", label: "Registration Fee ₹",                             type: "number" },
+      { key: "emi_options",      label: "EMI Options (comma-separated, e.g. 3 EMIs of ₹2000)", type: "text" },
+      { key: "next_batch_date",  label: "Next Batch Date (YYYY-MM-DD)",                    type: "text" },
+      { key: "certificate_title", label: "Certificate Title (printed on certificate)",     type: "text" },
+      { key: "slug",             label: "URL Slug (auto-generated from name if blank)",    type: "text" },
+      // ── Visibility ────────────────────────────────────────────────────────
+      { key: "is_featured",      label: "Featured on homepage",                            type: "boolean" },
+      { key: "is_active",        label: "Active (visible on website)",                     type: "boolean" },
+      { key: "display_order",    label: "Display Order (lower = first)",                   type: "number" },
     ],
   },
-
   gallery_items: {
     label: "Gallery",
     canCreate: true, canDelete: true,
@@ -247,15 +237,6 @@ const tableConfig: Record<string, {
       { key: "sort_order", label: "Order", type: "number" },
     ],
   },
-  // ─────────────────────────────────────────────────────────────
-  // WHATSAPP TEMPLATES — variable reference updated to match
-  // the unified courses column names used everywhere
-  // Available vars: {course_name} {student_name} {phone}
-  //   {fee} {duration} {mode} {concise_syllabus} {next_batch_date}
-  //   {brochure_link} {video_link} {course_link} {emi_options}
-  //   {syllabus_pdf_url} {brochure_pdf_url}  ← legacy aliases kept
-  //   {score} {total} {percentage} {pass_fail} {message}
-  // ─────────────────────────────────────────────────────────────
   whatsapp_templates: {
     label: "WhatsApp Templates",
     canCreate: true, canDelete: true,
@@ -263,12 +244,7 @@ const tableConfig: Record<string, {
       { key: "name", label: "Name", type: "text", required: true },
       { key: "template_key", label: "Template Key", type: "text", required: true },
       { key: "wa_number", label: "WhatsApp Number (with country code, e.g. 917009933289)", type: "text" },
-      {
-        key: "message_body",
-        label: "Message Body — available vars: {course_name} {student_name} {phone} {fee} {duration} {mode} {concise_syllabus} {next_batch_date} {emi_options} {brochure_link} {video_link} {course_link} {syllabus_pdf_url} {brochure_pdf_url} {score} {total} {percentage} {pass_fail} {message}",
-        type: "textarea",
-        required: true,
-      },
+      { key: "message_body", label: "Message (vars: {course_name} {student_name} {phone} {syllabus_pdf_url} {brochure_pdf_url} {score} {total} {percentage} {pass_fail} {message})", type: "textarea", required: true },
       { key: "is_active", label: "Active", type: "boolean" },
     ],
   },
@@ -358,25 +334,99 @@ export default function AdminTable() {
       }
     });
 
-    // Courses: handle emi_options (comma-separated text → array) and slug auto-fill
+    // Courses: sync all old columns → new unified columns on every save
     if (tableName === "courses") {
+      // emi_options: comma string → array
       if (typeof payload.emi_options === "string") {
         payload.emi_options = payload.emi_options
           ? payload.emi_options.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [];
       }
-      // Auto-generate slug if blank
+
+      // Auto-generate slug from name if blank
       if (!payload.slug || !String(payload.slug).trim()) {
         payload.slug = String(payload.name || "")
-          .toLowerCase()
-          .trim()
+          .toLowerCase().trim()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-+|-+$/g, "")
           .slice(0, 60);
       }
-      // Ensure numeric fee fields are numbers not strings
-      if (payload.total_fee !== undefined) payload.total_fee = Number(payload.total_fee) || 0;
-      if (payload.registration_fee !== undefined) payload.registration_fee = Number(payload.registration_fee) || 0;
+
+      // fee text "₹4,000" → total_fee number 4000
+      if ((!payload.total_fee || payload.total_fee === 0) && payload.fee) {
+        const cleaned = String(payload.fee).replace(/[^0-9]/g, "");
+        if (cleaned) payload.total_fee = parseInt(cleaned, 10);
+      }
+      // Keep fee text in sync if total_fee was set numerically
+      if (payload.total_fee && (!payload.fee || payload.fee === "0")) {
+        payload.fee = `₹${Number(payload.total_fee).toLocaleString("en-IN")}`;
+      }
+
+      // short_description ↔ concise_syllabus
+      if (!payload.concise_syllabus && payload.short_description) {
+        payload.concise_syllabus = payload.short_description;
+      }
+      if (payload.concise_syllabus && !payload.short_description) {
+        payload.short_description = payload.concise_syllabus;
+      }
+
+      // full_description ↔ detailed_syllabus_html
+      if (!payload.detailed_syllabus_html && payload.full_description) {
+        payload.detailed_syllabus_html = payload.full_description;
+      }
+      if (payload.detailed_syllabus_html && !payload.full_description) {
+        payload.full_description = payload.detailed_syllabus_html;
+      }
+
+      // JSON syllabus array → detailed_syllabus_html + concise_syllabus
+      if (payload.syllabus && Array.isArray(payload.syllabus)) {
+        const items: string[] = payload.syllabus.map((i: unknown) =>
+          typeof i === "string" ? i :
+          (typeof i === "object" && i !== null)
+            ? String((i as Record<string,unknown>).title || (i as Record<string,unknown>).name || "")
+            : String(i)
+        ).filter(Boolean);
+
+        if (items.length > 0) {
+          // Only fill if empty — don't overwrite manually-edited content
+          if (!payload.detailed_syllabus_html && !payload.full_description) {
+            const html = "<ol>\n" + items.map(t => `  <li>${t}</li>`).join("\n") + "\n</ol>";
+            payload.detailed_syllabus_html = html;
+            payload.full_description = html;
+          }
+          if (!payload.concise_syllabus && !payload.short_description) {
+            const shown = items.slice(0, 4).join(", ");
+            const extra = items.length > 4 ? ` and ${items.length - 4} more topics` : "";
+            const concise = `Modules covered: ${shown}${extra}.`;
+            payload.concise_syllabus = concise;
+            payload.short_description = concise;
+          }
+        }
+      }
+
+      // thumbnail_url ↔ og_image_url
+      if (!payload.og_image_url && payload.thumbnail_url) {
+        payload.og_image_url = payload.thumbnail_url;
+      }
+      if (payload.og_image_url && !payload.thumbnail_url) {
+        payload.thumbnail_url = payload.og_image_url;
+      }
+
+      // syllabus_pdf_url / brochure_pdf_url ↔ brochure_url
+      const pdfUrl = payload.brochure_url || payload.brochure_pdf_url || payload.syllabus_pdf_url || null;
+      if (pdfUrl) {
+        payload.brochure_url    = pdfUrl;
+        payload.brochure_pdf_url = pdfUrl;
+        payload.syllabus_pdf_url = pdfUrl;
+      }
+
+      // video_url ↔ youtube_url
+      if (!payload.youtube_url && payload.video_url) {
+        payload.youtube_url = payload.video_url;
+      }
+      if (payload.youtube_url && !payload.video_url) {
+        payload.video_url = payload.youtube_url;
+      }
     }
 
     // Auto-derive platform / video_id / thumbnail for youtube_videos
@@ -454,6 +504,7 @@ export default function AdminTable() {
 
   if (!config) return <div className="p-8">Unknown table</div>;
 
+  // Pick display columns (first 4-5 important ones)
   const displayFields = config.fields.slice(0, 5);
 
   return (
@@ -501,7 +552,7 @@ export default function AdminTable() {
                     {displayFields.map(f => (
                       <th key={f.key} className="text-left px-4 py-3 font-medium text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => toggleSort(f.key)}>
                         <span className="inline-flex items-center gap-1">
-                          {f.label.split("(")[0].trim()}
+                          {f.label}
                           {sortField === f.key && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
                         </span>
                       </th>
@@ -520,8 +571,6 @@ export default function AdminTable() {
                             </span>
                           ) : f.type === "json" ? (
                             <span className="text-xs text-muted-foreground">[JSON]</span>
-                          ) : f.key === "total_fee" ? (
-                            row[f.key] ? `₹${Number(row[f.key]).toLocaleString("en-IN")}` : "—"
                           ) : (
                             String(row[f.key] ?? "")
                           )}
@@ -529,6 +578,7 @@ export default function AdminTable() {
                       ))}
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-1 items-center">
+                          {/* WhatsApp direct message button — shows for leads table when phone exists */}
                           {table === "leads" && row.phone && (
                             <>
                               <Button size="sm" variant="ghost" asChild title="Call">
@@ -552,10 +602,6 @@ export default function AdminTable() {
                             config.fields.forEach(f => {
                               if (f.type === "json" && item[f.key] !== undefined) {
                                 item[f.key] = JSON.stringify(item[f.key] ?? []);
-                              }
-                              // emi_options array → comma-separated string for editing
-                              if (f.key === "emi_options" && Array.isArray(item[f.key])) {
-                                item[f.key] = item[f.key].join(", ");
                               }
                             });
                             setEditItem(item);

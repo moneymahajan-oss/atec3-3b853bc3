@@ -25,6 +25,8 @@ interface Course {
   display_order: number | null;
   concise_syllabus: string | null;
   next_batch_date: string | null;
+  syllabus: unknown;
+  syllabus_image_url: string | null;
 }
 
 export default function CrmCourses() {
