@@ -46,6 +46,9 @@ interface Course {
   badge_label: string | null;
   display_order: number | null;
   is_active: boolean;
+  // JSON syllabus array — sent as bullet points in WhatsApp
+  syllabus?: unknown;
+  syllabus_image_url?: string | null;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -131,10 +134,39 @@ function buildCourseWaVars(course: Course, studentName: string, studentPhone: st
     course_share_link: coursePageUrl,
     brochure_link: brochureLink,
     brochure_pdf_url: brochureLink,
-    syllabus_pdf_url: brochureLink,   // syllabus IS the brochure PDF
+    syllabus_pdf_url: brochureLink,
     video_link: videoLink,
     video_share_link: videoLink,
+    // JSON syllabus as numbered WhatsApp bullets
+    syllabus_bullets: syllabusToWaBullets(course.syllabus),
+    syllabus_text:    syllabusToWaBullets(course.syllabus) || course.concise_syllabus || "",
+    syllabus_image_url: course.syllabus_image_url || "",
   };
+}
+
+// Convert JSON syllabus array → WhatsApp numbered bullet text
+function syllabusToWaBullets(raw: unknown): string {
+  if (!raw) return "";
+  try {
+    const arr: unknown[] = Array.isArray(raw) ? raw : JSON.parse(String(raw));
+    return arr
+      .map((item, i) => {
+        const title =
+          typeof item === "string" ? item
+          : typeof item === "object" && item !== null
+          ? String((item as Record<string, unknown>).title || (item as Record<string, unknown>).name || "")
+          : String(item);
+        if (!title.trim()) return null;
+        const obj = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : null;
+        const topics = obj && Array.isArray(obj.topics) ? (obj.topics as string[]) : [];
+        const num = `${i + 1}. *${title.trim()}*`;
+        return topics.length ? num + "\n" + topics.map((t) => `   • ${t}`).join("\n") : num;
+      })
+      .filter(Boolean)
+      .join("\n");
+  } catch {
+    return "";
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
