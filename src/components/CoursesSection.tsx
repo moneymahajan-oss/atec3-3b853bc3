@@ -30,17 +30,19 @@ interface Course {
   total_fee: number | null;
   registration_fee: number | null;
   emi_options: string[] | null;
-  // FIX: correct column is concise_syllabus, NOT short_description
+  // New columns (preferred)
   concise_syllabus: string | null;
-  // FIX: correct column is detailed_syllabus_html, NOT syllabus / full_description
   detailed_syllabus_html: string | null;
-  // FIX: correct column is brochure_url (was missing from WhatsApp vars)
+  // Legacy columns — admin writes here; fallback when new columns are empty
+  short_description: string | null;
+  full_description: string | null;
   brochure_url: string | null;
   youtube_url: string | null;
   video_url: string | null;
   instagram_url: string | null;
-  // FIX: correct column is og_image_url, NOT thumbnail_url
+  // og_image_url (CRM) or thumbnail_url (admin) — both exist in DB
   og_image_url: string | null;
+  thumbnail_url: string | null;
   next_batch_date: string | null;
   certificate_title: string | null;
   badge_label: string | null;
@@ -73,11 +75,22 @@ const categories = [
   "Programming",
 ];
 
-type WaAction = "enquiry" | "enroll" | "syllabus" | "share";
+type WaAction = "enquiry" | "enroll" | "syllabus" | "share" | "video";
+
+// ─── Helper: resolve concise syllabus (new col → legacy fallback) ────────────
+function resolveConciseSyllabus(course: Course): string {
+  return course.concise_syllabus || course.short_description || "";
+}
+
+// ─── Helper: resolve detailed syllabus (new col → legacy fallback) ───────────
+function resolveDetailedSyllabus(course: Course): string {
+  return course.detailed_syllabus_html || course.full_description || "";
+}
 
 // ─── Helper: resolve best image for a course ─────────────────────────────────
 function resolveCourseImage(course: Course): string {
   if (course.og_image_url) return course.og_image_url;
+  if (course.thumbnail_url) return course.thumbnail_url;
   // YouTube thumbnail fallback
   const ytUrl = course.youtube_url || course.video_url || "";
   const ytMatch = ytUrl.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
@@ -123,8 +136,7 @@ function buildCourseWaVars(course: Course, studentName: string, studentPhone: st
     // FIX: mode was never passed — template var {mode} stayed blank
     mode: course.mode || "",
     fee: feeFormatted,
-    // FIX: concise_syllabus is the correct column name
-    concise_syllabus: course.concise_syllabus || "",
+    concise_syllabus: resolveConciseSyllabus(course),
     // FIX: next_batch_date was never passed
     next_batch_date: batchDate,
     // FIX: emi_options was never passed
@@ -139,7 +151,7 @@ function buildCourseWaVars(course: Course, studentName: string, studentPhone: st
     video_share_link: videoLink,
     // JSON syllabus as numbered WhatsApp bullets
     syllabus_bullets: syllabusToWaBullets(course.syllabus),
-    syllabus_text:    syllabusToWaBullets(course.syllabus) || course.concise_syllabus || "",
+    syllabus_text:    syllabusToWaBullets(course.syllabus) || resolveConciseSyllabus(course),
     syllabus_image_url: course.syllabus_image_url || "",
   };
 }
@@ -233,6 +245,7 @@ export default function CoursesSection() {
       enroll:  "enroll_button",
       syllabus: "syllabus_request",
       share:   "share_course",
+      video:   "watch_video",
     };
 
     // Save lead
@@ -276,6 +289,15 @@ export default function CoursesSection() {
       } as never);
     }
 
+    // For video: show player after lead capture, don't open WhatsApp
+    if (dialogAction === "video") {
+      setSubmitting(false);
+      const course = dialogCourse;
+      setDialogCourse(null);
+      setVideoCourse(course);
+      return;
+    }
+
     // Build WhatsApp message using the unified helper
     const waVars = buildCourseWaVars(dialogCourse, studentName, normPhone);
 
@@ -312,6 +334,7 @@ export default function CoursesSection() {
     enroll:   "Enroll via WhatsApp",
     share:    "Share Syllabus",
     syllabus: "Get Syllabus on WhatsApp",
+    video:    "Watch Course Video",
   };
 
   const dialogDescriptions: Record<WaAction, string> = {
@@ -319,6 +342,7 @@ export default function CoursesSection() {
     enroll:   "Enter your name & number. An enrollment message will open to send to ATEC.",
     share:    "Enter the student's name & WhatsApp number to send them the syllabus.",
     syllabus: "Enter your name & number to receive the syllabus on WhatsApp.",
+    video:    "Enter your name & number to watch the course video.",
   };
 
   // ─── Video player setup ─────────────────────────────────────────────────────
@@ -423,9 +447,8 @@ export default function CoursesSection() {
                   <h3 className="font-heading font-bold text-lg text-foreground mb-2">
                     {course.name}
                   </h3>
-                  {/* FIX: concise_syllabus is the correct column */}
                   <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {course.concise_syllabus || ""}
+                    {resolveConciseSyllabus(course)}
                   </p>
                   <div className="flex items-center gap-3 mb-4 text-sm text-muted-foreground">
                     {course.duration && (
@@ -457,7 +480,6 @@ export default function CoursesSection() {
                     >
                       <BookOpen className="w-4 h-4 mr-1" /> View Syllabus
                     </Button>
-                    {/* Watch Video: open player directly, no lead capture form */}
                     <Button
                       variant="outline"
                       size="sm"
@@ -559,7 +581,11 @@ export default function CoursesSection() {
               disabled={submitting}
               className="w-full gradient-accent text-accent-foreground border-0"
             >
-              <Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Continue on WhatsApp"}
+              {dialogAction === "video" ? (
+                <><Play className="w-4 h-4 mr-2" /> {submitting ? "Loading..." : "Watch Now"}</>
+              ) : (
+                <><Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Continue on WhatsApp"}</>
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -580,7 +606,7 @@ export default function CoursesSection() {
             // 1. detailed_syllabus_html (admin-entered rich HTML → strip tags for display)
             // 2. concise_syllabus (short text description)
             // 3. legacy syllabus jsonb (old data)
-            const rawHtml = syllabusCourse.detailed_syllabus_html || "";
+            const rawHtml = resolveDetailedSyllabus(syllabusCourse);
             const stripped = rawHtml
               .replace(/<br\s*\/?>/gi, "\n")
               .replace(/<\/p>/gi, "\n")
@@ -589,7 +615,7 @@ export default function CoursesSection() {
               .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
               .replace(/\n{3,}/g, "\n\n")
               .trim();
-            const concise  = syllabusCourse.concise_syllabus || "";
+            const concise  = resolveConciseSyllabus(syllabusCourse);
             const legacySyl = (syllabusCourse as any).syllabus;
             const legacyItems: any[] = Array.isArray(legacySyl) ? legacySyl : legacySyl ? [legacySyl] : [];
             const hasContent = stripped || concise || legacyItems.length > 0;
