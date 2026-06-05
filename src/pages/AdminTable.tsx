@@ -46,21 +46,21 @@ const tableConfig: Record<string, {
       // ── Same fields as Admin panel (original names kept) ──────────────────
       { key: "name",              label: "Name *",                                          type: "text",     required: true },
       { key: "category",         label: "Category *",                                      type: "select",   options: ["AI Programs", "Digital Marketing Stack", "Tally Certifications", "Commerce Courses", "Office & Productivity", "AI Kids Programs", "Programming", "computer", "finance"], required: true },
-      { key: "short_description", label: "Short Description (shown on cards & WhatsApp)",   type: "textarea" },
-      { key: "full_description",  label: "Full Description (shown on course page)",          type: "textarea" },
+      { key: "concise_syllabus",       label: "Short Description (shown on cards & WhatsApp)",   type: "textarea" },
+      { key: "detailed_syllabus_html",  label: "Full Description (shown on course page)",          type: "textarea" },
       { key: "syllabus",         label: "Syllabus (JSON array of module strings) — auto-converts to bullet points in WhatsApp", type: "json" },
       { key: "duration",         label: "Duration (e.g. 2 Months)",                        type: "text" },
       { key: "fee",              label: "Fee (text, e.g. ₹4,000) — also set Total Fee ₹ below for CRM", type: "text" },
       { key: "total_fee",        label: "Total Fee ₹ (number for CRM — e.g. 4000)",        type: "number" },
       { key: "badge_label",      label: "Badge (e.g. Popular, Beginner, New)",              type: "text" },
       // ── Images ────────────────────────────────────────────────────────────
-      { key: "thumbnail_url",    label: "Thumbnail URL (card image — paste URL or upload via CRM)", type: "text" },
+      { key: "og_image_url",      label: "Course Image URL (card thumbnail — paste URL)", type: "text" },
       { key: "syllabus_image_url", label: "Syllabus Image URL (photo of syllabus — used as WA thumbnail)", type: "text" },
       // ── PDFs ──────────────────────────────────────────────────────────────
-      { key: "syllabus_pdf_url", label: "Syllabus PDF URL (Google Drive or Supabase — {brochure_link} in WA)", type: "text" },
-      { key: "brochure_pdf_url", label: "Brochure PDF URL (same as above if identical)",   type: "text" },
+      { key: "brochure_url",     label: "Brochure/Syllabus PDF URL (Google Drive or Supabase — {brochure_link} in WA)", type: "text" },
       // ── Video ─────────────────────────────────────────────────────────────
-      { key: "video_url",        label: "Course Video URL (YouTube/Instagram) — {video_link} in WA", type: "text" },
+      { key: "youtube_url",      label: "Course Video URL (YouTube — primary, {video_link} in WA)", type: "text" },
+      { key: "video_url",        label: "Course Video URL (Instagram/other — fallback)", type: "text" },
       // ── WhatsApp ──────────────────────────────────────────────────────────
       { key: "whatsapp_template_key", label: "WhatsApp Template Key (e.g. COURSE_INFO)",   type: "text" },
       // ── CRM-only extra fields ──────────────────────────────────────────────
