@@ -73,7 +73,7 @@ const categories = [
   "Programming",
 ];
 
-type WaAction = "enquiry" | "enroll" | "syllabus" | "share" | "video";
+type WaAction = "enquiry" | "enroll" | "syllabus" | "share";
 
 // ─── Helper: resolve best image for a course ─────────────────────────────────
 function resolveCourseImage(course: Course): string {
@@ -233,7 +233,6 @@ export default function CoursesSection() {
       enroll:  "enroll_button",
       syllabus: "syllabus_request",
       share:   "share_course",
-      video:   "watch_video",
     };
 
     // Save lead
@@ -277,15 +276,6 @@ export default function CoursesSection() {
       } as never);
     }
 
-    // For video: show player after lead capture, don't open WhatsApp
-    if (dialogAction === "video") {
-      setSubmitting(false);
-      const course = dialogCourse;
-      setDialogCourse(null);
-      setVideoCourse(course);
-      return;
-    }
-
     // Build WhatsApp message using the unified helper
     const waVars = buildCourseWaVars(dialogCourse, studentName, normPhone);
 
@@ -322,7 +312,6 @@ export default function CoursesSection() {
     enroll:   "Enroll via WhatsApp",
     share:    "Share Syllabus",
     syllabus: "Get Syllabus on WhatsApp",
-    video:    "Watch Course Video",
   };
 
   const dialogDescriptions: Record<WaAction, string> = {
@@ -330,7 +319,6 @@ export default function CoursesSection() {
     enroll:   "Enter your name & number. An enrollment message will open to send to ATEC.",
     share:    "Enter the student's name & WhatsApp number to send them the syllabus.",
     syllabus: "Enter your name & number to receive the syllabus on WhatsApp.",
-    video:    "Enter your name & number to watch the course video.",
   };
 
   // ─── Video player setup ─────────────────────────────────────────────────────
@@ -469,11 +457,11 @@ export default function CoursesSection() {
                     >
                       <BookOpen className="w-4 h-4 mr-1" /> View Syllabus
                     </Button>
-                    {/* FIX: check youtube_url OR video_url, not just video_url */}
+                    {/* Watch Video: open player directly, no lead capture form */}
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openDialog(course, "video")}
+                      onClick={() => setVideoCourse(course)}
                       disabled={!course.youtube_url && !course.video_url}
                     >
                       <Play className="w-4 h-4 mr-1" /> Watch Video
@@ -571,11 +559,7 @@ export default function CoursesSection() {
               disabled={submitting}
               className="w-full gradient-accent text-accent-foreground border-0"
             >
-              {dialogAction === "video" ? (
-                <><Play className="w-4 h-4 mr-2" /> {submitting ? "Loading..." : "Watch Now"}</>
-              ) : (
-                <><Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Continue on WhatsApp"}</>
-              )}
+              <Send className="w-4 h-4 mr-2" /> {submitting ? "Sending..." : "Continue on WhatsApp"}
             </Button>
           </div>
         </DialogContent>
