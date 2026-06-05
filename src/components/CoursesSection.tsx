@@ -28,6 +28,7 @@ interface Course {
   mode: string | null;
   // FIX: correct column name is total_fee, NOT fee
   total_fee: number | null;
+  fee: string | null;           // legacy text fee set by admin (e.g. "₹4,000")
   registration_fee: number | null;
   emi_options: string[] | null;
   // New columns (preferred)
@@ -456,13 +457,18 @@ export default function CoursesSection() {
                         <Clock className="w-4 h-4" /> {course.duration}
                       </span>
                     )}
-                    {/* FIX: total_fee is the correct column */}
-                    {(course.total_fee ?? 0) > 0 && (
+                    {/* Show total_fee (number) or fall back to fee (text) */}
+                    {(course.total_fee ?? 0) > 0 ? (
                       <span className="flex items-center gap-1">
                         <IndianRupee className="w-4 h-4" />
                         {Number(course.total_fee).toLocaleString("en-IN")}
                       </span>
-                    )}
+                    ) : course.fee ? (
+                      <span className="flex items-center gap-1">
+                        <IndianRupee className="w-4 h-4" />
+                        {course.fee.replace(/^[₹\s]+/, "")}
+                      </span>
+                    ) : null}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 mt-auto">
